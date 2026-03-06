@@ -39,6 +39,9 @@ public class BaseDefenseMod {
         
         // Arena commands and teleportation
         MinecraftForge.EVENT_BUS.register(ArenaCommands.class);
+        
+        // Sanctity system
+        MinecraftForge.EVENT_BUS.register(com.nhatbh.basedefensev2.sanctity.events.SanctityEventHandler.class);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -48,6 +51,7 @@ public class BaseDefenseMod {
 
         com.nhatbh.basedefensev2.elemental.MobElementConfig.load();
         com.nhatbh.basedefensev2.config.SpellPenaltyConfig.load();
+        com.nhatbh.basedefensev2.config.SanctityConfig.load();
 
         LOGGER.info("Base Defense V2 initialized!");
     }
