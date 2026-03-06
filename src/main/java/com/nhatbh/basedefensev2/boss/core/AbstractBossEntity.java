@@ -4,14 +4,14 @@ import com.nhatbh.basedefensev2.boss.events.BossEvents;
 import com.nhatbh.basedefensev2.boss.skills.ActiveSkill;
 import com.nhatbh.basedefensev2.boss.skills.SequenceRunner;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 
 import java.util.List;
 
-public abstract class AbstractBossEntity extends Monster {
+public abstract class AbstractBossEntity extends Zombie {
     private final BossDefinition definition;
     private Phase currentPhase;
     private int currentPhaseIndex = 0;
@@ -19,7 +19,7 @@ public abstract class AbstractBossEntity extends Monster {
     private SequenceRunner currentSequence;
     private int exhaustionTicks = 0;
 
-    protected AbstractBossEntity(EntityType<? extends Monster> entityType, Level level, BossDefinition definition) {
+    protected AbstractBossEntity(EntityType<? extends Zombie> entityType, Level level, BossDefinition definition) {
         super(entityType, level);
         this.definition = definition;
         

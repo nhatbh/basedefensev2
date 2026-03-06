@@ -1,6 +1,7 @@
 package com.nhatbh.basedefensev2.boss.skills;
 
 import com.nhatbh.basedefensev2.boss.core.AbstractBossEntity;
+import net.minecraft.network.chat.Component;
 
 public class SkillContext {
     private final AbstractBossEntity boss;
@@ -35,5 +36,13 @@ public class SkillContext {
 
     public void applyExhaustion(int ticks) {
         boss.applyExhaustion(ticks);
+    }
+
+    public void log(String message) {
+        boss.sendSystemMessage(Component.literal("§7[BossSkill]§r " + message));
+    }
+    
+    public double getHealthPercent() {
+        return boss.getHealth() / boss.getMaxHealth();
     }
 }

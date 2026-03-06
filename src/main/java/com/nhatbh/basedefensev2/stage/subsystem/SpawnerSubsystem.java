@@ -173,8 +173,9 @@ public class SpawnerSubsystem {
             if (entity == null) continue;
 
             entity.moveTo(pos[0], pos[1], pos[2], RANDOM.nextFloat() * 360f, 0f);
-
+            
             if (entity instanceof Mob mob) {
+                mob.setPersistenceRequired();
                 mob.finalizeSpawn(level,
                         level.getCurrentDifficultyAt(BlockPos.containing(pos[0], pos[1], pos[2])),
                         MobSpawnType.EVENT, null, null);
@@ -205,6 +206,7 @@ public class SpawnerSubsystem {
 
         entity.moveTo(area.x, area.y, area.z, 0f, 0f);
         if (entity instanceof Mob mob) {
+            mob.setPersistenceRequired();
             mob.finalizeSpawn(level,
                     level.getCurrentDifficultyAt(BlockPos.containing(area.x, area.y, area.z)),
                     MobSpawnType.EVENT, null, null);

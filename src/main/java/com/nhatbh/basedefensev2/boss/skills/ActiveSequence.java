@@ -8,14 +8,20 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class ActiveSequence {
+    private final String id;
     private final List<Step> steps;
 
-    private ActiveSequence(List<Step> steps) {
+    private ActiveSequence(String id, List<Step> steps) {
+        this.id = id;
         this.steps = steps;
     }
 
-    public static Builder builder() {
-        return new Builder();
+    public static Builder builder(String id) {
+        return new Builder(id);
+    }
+
+    public String getId() {
+        return id;
     }
 
     public List<Step> getSteps() {
@@ -44,8 +50,13 @@ public class ActiveSequence {
     }
 
     public static class Builder {
+        private final String id;
         private final List<Step> steps = new ArrayList<>();
         private Step currentStep;
+
+        public Builder(String id) {
+            this.id = id;
+        }
 
         public Builder step(String id, int duration) {
             finalizeStep();
@@ -88,7 +99,7 @@ public class ActiveSequence {
 
         public ActiveSequence build() {
             finalizeStep();
-            return new ActiveSequence(steps);
+            return new ActiveSequence(id, steps);
         }
     }
 }

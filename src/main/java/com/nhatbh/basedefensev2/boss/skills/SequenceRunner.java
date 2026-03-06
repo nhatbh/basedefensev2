@@ -1,6 +1,9 @@
 package com.nhatbh.basedefensev2.boss.skills;
 
 import com.nhatbh.basedefensev2.boss.core.AbstractBossEntity;
+import com.nhatbh.basedefensev2.boss.events.BossEvents;
+import net.minecraft.network.chat.Component;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 
 import java.util.List;
@@ -52,6 +55,15 @@ public class SequenceRunner {
         if (!running) return;
         
         ActiveSequence.Step step = steps.get(currentStepIndex);
+
+        if (isMelee && step.isParry) {
+            context.interrupt();
+            event.setAmount(0); // Parry negates damage
+            context.boss().sendSystemMessage(Component.literal("§6§lPARRIED!§r " + context.boss().getDisplayName().getString() + " was interrupted!"));
+            MinecraftForge.EVENT_BUS.post(new BossEvents.ParrySuccessful(context.boss()));
+            return;
+        }
+
         if (step.onDamageTaken != null) {
             step.onDamageTaken.accept(context, event);
         }

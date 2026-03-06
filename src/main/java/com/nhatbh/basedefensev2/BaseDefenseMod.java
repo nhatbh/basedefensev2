@@ -7,10 +7,13 @@ import com.nhatbh.basedefensev2.stage.subsystem.CleanupSubsystem;
 import com.nhatbh.basedefensev2.stage.subsystem.RewardSubsystem;
 import com.nhatbh.basedefensev2.stage.subsystem.SpawnerSubsystem;
 import com.nhatbh.basedefensev2.stage.ArenaCommands;
+import com.nhatbh.basedefensev2.boss.TestBossEntity;
+import com.nhatbh.basedefensev2.registry.ModEntities;
 import com.nhatbh.basedefensev2.strength.ModAttributes;
 import com.nhatbh.basedefensev2.strength.network.NetworkManager;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.AddReloadListenerEvent;
+import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -29,6 +32,9 @@ public class BaseDefenseMod {
         modEventBus.addListener(this::commonSetup);
 
         ModAttributes.ATTRIBUTES.register(modEventBus);
+        ModEntities.ENTITIES.register(modEventBus);
+
+        modEventBus.addListener(this::onAttributeCreation);
 
         // Register this class and all stage subsystems on the Forge event bus
         MinecraftForge.EVENT_BUS.register(this);
@@ -54,6 +60,10 @@ public class BaseDefenseMod {
         com.nhatbh.basedefensev2.config.SanctityConfig.load();
 
         LOGGER.info("Base Defense V2 initialized!");
+    }
+
+    private void onAttributeCreation(EntityAttributeCreationEvent event) {
+        event.put(ModEntities.TEST_BOSS.get(), TestBossEntity.createAttributes().build());
     }
 
     /**
