@@ -147,6 +147,10 @@ repositories {
         name = "CurseMaven"
         url = "https://cursemaven.com"
     }
+
+    flatDir {
+        dirs 'libs' // This points to a 'libs' folder in your project root
+    }
 }
 
 dependencies {

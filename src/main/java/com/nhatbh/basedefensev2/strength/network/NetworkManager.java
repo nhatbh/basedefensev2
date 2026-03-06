@@ -20,11 +20,16 @@ public class NetworkManager {
                  EntityStrengthSyncPacket::toBytes,
                  EntityStrengthSyncPacket::new,
                  EntityStrengthSyncPacket::handle);
-         
+
          INSTANCE.registerMessage(id++, com.nhatbh.basedefensev2.elemental.network.MobElementSyncPacket.class,
                  com.nhatbh.basedefensev2.elemental.network.MobElementSyncPacket::toBytes,
                  com.nhatbh.basedefensev2.elemental.network.MobElementSyncPacket::new,
                  com.nhatbh.basedefensev2.elemental.network.MobElementSyncPacket::handle);
+
+         INSTANCE.registerMessage(id++, com.nhatbh.basedefensev2.stage.network.StageHudSyncPacket.class,
+                 com.nhatbh.basedefensev2.stage.network.StageHudSyncPacket::toBytes,
+                 com.nhatbh.basedefensev2.stage.network.StageHudSyncPacket::new,
+                 com.nhatbh.basedefensev2.stage.network.StageHudSyncPacket::handle);
     }
 
     public static void sendToTracking(Object packet, net.minecraft.world.entity.Entity entity) {

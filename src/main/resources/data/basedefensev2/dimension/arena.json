@@ -1,0 +1,17 @@
+{
+  "type": "basedefensev2:arena",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "layers": [
+        { "block": "minecraft:bedrock",      "height": 1  },
+        { "block": "minecraft:stone",         "height": 58 },
+        { "block": "minecraft:polished_andesite", "height": 3 },
+        { "block": "minecraft:smooth_stone",  "height": 1  }
+      ],
+      "biome": "minecraft:plains",
+      "features": false,
+      "lakes": false
+    }
+  }
+}

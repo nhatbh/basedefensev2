@@ -1,0 +1,73 @@
+{
+  "id": "stage_1",
+  "trigger_seconds": 60,
+  "warmup_ticks": 6000,
+  "spawn_area": {
+    "x": 0.5,
+    "y": 65,
+    "z": 0.5,
+    "radius": 25
+  },
+  "scavenge_duration_ticks": 6000,
+  "waves": [
+    {
+      "id": "wave_1",
+      "time_limit_ticks": 6000,
+      "arc_angle": 110,
+      "mobs": [
+        {
+          "type": "minecraft:zombie",
+          "count": 8,
+          "formation": "arc",
+          "distance_min": 5,
+          "distance_max": 12
+        },
+        {
+          "type": "minecraft:skeleton",
+          "count": 5,
+          "formation": "arc",
+          "distance_min": 16,
+          "distance_max": 22
+        }
+      ],
+      "rewards": {
+        "xp": 50,
+        "commands": [],
+        "items": []
+      }
+    },
+    {
+      "id": "wave_2",
+      "time_limit_ticks": 9000,
+      "arc_angle": 120,
+      "mobs": [
+        {
+          "type": "minecraft:zombie",
+          "count": 10,
+          "formation": "arc",
+          "distance_min": 5,
+          "distance_max": 12
+        },
+        {
+          "type": "minecraft:vindicator",
+          "count": 4,
+          "formation": "arc",
+          "distance_min": 10,
+          "distance_max": 16
+        },
+        {
+          "type": "minecraft:skeleton",
+          "count": 6,
+          "formation": "arc",
+          "distance_min": 18,
+          "distance_max": 24
+        }
+      ],
+      "rewards": {
+        "xp": 100,
+        "commands": [],
+        "items": []
+      }
+    }
+  ]
+}
