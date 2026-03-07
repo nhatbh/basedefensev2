@@ -23,10 +23,34 @@ public class BossManager {
 
     public static void registerBoss(LivingEntity entity, BossComponent component) {
         BOSS_REGISTRY.put(entity, component);
+        initializeBossAttributes(entity, component.getDefinition());
         component.initialize(entity);
         if (component.getCurrentPhase() != null) {
             syncMount(entity, component, component.getCurrentPhase());
             syncWeapon(entity, component.getCurrentPhase());
+        }
+    }
+
+    public static void initializeBossAttributes(LivingEntity boss, BossDefinition def) {
+        if (def.getBaseStats() != null) {
+            var atts = boss.getAttributes();
+            var healthAttr = atts.getInstance(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH);
+            if (healthAttr != null) {
+                healthAttr.setBaseValue(def.getBaseStats().health);
+                boss.setHealth(def.getBaseStats().health);
+            }
+            var speedAttr = atts.getInstance(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED);
+            if (speedAttr != null) {
+                speedAttr.setBaseValue(def.getBaseStats().speed);
+            }
+            var damageAttr = atts.getInstance(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+            if (damageAttr != null) {
+                damageAttr.setBaseValue(def.getBaseStats().damage);
+            }
+            var followAttr = atts.getInstance(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE);
+            if (followAttr != null) {
+                followAttr.setBaseValue(300.0);
+            }
         }
     }
 

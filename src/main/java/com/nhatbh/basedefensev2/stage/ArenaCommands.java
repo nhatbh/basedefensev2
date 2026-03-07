@@ -97,21 +97,6 @@ public class ArenaCommands {
                                         Vec3 pos = player.position();
                                         living.setPos(pos.x, pos.y, pos.z);
                                         
-                                        // Apply Boss Stats
-                                        if (def.getBaseStats() != null) {
-                                            var atts = living.getAttributes();
-                                            if (atts.hasAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH)) {
-                                                atts.getInstance(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(def.getBaseStats().health);
-                                                living.setHealth(def.getBaseStats().health);
-                                            }
-                                            if (atts.hasAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)) {
-                                                atts.getInstance(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED).setBaseValue(def.getBaseStats().speed);
-                                            }
-                                            if (atts.hasAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE)) {
-                                                atts.getInstance(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE).setBaseValue(def.getBaseStats().damage);
-                                            }
-                                        }
-                                        
                                         BossComponent comp = new BossComponent(def);
                                         BossManager.registerBoss(living, comp);
                                         

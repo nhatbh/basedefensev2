@@ -31,6 +31,27 @@
         "commands": [],
         "items": []
       }
+    },
+    {
+      "id": "wave_boss",
+      "time_limit_ticks": 3600,
+      "arc_angle": 360,
+      "mobs": [
+        {
+          "is_boss": true,
+          "boss_id": "test_boss"
+        }
+      ],
+      "rewards": {
+        "xp": 500,
+        "commands": [],
+        "items": [
+          {
+            "item": "minecraft:netherite_ingot",
+            "count": 1
+          }
+        ]
+      }
     }
   ]
 }

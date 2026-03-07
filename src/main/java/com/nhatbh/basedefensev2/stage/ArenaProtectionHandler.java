@@ -7,7 +7,6 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.event.level.ExplosionEvent;
 import net.minecraftforge.event.entity.EntityTravelToDimensionEvent;
-import net.minecraftforge.event.entity.EntityTeleportEvent;
 import net.minecraft.server.level.ServerPlayer;
 import com.nhatbh.basedefensev2.stage.core.StageContext;
 import com.nhatbh.basedefensev2.stage.core.StageState;

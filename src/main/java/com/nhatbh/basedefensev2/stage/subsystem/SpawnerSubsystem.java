@@ -7,6 +7,7 @@ import com.nhatbh.basedefensev2.stage.config.WaveConfig;
 import com.nhatbh.basedefensev2.stage.core.StageContext;
 import com.nhatbh.basedefensev2.stage.events.WaveEvents;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -181,6 +182,12 @@ public class SpawnerSubsystem {
                 mob.finalizeSpawn(level,
                         level.getCurrentDifficultyAt(BlockPos.containing(pos[0], pos[1], pos[2])),
                         MobSpawnType.EVENT, null, null);
+
+                // Set follow range to 300 blocks
+                var followAttr = mob.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE);
+                if (followAttr != null) {
+                    followAttr.setBaseValue(300.0);
+                }
             }
 
             level.addFreshEntity(entity);
@@ -212,9 +219,15 @@ public class SpawnerSubsystem {
             return;
         }
 
-        EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(parseId(entry.boss_id));
+        com.nhatbh.basedefensev2.boss.core.BossDefinition def = com.nhatbh.basedefensev2.registry.ModBosses.get(entry.boss_id);
+        if (def == null) {
+            LOGGER.warn("[SpawnerSubsystem] Unknown boss definition: {}", entry.boss_id);
+            return;
+        }
+
+        EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(parseId(def.getBaseEntity()));
         if (type == null) {
-            LOGGER.warn("[SpawnerSubsystem] Unknown boss entity type: {}", entry.boss_id);
+            LOGGER.warn("[SpawnerSubsystem] Unknown base entity type for boss {}: {}", entry.boss_id, def.getBaseEntity());
             return;
         }
 
@@ -225,9 +238,13 @@ public class SpawnerSubsystem {
         entity.moveTo(area.x, area.y, area.z, 0f, 0f);
         if (entity instanceof Mob mob) {
             mob.setPersistenceRequired();
-            mob.finalizeSpawn(level,
-                    level.getCurrentDifficultyAt(BlockPos.containing(area.x, area.y, area.z)),
-                    MobSpawnType.EVENT, null, null);
+            
+            // Register as Boss (also applies attributes)
+            com.nhatbh.basedefensev2.boss.core.BossComponent comp = new com.nhatbh.basedefensev2.boss.core.BossComponent(def);
+            com.nhatbh.basedefensev2.boss.core.BossManager.registerBoss(mob, comp);
+
+            mob.setCustomName(Component.literal(entry.boss_id.toUpperCase()));
+            mob.setCustomNameVisible(true);
         }
 
         level.addFreshEntity(entity);
