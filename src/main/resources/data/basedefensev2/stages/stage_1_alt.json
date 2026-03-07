@@ -1,0 +1,36 @@
+{
+  "id": "stage_1_alt",
+  "trigger_seconds": 15,
+  "order": 0,
+  "warmup_ticks": 1300,
+  "spawn_radius": 20,
+  "scavenge_duration_ticks": 200,
+  "waves": [
+    {
+      "id": "wild_wave",
+      "time_limit_ticks": 1200,
+      "arc_angle": 360,
+      "mobs": [
+        {
+          "type": "minecraft:spider",
+          "count": 12,
+          "formation": "arc",
+          "distance_min": 10,
+          "distance_max": 20
+        },
+        {
+          "type": "minecraft:creeper",
+          "count": 3,
+          "formation": "arc",
+          "distance_min": 15,
+          "distance_max": 25
+        }
+      ],
+      "rewards": {
+        "xp": 60,
+        "commands": [],
+        "items": []
+      }
+    }
+  ]
+}

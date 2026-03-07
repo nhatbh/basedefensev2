@@ -1,0 +1,36 @@
+{
+  "id": "stage_2",
+  "trigger_seconds": 30,
+  "order": 1,
+  "warmup_ticks": 1300,
+  "spawn_radius": 30,
+  "scavenge_duration_ticks": 200,
+  "waves": [
+    {
+      "id": "the_heavy_hits",
+      "time_limit_ticks": 2400,
+      "arc_angle": 90,
+      "mobs": [
+        {
+          "type": "minecraft:iron_golem",
+          "count": 1,
+          "formation": "arc",
+          "distance_min": 15,
+          "distance_max": 20
+        },
+        {
+          "type": "minecraft:pillager",
+          "count": 8,
+          "formation": "arc",
+          "distance_min": 10,
+          "distance_max": 25
+        }
+      ],
+      "rewards": {
+        "xp": 500,
+        "commands": [],
+        "items": []
+      }
+    }
+  ]
+}

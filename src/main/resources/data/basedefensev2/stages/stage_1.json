@@ -1,18 +1,14 @@
 {
   "id": "stage_1",
-  "trigger_seconds": 3600,
-  "warmup_ticks": 6000,
-  "spawn_area": {
-    "x": 0.5,
-    "y": 65,
-    "z": 0.5,
-    "radius": 25
-  },
-  "scavenge_duration_ticks": 6000,
+  "trigger_seconds": 15,
+  "order": 0,
+  "warmup_ticks": 1300,
+  "spawn_radius": 25,
+  "scavenge_duration_ticks": 200,
   "waves": [
     {
       "id": "wave_1",
-      "time_limit_ticks": 6000,
+      "time_limit_ticks": 1200,
       "arc_angle": 110,
       "mobs": [
         {
@@ -38,7 +34,7 @@
     },
     {
       "id": "wave_2",
-      "time_limit_ticks": 9000,
+      "time_limit_ticks": 1200,
       "arc_angle": 120,
       "mobs": [
         {

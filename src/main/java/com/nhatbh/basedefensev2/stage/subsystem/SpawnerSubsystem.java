@@ -29,26 +29,26 @@ import java.util.UUID;
  * the configured formation.
  *
  * ┌──────────────────────────────────────────────────────────────────────┐
- * │  FORMATION MODEL                                                      │
- * │                                                                       │
- * │  At the start of each wave a single random wave direction (0–2π) is  │
- * │  chosen. All entries with formation="arc" share that same direction   │
- * │  and the same arc_angle defined on the WaveConfig.                   │
- * │                                                                       │
- * │  Each mob is placed at:                                               │
- * │    θ = waveAngle + random_in( -arc_angle/2 , +arc_angle/2 )          │
- * │    d = random_in( distance_min , distance_max )                       │
- * │    x = origin.x + d · sin(θ)                                         │
- * │    z = origin.z + d · cos(θ)                                         │
- * │                                                                       │
- * │  Row placement: small distance = front/tanks, large = back/ranged.   │
+ * │ FORMATION MODEL │
+ * │ │
+ * │ At the start of each wave a single random wave direction (0–2π) is │
+ * │ chosen. All entries with formation="arc" share that same direction │
+ * │ and the same arc_angle defined on the WaveConfig. │
+ * │ │
+ * │ Each mob is placed at: │
+ * │ θ = waveAngle + random_in( -arc_angle/2 , +arc_angle/2 ) │
+ * │ d = random_in( distance_min , distance_max ) │
+ * │ x = origin.x + d · sin(θ) │
+ * │ z = origin.z + d · cos(θ) │
+ * │ │
+ * │ Row placement: small distance = front/tanks, large = back/ranged. │
  * └──────────────────────────────────────────────────────────────────────┘
  *
  * Friendly-fire prevention:
- *   After spawning, every entity is added to a shared scoreboard team
- *   ("bdv2_wave") with friendlyFire=false, preventing wave mobs from
- *   hurting each other via melee or projectile.  The team is wiped and
- *   rebuilt fresh on every wave to avoid stale members.
+ * After spawning, every entity is added to a shared scoreboard team
+ * ("bdv2_wave") with friendlyFire=false, preventing wave mobs from
+ * hurting each other via melee or projectile. The team is wiped and
+ * rebuilt fresh on every wave to avoid stale members.
  */
 @SuppressWarnings("deprecation")
 public class SpawnerSubsystem {
@@ -57,21 +57,21 @@ public class SpawnerSubsystem {
     private static final String WAVE_TEAM = "bdv2_wave";
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final Random RANDOM  = new Random();
+    private static final Random RANDOM = new Random();
 
     @SubscribeEvent
     public void onSpawnRequested(WaveEvents.SpawnRequested event) {
-        WaveConfig wave            = event.getWave();
-        StageContext ctx           = event.getCtx();
-        ServerLevel level          = event.getLevel();
-        StageConfig.SpawnArea area = ctx.getActiveConfig().spawn_area;
+        WaveConfig wave = event.getWave();
+        StageContext ctx = event.getCtx();
+        ServerLevel level = event.getLevel();
+        StageConfig.SpawnArea area = ctx.getSpawnArea();
 
         // One random direction shared by the entire wave
         double waveAngle = RANDOM.nextDouble() * 2.0 * Math.PI;
-        double halfArc   = Math.toRadians(wave.arc_angle / 2.0);
+        double halfArc = Math.toRadians(wave.arc_angle / 2.0);
 
         // Collect UUIDs (for StageContext) AND entity references (for team assignment)
-        List<UUID>   uuids    = new ArrayList<>();
+        List<UUID> uuids = new ArrayList<>();
         List<Entity> entities = new ArrayList<>();
 
         for (MobSpawnEntry entry : wave.mobs) {
@@ -97,11 +97,12 @@ public class SpawnerSubsystem {
 
     /**
      * Creates (or resets) the arena wave scoreboard team and adds every
-     * spawned entity to it.  Rebuilding the team on each wave ensures no
+     * spawned entity to it. Rebuilding the team on each wave ensures no
      * stale members carry over from previous waves.
      */
     private void assignToWaveTeam(ServerLevel level, List<Entity> entities) {
-        if (entities.isEmpty()) return;
+        if (entities.isEmpty())
+            return;
 
         Scoreboard scoreboard = level.getServer().getScoreboard();
 
@@ -127,13 +128,13 @@ public class SpawnerSubsystem {
     // ── Position calculators ──────────────────────────────────────────────────
 
     private double[] arcPosition(StageConfig.SpawnArea origin,
-                                 double waveAngle, double halfArc,
-                                 MobSpawnEntry entry) {
+            double waveAngle, double halfArc,
+            MobSpawnEntry entry) {
         double spread = (RANDOM.nextDouble() * 2.0 - 1.0) * halfArc;
-        double theta  = waveAngle + spread;
-        double dist   = entry.distance_min
+        double theta = waveAngle + spread;
+        double dist = entry.distance_min
                 + RANDOM.nextDouble() * Math.max(0, entry.distance_max - entry.distance_min);
-        return new double[]{
+        return new double[] {
                 origin.x + dist * Math.sin(theta),
                 origin.y,
                 origin.z + dist * Math.cos(theta)
@@ -142,8 +143,8 @@ public class SpawnerSubsystem {
 
     private double[] randomPosition(StageConfig.SpawnArea origin) {
         double angle = RANDOM.nextDouble() * 2.0 * Math.PI;
-        double r     = origin.radius * Math.sqrt(RANDOM.nextDouble());
-        return new double[]{
+        double r = origin.radius * Math.sqrt(RANDOM.nextDouble());
+        return new double[] {
                 origin.x + r * Math.sin(angle),
                 origin.y,
                 origin.z + r * Math.cos(angle)
@@ -153,9 +154,9 @@ public class SpawnerSubsystem {
     // ── Spawners ──────────────────────────────────────────────────────────────
 
     private void spawnMobs(MobSpawnEntry entry, ServerLevel level,
-                           StageConfig.SpawnArea area,
-                           double waveAngle, double halfArc,
-                           List<UUID> uuidsOut, List<Entity> entitiesOut) {
+            StageConfig.SpawnArea area,
+            double waveAngle, double halfArc,
+            List<UUID> uuidsOut, List<Entity> entitiesOut) {
         EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(parseId(entry.type));
         if (type == null) {
             LOGGER.warn("[SpawnerSubsystem] Unknown entity type: {}", entry.type);
@@ -170,10 +171,11 @@ public class SpawnerSubsystem {
                     : randomPosition(area);
 
             Entity entity = type.create(level);
-            if (entity == null) continue;
+            if (entity == null)
+                continue;
 
             entity.moveTo(pos[0], pos[1], pos[2], RANDOM.nextFloat() * 360f, 0f);
-            
+
             if (entity instanceof Mob mob) {
                 mob.setPersistenceRequired();
                 mob.finalizeSpawn(level,
@@ -188,8 +190,8 @@ public class SpawnerSubsystem {
     }
 
     private void spawnBoss(MobSpawnEntry entry, ServerLevel level,
-                           StageConfig.SpawnArea area,
-                           List<UUID> uuidsOut, List<Entity> entitiesOut) {
+            StageConfig.SpawnArea area,
+            List<UUID> uuidsOut, List<Entity> entitiesOut) {
         if (entry.boss_id == null || entry.boss_id.isEmpty()) {
             LOGGER.warn("[SpawnerSubsystem] Boss entry has no boss_id; skipping.");
             return;
@@ -202,7 +204,8 @@ public class SpawnerSubsystem {
         }
 
         Entity entity = type.create(level);
-        if (entity == null) return;
+        if (entity == null)
+            return;
 
         entity.moveTo(area.x, area.y, area.z, 0f, 0f);
         if (entity instanceof Mob mob) {

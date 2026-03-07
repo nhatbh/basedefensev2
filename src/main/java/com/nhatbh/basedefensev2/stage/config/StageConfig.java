@@ -15,10 +15,12 @@ public class StageConfig {
      * the first stage) before triggering this stage.
      */
     public long trigger_seconds = 3600;
+    /** Order of the stage. Stages with the same order are selected randomly. */
+    public int order = 0;
     /** Ticks of warmup countdown before wave combat begins */
     public int warmup_ticks = 6000;
-    /** Spawn area for all waves in this stage */
-    public SpawnArea spawn_area = new SpawnArea();
+    /** Setup radius around the barrier center where wave mobs can spawn */
+    public double spawn_radius = 25;
     /** Ticks of the post-victory scavenge (loot collection) window */
     public int scavenge_duration_ticks = 6000;
     /** Ordered list of waves */

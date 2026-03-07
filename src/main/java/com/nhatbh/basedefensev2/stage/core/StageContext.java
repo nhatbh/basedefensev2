@@ -12,6 +12,8 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.common.MinecraftForge;
@@ -27,26 +29,25 @@ import java.util.*;
  * tick counters, the current wave index, and the set of living enemy UUIDs.
  *
  * Outer tick loop (driven by ArenaDimensionTickHandler every server tick):
- *   WARMUP  → ACTIVE  → SCAVENGE  → ENDED
+ * WARMUP → ACTIVE → SCAVENGE → ENDED
  *
  * Inner wave loop (delegated from ACTIVE):
- *   SPAWNING → COMBAT → CLEARED (→ next wave or SCAVENGE)
- *                     → TIMEOUT  (optional failure path)
+ * SPAWNING → COMBAT → CLEARED (→ next wave or SCAVENGE)
+ * → TIMEOUT (optional failure path)
  *
  * All side effects (spawning, rewards, cleanup) are handled by subsystems
  * listening to WaveEvents on MinecraftForge.EVENT_BUS.
  *
  * Also tracks the inter-stage timer:
- *   latestStageEndGameTime = 0 means "world just created, no stage has ended yet".
- *   When (gameTime - latestStageEndGameTime) >= trigger_seconds * 20, the next
- *   pending stage can begin.
+ * latestStageEndGameTime = 0 means "world just created, no stage has ended
+ * yet".
+ * When (gameTime - latestStageEndGameTime) >= trigger_seconds * 20, the next
+ * pending stage can begin.
  */
 public class StageContext extends SavedData {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /** Running tick counter used purely for debug broadcasts (resets at Long.MAX_VALUE) */
-    private long totalTicks = 0;
     private static final String SAVE_KEY = "basedefensev2_arena";
 
     // ── Inter-stage progression ──────────────────────────────────────────────
@@ -54,6 +55,10 @@ public class StageContext extends SavedData {
     private long lastStageEndGameTime = 0;
     /** Index into StageLoader.getAllStages() list for the next stage to run */
     private int nextStageIndex = 0;
+    /** ID of the stage that has been randomly selected but not yet triggered */
+    private String pendingStageId = null;
+    /** True if the arena schematic has been pasted and barrier created for this world */
+    private boolean arenaEstablished = false;
 
     // ── Active stage state ───────────────────────────────────────────────────
     /** Null when no stage is currently active */
@@ -72,11 +77,22 @@ public class StageContext extends SavedData {
     /** UUIDs of all enemies spawned for the current wave that are still alive */
     private final Set<UUID> livingEnemies = new HashSet<>();
 
-    /** Total enemies spawned at the start of the current wave (set once in registerEnemies, reset on new wave) */
+    /**
+     * Total enemies spawned at the start of the current wave (set once in
+     * registerEnemies, reset on new wave)
+     */
     private int totalEnemiesInWave = 0;
 
     /** True on the first tick of SCAVENGE so rewards fire exactly once */
     private boolean scavengeRewardFired = false;
+
+    // ── Arena Barrier State ──────────────────────────────────────────────────
+    private net.minecraft.core.BlockPos arenaBarrierCenter = null;
+    private float arenaBarrierRadiusX = 0f;
+    private float arenaBarrierRadiusZ = 0f;
+    private List<net.minecraft.core.BlockPos> barrierBlockPositions = new ArrayList<>();
+    private UUID activeBossUuid = null;
+    private long bossSpawnTime = 0L;
 
     // ── SavedData factory ────────────────────────────────────────────────────
 
@@ -84,8 +100,7 @@ public class StageContext extends SavedData {
         return level.getDataStorage().computeIfAbsent(
                 StageContext::load,
                 StageContext::new,
-                SAVE_KEY
-        );
+                SAVE_KEY);
     }
 
     // ── Main tick entry point (called by ArenaDimensionTickHandler) ──────────
@@ -94,12 +109,8 @@ public class StageContext extends SavedData {
      * Called every server tick while the level is the arena dimension.
      */
     public void tick(ServerLevel level) {
-        totalTicks++;
-        boolean debugSecond = (totalTicks % 20 == 0);
-
         if (activeConfig == null) {
             tryTriggerNextStage(level);
-            if (debugSecond) debugTickIdle(level);
             return;
         }
 
@@ -107,28 +118,52 @@ public class StageContext extends SavedData {
             case WARMUP -> tickWarmup(level);
             case ACTIVE -> tickActive(level);
             case SCAVENGE -> tickScavenge(level);
-            case ENDED -> {} // No-op; ArenaDimensionTickHandler will see activeConfig == null next cycle
+            case ENDED -> {
+            } // No-op; ArenaDimensionTickHandler will see activeConfig == null next cycle
         }
 
-        if (debugSecond) debugTickActive(level);
         setDirty();
     }
 
     // ── Trigger check ────────────────────────────────────────────────────────
 
     private void tryTriggerNextStage(ServerLevel level) {
-        List<StageConfig> stages = new ArrayList<>(StageLoader.getAllStages());
-        if (nextStageIndex >= stages.size()) return; // All stages done
+        List<Integer> orders = StageLoader.getSortedOrders();
+        if (nextStageIndex >= orders.size())
+            return; // All stages done
 
-        StageConfig candidate = stages.get(nextStageIndex);
+        int currentOrder = orders.get(nextStageIndex);
+        
+        // Pick a stable candidate if we haven't already
+        if (pendingStageId == null) {
+            List<StageConfig> candidates = StageLoader.getStagesForOrder(currentOrder);
+            if (candidates.isEmpty()) {
+                nextStageIndex++;
+                setDirty();
+                return;
+            }
+            pendingStageId = candidates.get(level.random.nextInt(candidates.size())).id;
+            setDirty();
+        }
+
+        Optional<StageConfig> opt = StageLoader.getById(pendingStageId);
+        if (opt.isEmpty()) {
+            pendingStageId = null; // Config disappeared?
+            setDirty();
+            return;
+        }
+
+        StageConfig candidate = opt.get();
         long elapsed = level.getGameTime() - lastStageEndGameTime;
         long required = candidate.trigger_seconds * 20L;
 
-        if (elapsed < required) return;
+        if (elapsed < required)
+            return;
 
         // Trigger!
-        LOGGER.info("[StageContext] Triggering stage '{}' (elapsed={} ticks)", candidate.id, elapsed);
+        LOGGER.info("[StageContext] Triggering stage '{}' from order {} (elapsed={} ticks)", candidate.id, currentOrder, elapsed);
         activeConfig = candidate;
+        pendingStageId = null; // Clear pending state
         stageState = StageState.WARMUP;
         waveState = null;
         stageTicks = 0;
@@ -138,17 +173,46 @@ public class StageContext extends SavedData {
         scavengeRewardFired = false;
 
         broadcastToArena(level, "§6[Arena] §eA new stage is beginning! Prepare yourself...");
-        
+
         // Interactive JOIN message
         Component joinMsg = Component.literal("§6[Arena] §eA new stage has started! ")
                 .append(Component.literal("§l[CLICK HERE TO JOIN]")
                         .withStyle(style -> style
                                 .withColor(net.minecraft.ChatFormatting.GOLD)
-                                .withClickEvent(new net.minecraft.network.chat.ClickEvent(net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, "/arena join"))
-                                .withHoverEvent(new net.minecraft.network.chat.HoverEvent(net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT, Component.literal("Click to join the arena!")))
-                        ));
+                                .withClickEvent(new net.minecraft.network.chat.ClickEvent(
+                                        net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, "/arena join"))
+                                .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
+                                        net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
+                                        Component.literal("Click to join the arena!")))));
         level.getServer().getPlayerList().broadcastSystemMessage(joinMsg, false);
-        
+
+        if (!arenaEstablished) {
+            broadcastToServer(level, "§c[Arena] Warning: Pasting arena schematic! You might experience lag.");
+            try {
+                // Load from assets folder in the mod jar
+                java.io.InputStream schematicStream = com.nhatbh.basedefensev2.BaseDefenseMod.class
+                        .getResourceAsStream("/assets/basedefensev2/schematics/arena.schem");
+                String formatAlias = "sponge";
+                if (schematicStream == null) {
+                    schematicStream = com.nhatbh.basedefensev2.BaseDefenseMod.class
+                            .getResourceAsStream("/assets/basedefensev2/schematics/arena.schematic");
+                    formatAlias = "mcedit";
+                }
+                if (schematicStream != null) {
+                    com.nhatbh.basedefensev2.stage.utils.SchematicPaster.pasteSchematic(level,
+                            com.sk89q.worldedit.math.BlockVector3.at(0, 101, 0), schematicStream, formatAlias);
+                } else {
+                    LOGGER.warn(
+                            "Arena schematic not found at assets/basedefensev2/schematics/arena.schem or arena.schematic");
+                }
+            } catch (Exception e) {
+                LOGGER.error("Exception checking or pasting schematic", e);
+            }
+
+            com.nhatbh.basedefensev2.stage.utils.ArenaBarrierManager.createArenaBarrier(level);
+            arenaEstablished = true;
+        }
+
         setDirty();
     }
 
@@ -175,11 +239,14 @@ public class StageContext extends SavedData {
         // Forced teleport logic (if arena is empty)
         if (level.players().isEmpty()) {
             if (remaining == 4800) { // 4 mins rem (3 mins until force)
-                broadcastToServer(level, "§6[Arena] §eWarning: All players will be forcefully teleported in §c3 minutes§e if no one enters the arena!");
+                broadcastToServer(level,
+                        "§6[Arena] §eWarning: All players will be forcefully teleported in §c3 minutes§e if no one enters the arena!");
             } else if (remaining == 3600) { // 3 mins rem (2 mins until force)
-                broadcastToServer(level, "§6[Arena] §eWarning: All players will be forcefully teleported in §c2 minutes§e if no one enters the arena!");
+                broadcastToServer(level,
+                        "§6[Arena] §eWarning: All players will be forcefully teleported in §c2 minutes§e if no one enters the arena!");
             } else if (remaining == 2400) { // 2 mins rem (1 min until force)
-                broadcastToServer(level, "§6[Arena] §eWarning: All players will be forcefully teleported in §c1 minute§e if no one enters the arena!");
+                broadcastToServer(level,
+                        "§6[Arena] §eWarning: All players will be forcefully teleported in §c1 minute§e if no one enters the arena!");
             } else if (remaining == 1300) { // 5s before force
                 broadcastToServer(level, "§c[Arena] Warning: Forced teleportation in 5 seconds!");
             } else if (remaining == 1200) { // 1 min rem (ACTUAL FORCE)
@@ -196,7 +263,8 @@ public class StageContext extends SavedData {
     // ── ACTIVE (outer) ───────────────────────────────────────────────────────
 
     private void tickActive(ServerLevel level) {
-        if (waveState == null) return;
+        if (waveState == null)
+            return;
 
         switch (waveState) {
             case SPAWNING -> {
@@ -279,10 +347,47 @@ public class StageContext extends SavedData {
             waveState = WaveState.WAITING_NEXT_WAVE;
             waveTicks = 0;
         } else {
-            currentWaveIndex++;
-            stageState = StageState.SCAVENGE;
-            stageTicks = 0;
-            scavengeRewardFired = false;
+            // Final wave timeout: stay in TIMEOUT until all dead
+            livingEnemies.removeIf(uuid -> level.getEntity(uuid) == null);
+
+            if (livingEnemies.isEmpty()) {
+                LOGGER.info("[StageContext] Final wave enemies cleared in TIMEOUT → SCAVENGE");
+                currentWaveIndex++;
+                stageState = StageState.SCAVENGE;
+                stageTicks = 0;
+                scavengeRewardFired = false;
+                return;
+            }
+
+            // Punishment ramping
+            waveTicks++;
+            if (waveTicks % 20 == 0) {
+                int timeLimit = activeConfig.waves.get(currentWaveIndex).time_limit_ticks;
+                float damage = (float) Math.pow(2, (int) ((waveTicks - timeLimit) / 1200));
+
+                DamageSource ds = level.damageSources().magic();
+                for (ServerPlayer player : level.players()) {
+                    player.hurt(ds, damage);
+                }
+
+                // Visuals: flame particles on the arena floor (y=52)
+                if (isArenaBarrierActive() && arenaBarrierCenter != null) {
+                    double cx = arenaBarrierCenter.getX() + 0.5;
+                    double cz = arenaBarrierCenter.getZ() + 0.5;
+                    float rx = arenaBarrierRadiusX;
+                    float rz = arenaBarrierRadiusZ;
+
+                    // Spawn many particles to cover the floor (approx 200 per second)
+                    for (int i = 0; i < 200; i++) {
+                        double angle = level.random.nextDouble() * 2 * Math.PI;
+                        double dist = Math.sqrt(level.random.nextDouble()); // uniform distribution
+                        double px = cx + Math.cos(angle) * dist * rx;
+                        double pz = cz + Math.sin(angle) * dist * rz;
+                        // Randomize Y slightly above 52 to prevent clipping, and add small vertical speed
+                        level.sendParticles(ParticleTypes.FLAME, px, 52.1, pz, 1, 0.1, 0.1, 0.1, 0.02);
+                    }
+                }
+            }
         }
     }
 
@@ -290,8 +395,9 @@ public class StageContext extends SavedData {
         WaveConfig wave = currentWave();
         waveState = WaveState.SPAWNING;
         waveTicks = 0;
-        livingEnemies.clear();
-        totalEnemiesInWave = 0;
+        // Wave carryover: do not clear livingEnemies.
+        // New wave total includes any mobs already in the arena.
+        totalEnemiesInWave = livingEnemies.size();
 
         broadcastToArena(level, "§6[Arena] §eWave §c" + (currentWaveIndex + 1)
                 + "§e / §c" + activeConfig.waves.size() + " §ebeginning!");
@@ -310,17 +416,19 @@ public class StageContext extends SavedData {
             List<ServerPlayer> players = new ArrayList<>(level.players());
             broadcastToArena(level, "§a[Arena] §lVICTORY! §rCollect your loot. Arena closes in §e"
                     + (activeConfig.scavenge_duration_ticks / 20) + "s§r.");
-            
+
             // Interactive LEAVE message
             Component leaveMsg = Component.literal("§a[Arena] §eVictory! Collect your loot. ")
                     .append(Component.literal("§l[CLICK TO LEAVE]")
                             .withStyle(style -> style
                                     .withColor(net.minecraft.ChatFormatting.GREEN)
-                                    .withClickEvent(new net.minecraft.network.chat.ClickEvent(net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, "/arena leave"))
-                                    .withHoverEvent(new net.minecraft.network.chat.HoverEvent(net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT, Component.literal("Click to leave the arena.")))
-                            ));
+                                    .withClickEvent(new net.minecraft.network.chat.ClickEvent(
+                                            net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, "/arena leave"))
+                                    .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
+                                            net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
+                                            Component.literal("Click to leave the arena.")))));
             level.getServer().getPlayerList().broadcastSystemMessage(leaveMsg, false);
-            
+
             MinecraftForge.EVENT_BUS.post(new WaveEvents.LootPhaseStarted(finalWave, level, players));
         }
 
@@ -355,6 +463,7 @@ public class StageContext extends SavedData {
         activeConfig = null;
         stageState = null;
         waveState = null;
+        pendingStageId = null; // Reset for next order
         setDirty();
     }
 
@@ -369,7 +478,8 @@ public class StageContext extends SavedData {
         totalEnemiesInWave += uuids.size();
         if (waveState == WaveState.SPAWNING) {
             waveState = WaveState.COMBAT;
-            LOGGER.info("[StageContext] Registered {} enemies (total={}); moving to COMBAT", uuids.size(), totalEnemiesInWave);
+            LOGGER.info("[StageContext] Registered {} enemies (total={}); moving to COMBAT", uuids.size(),
+                    totalEnemiesInWave);
         }
         setDirty();
     }
@@ -390,8 +500,9 @@ public class StageContext extends SavedData {
     }
 
     private AABB buildArenaBounds() {
-        if (activeConfig == null) return new AABB(-50, -64, -50, 50, 320, 50);
-        StageConfig.SpawnArea area = activeConfig.spawn_area;
+        if (activeConfig == null)
+            return new AABB(-50, -64, -50, 50, 320, 50);
+        StageConfig.SpawnArea area = getSpawnArea();
         double r = area.radius + 10; // extra margin for cleanup
         return new AABB(area.x - r, 0, area.z - r, area.x + r, 256, area.z + r);
     }
@@ -400,86 +511,148 @@ public class StageContext extends SavedData {
         level.players().forEach(p -> p.sendSystemMessage(Component.literal(message)));
     }
 
-    // ── Debug broadcasts (every second) ─────────────────────────────────────
-
-    private void debugTickIdle(ServerLevel level) {
-        if (level.players().isEmpty()) return;
-
-        List<StageConfig> stages = new ArrayList<>(StageLoader.getAllStages());
-        if (nextStageIndex >= stages.size()) {
-            broadcastToArena(level, "§8[DBG] §7All stages complete. No more stages.");
-            return;
-        }
-
-        StageConfig next = stages.get(nextStageIndex);
-        long elapsed   = level.getGameTime() - lastStageEndGameTime;
-        long required  = next.trigger_seconds * 20L;
-        long remaining = Math.max(0, required - elapsed);
-        long remSec    = remaining / 20;
-
-        broadcastToArena(level,
-            String.format("§8[DBG] §7IDLE | Next: §e%s §7| Trigger in §c%ds §7(elapsed §a%ds §7/ §a%ds§7)",
-                next.id, remSec, elapsed / 20, required / 20));
-    }
-
-    private void debugTickActive(ServerLevel level) {
-        if (level.players().isEmpty()) return;
-        if (activeConfig == null || stageState == null) return;
-
-        String msg;
-        switch (stageState) {
-            case WARMUP -> {
-                int rem = activeConfig.warmup_ticks - stageTicks;
-                msg = String.format("§8[DBG] §bWARMUP §7| Stage: §e%s §7| Starts in §c%.1fs",
-                    activeConfig.id, rem / 20.0f);
-            }
-            case ACTIVE -> {
-                WaveConfig wave = currentWave();
-                String waveInfo;
-                if (waveState == WaveState.COMBAT) {
-                    int timeLimitSec = wave.time_limit_ticks > 0 ? (wave.time_limit_ticks - waveTicks) / 20 : -1;
-                    waveInfo = String.format("COMBAT | Enemies: §c%d §7| Wave time: §e%s",
-                        livingEnemies.size(),
-                        timeLimitSec >= 0 ? timeLimitSec + "s" : "unlimited");
-                } else {
-                    waveInfo = "" + waveState;
-                }
-                msg = String.format("§8[DBG] §aACTIVE §7| Stage: §e%s §7| Wave §c%d§7/§c%d §7| %s",
-                    activeConfig.id, currentWaveIndex + 1, activeConfig.waves.size(), waveInfo);
-            }
-            case SCAVENGE -> {
-                int rem = activeConfig.scavenge_duration_ticks - stageTicks;
-                msg = String.format("§8[DBG] §6SCAVENGE §7| Stage: §e%s §7| Closes in §c%.1fs",
-                    activeConfig.id, rem / 20.0f);
-            }
-            default -> msg = "§8[DBG] §7State: " + stageState;
-        }
-
-        broadcastToArena(level, msg);
-    }
-
     // ── Getters ──────────────────────────────────────────────────────────────
 
-    public boolean isActive() { return activeConfig != null; }
-    public StageConfig getActiveConfig() { return activeConfig; }
-    public StageState getStageState() { return stageState; }
-    public WaveState getWaveState() { return waveState; }
-    public int getCurrentWaveIndex() { return currentWaveIndex; }
-    public int getTotalEnemiesInWave() { return totalEnemiesInWave; }
-    public int getLivingEnemyCount() { return livingEnemies.size(); }
-    public Set<UUID> getLivingEnemies() { return Collections.unmodifiableSet(livingEnemies); }
-    public long getLastStageEndGameTime() { return lastStageEndGameTime; }
-    public int getStageTicks() { return stageTicks; }
-    public int getWaveTicks() { return waveTicks; }
+    public boolean isActive() {
+        return activeConfig != null;
+    }
 
-    /** Returns ticks remaining until the next stage can trigger, or -1 if no stages remain. */
+    public StageConfig getActiveConfig() {
+        return activeConfig;
+    }
+
+    public StageState getStageState() {
+        return stageState;
+    }
+
+    public WaveState getWaveState() {
+        return waveState;
+    }
+
+    public int getCurrentWaveIndex() {
+        return currentWaveIndex;
+    }
+
+    public int getTotalEnemiesInWave() {
+        return totalEnemiesInWave;
+    }
+
+    public int getLivingEnemyCount() {
+        return livingEnemies.size();
+    }
+
+    public Set<UUID> getLivingEnemies() {
+        return Collections.unmodifiableSet(livingEnemies);
+    }
+
+    public int getStageTicks() {
+        return stageTicks;
+    }
+
+    public int getWaveTicks() {
+        return waveTicks;
+    }
+
+    public StageConfig.SpawnArea getSpawnArea() {
+        StageConfig.SpawnArea area = new StageConfig.SpawnArea();
+        if (isArenaBarrierActive() && arenaBarrierCenter != null) {
+            area.x = arenaBarrierCenter.getX() + 0.5;
+            area.y = arenaBarrierCenter.getY();
+            area.z = arenaBarrierCenter.getZ() + 0.5;
+        } else {
+            area.x = 0.5;
+            area.y = 52;
+            area.z = 0.5;
+        }
+        area.radius = activeConfig != null ? activeConfig.spawn_radius : 25;
+        return area;
+    }
+
+    // ── Barrier Getters/Setters ──────────────────────────────────────────────
+    public boolean isArenaBarrierActive() {
+        return arenaBarrierCenter != null;
+    }
+
+    public net.minecraft.core.BlockPos getArenaBarrierCenter() {
+        return arenaBarrierCenter;
+    }
+
+    public float getArenaBarrierRadiusX() {
+        return arenaBarrierRadiusX;
+    }
+
+    public float getArenaBarrierRadiusZ() {
+        return arenaBarrierRadiusZ;
+    }
+
+    public float getArenaBarrierRadius() {
+        return (arenaBarrierRadiusX + arenaBarrierRadiusZ) / 2.0f;
+    }
+
+    public List<net.minecraft.core.BlockPos> getBarrierBlockPositions() {
+        return barrierBlockPositions;
+    }
+
+    public UUID getActiveBossUuid() {
+        return activeBossUuid;
+    }
+
+    public void setArenaBarrierCenter(net.minecraft.core.BlockPos center) {
+        this.arenaBarrierCenter = center;
+        setDirty();
+    }
+
+    public void setArenaBarrierEllipse(float rx, float rz) {
+        this.arenaBarrierRadiusX = rx;
+        this.arenaBarrierRadiusZ = rz;
+        setDirty();
+    }
+
+    public void setBarrierBlockPositions(List<net.minecraft.core.BlockPos> blocks) {
+        this.barrierBlockPositions = blocks;
+        setDirty();
+    }
+
+    public void clearArenaBarrier() {
+        this.arenaBarrierCenter = null;
+        this.barrierBlockPositions.clear();
+        this.activeBossUuid = null;
+        setDirty();
+    }
+
+    public void setActiveBossUuid(UUID uuid, long time) {
+        this.activeBossUuid = uuid;
+        this.bossSpawnTime = time;
+        setDirty();
+    }
+
+    /**
+     * Returns ticks remaining until the next stage can trigger, or -1 if no stages
+     * remain.
+     */
     public int getTicksUntilNextStage(ServerLevel level) {
-        if (activeConfig != null) return 0;
-        List<StageConfig> stages = new ArrayList<>(StageLoader.getAllStages());
-        if (nextStageIndex >= stages.size()) return -1;
-        StageConfig next = stages.get(nextStageIndex);
+        if (activeConfig != null)
+            return 0;
+            
+        List<Integer> orders = StageLoader.getSortedOrders();
+        if (nextStageIndex >= orders.size())
+            return -1;
+            
+        int currentOrder = orders.get(nextStageIndex);
+        StageConfig nextCandidate = null;
+
+        if (pendingStageId != null) {
+            nextCandidate = StageLoader.getById(pendingStageId).orElse(null);
+        }
+
+        if (nextCandidate == null) {
+            List<StageConfig> candidates = StageLoader.getStagesForOrder(currentOrder);
+            if (candidates.isEmpty()) return -1;
+            nextCandidate = candidates.get(0); // Use first as fallback/preview
+        }
+
         long elapsed = level.getGameTime() - lastStageEndGameTime;
-        long required = next.trigger_seconds * 20L;
+        long required = nextCandidate.trigger_seconds * 20L;
         return (int) Math.max(0, required - elapsed);
     }
 
@@ -489,15 +662,19 @@ public class StageContext extends SavedData {
     public CompoundTag save(CompoundTag tag) {
         tag.putLong("LastStageEndGameTime", lastStageEndGameTime);
         tag.putInt("NextStageIndex", nextStageIndex);
+        tag.putBoolean("ArenaEstablished", arenaEstablished);
+        if (pendingStageId != null) {
+            tag.putString("PendingStageId", pendingStageId);
+        }
 
         if (activeConfig != null) {
             tag.putString("ActiveStageId", activeConfig.id);
             tag.putString("StageState", stageState.name());
-            if (waveState != null) tag.putString("WaveState", waveState.name());
+            if (waveState != null)
+                tag.putString("WaveState", waveState.name());
             tag.putInt("StageTicks", stageTicks);
             tag.putInt("WaveTicks", waveTicks);
             tag.putInt("CurrentWaveIndex", currentWaveIndex);
-            tag.putInt("TotalEnemiesInWave", totalEnemiesInWave);
             tag.putBoolean("ScavengeRewardFired", scavengeRewardFired);
 
             ListTag enemyList = new ListTag();
@@ -507,6 +684,23 @@ public class StageContext extends SavedData {
             tag.put("LivingEnemies", enemyList);
         }
 
+        if (arenaBarrierCenter != null) {
+            tag.putLong("ArenaBarrierCenter", arenaBarrierCenter.asLong());
+            tag.putFloat("ArenaBarrierRadiusX", arenaBarrierRadiusX);
+            tag.putFloat("ArenaBarrierRadiusZ", arenaBarrierRadiusZ);
+
+            long[] blockPosLogs = new long[barrierBlockPositions.size()];
+            for (int i = 0; i < barrierBlockPositions.size(); i++) {
+                blockPosLogs[i] = barrierBlockPositions.get(i).asLong();
+            }
+            tag.putLongArray("BarrierBlockPositions", blockPosLogs);
+
+            if (activeBossUuid != null) {
+                tag.putUUID("ActiveBossUuid", activeBossUuid);
+                tag.putLong("BossSpawnTime", bossSpawnTime);
+            }
+        }
+
         return tag;
     }
 
@@ -514,6 +708,10 @@ public class StageContext extends SavedData {
         StageContext ctx = new StageContext();
         ctx.lastStageEndGameTime = tag.getLong("LastStageEndGameTime");
         ctx.nextStageIndex = tag.getInt("NextStageIndex");
+        ctx.arenaEstablished = tag.getBoolean("ArenaEstablished");
+        if (tag.contains("PendingStageId")) {
+            ctx.pendingStageId = tag.getString("PendingStageId");
+        }
 
         if (tag.contains("ActiveStageId")) {
             String stageId = tag.getString("ActiveStageId");
@@ -533,9 +731,26 @@ public class StageContext extends SavedData {
                 for (int i = 0; i < enemyList.size(); i++) {
                     try {
                         ctx.livingEnemies.add(UUID.fromString(enemyList.getString(i)));
-                    } catch (IllegalArgumentException ignored) {}
+                    } catch (IllegalArgumentException ignored) {
+                    }
                 }
             });
+        }
+
+        if (tag.contains("ArenaBarrierCenter")) {
+            ctx.arenaBarrierCenter = net.minecraft.core.BlockPos.of(tag.getLong("ArenaBarrierCenter"));
+            ctx.arenaBarrierRadiusX = tag.getFloat("ArenaBarrierRadiusX");
+            ctx.arenaBarrierRadiusZ = tag.getFloat("ArenaBarrierRadiusZ");
+
+            long[] logs = tag.getLongArray("BarrierBlockPositions");
+            for (long pos : logs) {
+                ctx.barrierBlockPositions.add(net.minecraft.core.BlockPos.of(pos));
+            }
+
+            if (tag.hasUUID("ActiveBossUuid")) {
+                ctx.activeBossUuid = tag.getUUID("ActiveBossUuid");
+                ctx.bossSpawnTime = tag.getLong("BossSpawnTime");
+            }
         }
 
         return ctx;

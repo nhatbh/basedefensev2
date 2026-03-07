@@ -6,6 +6,7 @@ import com.nhatbh.basedefensev2.stage.network.StageHudSyncPacket;
 import com.nhatbh.basedefensev2.strength.network.NetworkManager;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -48,7 +49,10 @@ public class ArenaDimensionTickHandler {
         // 2. Process pending teleports (stand-still logic)
         com.nhatbh.basedefensev2.stage.TeleportManager.tick();
 
-        // 3. Broadcast HUD snapshot every 10 ticks to ALL connected players
+        // 3. Handle player boundaries (teleport back if outside)
+        handlePlayerBoundaries(arenaLevel);
+
+        // 4. Broadcast HUD snapshot every 10 ticks to ALL connected players
         syncCounter++;
         if (syncCounter % 10 == 0) {
             StageHudSyncPacket pkt = buildPacket(ctx, arenaLevel);
@@ -66,6 +70,24 @@ public class ArenaDimensionTickHandler {
         StageContext ctx = StageContext.getOrCreate(level);
         if (ctx.isActive()) {
             ctx.onEntityDied(event.getEntity().getUUID());
+        }
+    }
+
+    private void handlePlayerBoundaries(ServerLevel level) {
+        for (ServerPlayer player : level.players()) {
+            if (!com.nhatbh.basedefensev2.stage.utils.ArenaBarrierManager.isArenaBarrierActive(level)) {
+                continue;
+            }
+
+            double x = player.getX();
+            double y = player.getY();
+            double z = player.getZ();
+
+            if (!com.nhatbh.basedefensev2.stage.utils.ArenaBarrierManager.isPositionWithinBarrier(level, x, y, z)) {
+                net.minecraft.world.phys.Vec3 safePos = com.nhatbh.basedefensev2.stage.utils.ArenaBarrierManager.getClosestPointInside(level, player.position());
+                player.teleportTo(level, safePos.x, safePos.y, safePos.z, player.getYRot(), player.getXRot());
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§c[Arena] §eYou cannot leave the battle area!"));
+            }
         }
     }
 

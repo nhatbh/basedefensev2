@@ -57,7 +57,7 @@ public class RewardSubsystem {
             double cx = 0, cy = 65, cz = 0;
             StageContext ctx = StageContext.getOrCreate(level);
             if (ctx.getActiveConfig() != null) {
-                var area = ctx.getActiveConfig().spawn_area;
+                var area = ctx.getSpawnArea();
                 cx = area.x;
                 cy = area.y + 1;
                 cz = area.z;

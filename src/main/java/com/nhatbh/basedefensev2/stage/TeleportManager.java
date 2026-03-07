@@ -35,11 +35,13 @@ public class TeleportManager {
     }
 
     public static void forceTeleportAll(ServerLevel arenaLevel) {
-        if (arenaLevel == null || arenaLevel.getServer() == null) return;
+        if (arenaLevel == null || arenaLevel.getServer() == null)
+            return;
         arenaLevel.getServer().getPlayerList().getPlayers().forEach(player -> {
             if (!player.level().dimension().equals(ModDimensions.ARENA)) {
                 teleportToArena(player, arenaLevel);
-                player.sendSystemMessage(Component.literal("§6[Arena] §eThe battle is starting! You have been drafted."));
+                player.sendSystemMessage(
+                        Component.literal("§6[Arena] §eThe battle is starting! You have been drafted."));
             }
         });
     }
@@ -50,20 +52,21 @@ public class TeleportManager {
 
     public static void teleportToArena(ServerPlayer player, ServerLevel arenaLevel) {
         StageContext ctx = StageContext.getOrCreate(arenaLevel);
-        if (!ctx.isActive()) return;
+        if (!ctx.isActive())
+            return;
 
-        StageConfig.SpawnArea area = ctx.getActiveConfig().spawn_area;
+        StageConfig.SpawnArea area = ctx.getSpawnArea();
         player.teleportTo(arenaLevel, area.x, area.y, area.z, player.getYRot(), player.getXRot());
         player.sendSystemMessage(Component.literal("§aTeleported to the Arena!"));
     }
 
     private static void teleportToSpawnAnchor(ServerPlayer player) {
         ServerLevel respawnLevel = player.getServer().getLevel(player.getRespawnDimension());
-        if (respawnLevel == null) respawnLevel = player.getServer().overworld();
+        if (respawnLevel == null)
+            respawnLevel = player.getServer().overworld();
 
-        Vec3 respawnPos = player.getRespawnPosition() != null ? 
-            Vec3.atCenterOf(player.getRespawnPosition()) : 
-            Vec3.atCenterOf(respawnLevel.getSharedSpawnPos());
+        Vec3 respawnPos = player.getRespawnPosition() != null ? Vec3.atCenterOf(player.getRespawnPosition())
+                : Vec3.atCenterOf(respawnLevel.getSharedSpawnPos());
 
         player.teleportTo(respawnLevel, respawnPos.x, respawnPos.y, respawnPos.z, player.getYRot(), player.getXRot());
         player.sendSystemMessage(Component.literal("§aReturned home safely."));
@@ -80,8 +83,10 @@ public class TeleportManager {
         }
 
         public boolean tick() {
-            ServerPlayer player = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer().getPlayerList().getPlayer(playerUUID);
-            if (player == null) return true;
+            ServerPlayer player = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer().getPlayerList()
+                    .getPlayer(playerUUID);
+            if (player == null)
+                return true;
 
             // Movement check
             if (player.position().distanceToSqr(startPos) > 0.25) {

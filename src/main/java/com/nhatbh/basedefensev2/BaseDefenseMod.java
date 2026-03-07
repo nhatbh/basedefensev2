@@ -48,6 +48,9 @@ public class BaseDefenseMod {
         
         // Sanctity system
         MinecraftForge.EVENT_BUS.register(com.nhatbh.basedefensev2.sanctity.events.SanctityEventHandler.class);
+        
+        // Arena protection
+        MinecraftForge.EVENT_BUS.register(com.nhatbh.basedefensev2.stage.ArenaProtectionHandler.class);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {

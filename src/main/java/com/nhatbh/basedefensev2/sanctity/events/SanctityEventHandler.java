@@ -100,7 +100,15 @@ public class SanctityEventHandler {
     private static void revivePlayer(ServerPlayer player) {
         player.setGameMode(GameType.SURVIVAL);
         
-        // Get respawn position
+        // Custom Arena Respawn Logic: revive in place if inside arena dimension
+        if (player.level().dimension() == com.nhatbh.basedefensev2.stage.ModDimensions.ARENA) {
+            net.minecraft.world.phys.Vec3 safePos = com.nhatbh.basedefensev2.stage.utils.ArenaBarrierManager.getClosestPointInside((ServerLevel) player.level(), player.position());
+            player.teleportTo((ServerLevel) player.level(), safePos.x, safePos.y, safePos.z, player.getYRot(), player.getXRot());
+            player.sendSystemMessage(Component.translatable("message.basedefensev2.revived").withStyle(ChatFormatting.GREEN));
+            return;
+        }
+
+        // Default respawn position
         BlockPos respawnPos = player.getRespawnPosition();
         net.minecraft.server.MinecraftServer server = player.getServer();
         if (server == null) return;

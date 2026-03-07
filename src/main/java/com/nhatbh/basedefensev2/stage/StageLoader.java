@@ -75,4 +75,20 @@ public class StageLoader extends SimplePreparableReloadListener<Map<String, Stag
     public static Optional<StageConfig> getById(String id) {
         return Optional.ofNullable(STAGES.get(id));
     }
+
+    /** Returns all unique order values in ascending order. */
+    public static List<Integer> getSortedOrders() {
+        return STAGES.values().stream()
+                .map(s -> s.order)
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    /** Returns all stages that match a specific order. */
+    public static List<StageConfig> getStagesForOrder(int order) {
+        return STAGES.values().stream()
+                .filter(s -> s.order == order)
+                .toList();
+    }
 }

@@ -1,5 +1,5 @@
 {
-  "type": "basedefensev2:arena",
+  "type": "basedefensev2:arena_type",
   "generator": {
     "type": "minecraft:flat",
     "settings": {
@@ -9,7 +9,7 @@
         { "block": "minecraft:polished_andesite", "height": 3 },
         { "block": "minecraft:smooth_stone",  "height": 1  }
       ],
-      "biome": "minecraft:plains",
+      "biome": "basedefensev2:arena",
       "features": false,
       "lakes": false
     }
