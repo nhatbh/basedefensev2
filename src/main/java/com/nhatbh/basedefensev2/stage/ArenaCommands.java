@@ -40,6 +40,11 @@ public class ArenaCommands {
                             ServerLevel arenaLevel = player.getServer().getLevel(ModDimensions.ARENA);
                             if (arenaLevel == null) return 0;
                             
+                            if (player.level().dimension().equals(ModDimensions.ARENA)) {
+                                context.getSource().sendFailure(Component.literal("You are already in the arena!"));
+                                return 0;
+                            }
+                            
                             StageContext ctx = StageContext.getOrCreate(arenaLevel);
                             
                             if (!ctx.isActive()) {
