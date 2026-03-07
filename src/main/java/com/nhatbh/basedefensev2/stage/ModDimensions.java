@@ -15,7 +15,7 @@ import net.minecraft.world.level.Level;
 public class ModDimensions {
     public static final ResourceKey<Level> ARENA = ResourceKey.create(
             Registries.DIMENSION,
-            new ResourceLocation(BaseDefenseMod.MODID, "arena")
+            ResourceLocation.fromNamespaceAndPath(BaseDefenseMod.MODID, "arena")
     );
 
     private ModDimensions() {}

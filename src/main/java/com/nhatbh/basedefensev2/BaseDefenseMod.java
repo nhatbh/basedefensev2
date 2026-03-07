@@ -7,7 +7,7 @@ import com.nhatbh.basedefensev2.stage.subsystem.CleanupSubsystem;
 import com.nhatbh.basedefensev2.stage.subsystem.RewardSubsystem;
 import com.nhatbh.basedefensev2.stage.subsystem.SpawnerSubsystem;
 import com.nhatbh.basedefensev2.stage.ArenaCommands;
-import com.nhatbh.basedefensev2.boss.TestBossEntity;
+// Boss entities use ModBosses registry now
 import com.nhatbh.basedefensev2.registry.ModEntities;
 import com.nhatbh.basedefensev2.strength.ModAttributes;
 import com.nhatbh.basedefensev2.strength.network.NetworkManager;
@@ -26,8 +26,8 @@ public class BaseDefenseMod {
     public static final String MODID = "basedefensev2";
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public BaseDefenseMod() {
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+    public BaseDefenseMod(FMLJavaModLoadingContext context) {
+        IEventBus modEventBus = context.getModEventBus();
 
         modEventBus.addListener(this::commonSetup);
 
@@ -63,7 +63,8 @@ public class BaseDefenseMod {
     }
 
     private void onAttributeCreation(EntityAttributeCreationEvent event) {
-        event.put(ModEntities.TEST_BOSS.get(), TestBossEntity.createAttributes().build());
+        // Boss entities have been refactored to use standard entities with components
+
     }
 
     /**

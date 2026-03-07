@@ -221,8 +221,7 @@ public class SpawnerSubsystem {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static ResourceLocation parseId(String id) {
-        String[] p = id.split(":", 2);
-        return p.length == 2 ? new ResourceLocation(p[0], p[1])
-                : new ResourceLocation("minecraft", id);
+        return id.contains(":") ? ResourceLocation.parse(id)
+                : ResourceLocation.fromNamespaceAndPath("minecraft", id);
     }
 }

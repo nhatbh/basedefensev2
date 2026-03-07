@@ -1,6 +1,7 @@
 package com.nhatbh.basedefensev2.strength;
 
-import com.nhatbh.basedefensev2.boss.core.AbstractBossEntity;
+import com.nhatbh.basedefensev2.boss.core.BossComponent;
+import com.nhatbh.basedefensev2.boss.core.BossManager;
 import com.nhatbh.basedefensev2.boss.core.BossDefinition;
 import com.nhatbh.basedefensev2.strength.network.EntityStrengthSyncPacket;
 import com.nhatbh.basedefensev2.strength.network.NetworkManager;
@@ -28,8 +29,8 @@ public class EntityStrengthEventHandler {
         if (entity instanceof Monster monster) {
             EntityStrengthData data = EntityStrengthData.get(monster);
             if (data == null) {
-                if (monster instanceof AbstractBossEntity boss) {
-                    BossDefinition def = boss.getDefinition();
+                if (BossManager.isBoss(monster)) {
+                    BossDefinition def = BossManager.get(monster).getDefinition();
                     data = new EntityStrengthData(
                         def.getMaxPoise(),
                         def.getMaxPoise(),
@@ -98,8 +99,8 @@ public class EntityStrengthEventHandler {
                 }
                 data.currentStrength = 0;
                 data.recoveryTicks = 300; 
-                if (entity instanceof AbstractBossEntity boss) {
-                    boss.onPoiseBroken();
+                if (BossManager.isBoss(entity)) {
+                    // Let BossManager handle poise broken via EntityEvents.PoiseBroken
                 }
                 MinecraftForge.EVENT_BUS.post(new EntityEvents.PoiseBroken(entity));
             }
@@ -136,8 +137,8 @@ public class EntityStrengthEventHandler {
 
     @SubscribeEvent
     public static void onLivingDamage(LivingDamageEvent event) {
-        if (event.getEntity() instanceof AbstractBossEntity boss) {
-            boss.handleSequenceDamage(event);
+        if (BossManager.isBoss(event.getEntity())) {
+            // Damage handling relocated to BossManager
         }
     }
 

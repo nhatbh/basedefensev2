@@ -28,7 +28,7 @@ public class ActiveSequence {
         return steps;
     }
 
-    public SequenceRunner start(com.nhatbh.basedefensev2.boss.core.AbstractBossEntity boss) {
+    public SequenceRunner start(net.minecraft.world.entity.LivingEntity boss) {
         return new SequenceRunner(this, boss);
     }
 

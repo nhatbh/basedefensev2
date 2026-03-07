@@ -16,11 +16,10 @@ import org.slf4j.Logger;
 
 /**
  * Listens to WaveEvents.LootPhaseStarted and:
- *  1. Grants XP to all arena players
- *  2. Runs each configured command via the server command dispatcher
- *  3. Drops configured item rewards at the arena centre
+ * 1. Grants XP to all arena players
+ * 2. Runs each configured command via the server command dispatcher
+ * 3. Drops configured item rewards at the arena centre
  */
-@SuppressWarnings("deprecation")
 public class RewardSubsystem {
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -67,8 +66,8 @@ public class RewardSubsystem {
             for (WaveRewardConfig.ItemDropEntry drop : rewards.items) {
                 String[] parts = drop.item.split(":", 2);
                 ResourceLocation loc = parts.length == 2
-                        ? new ResourceLocation(parts[0], parts[1])
-                        : new ResourceLocation("minecraft", drop.item);
+                        ? ResourceLocation.parse(drop.item)
+                        : ResourceLocation.fromNamespaceAndPath("minecraft", drop.item);
                 Item item = ForgeRegistries.ITEMS.getValue(loc);
                 if (item == null) {
                     LOGGER.warn("[RewardSubsystem] Unknown item: {}", drop.item);

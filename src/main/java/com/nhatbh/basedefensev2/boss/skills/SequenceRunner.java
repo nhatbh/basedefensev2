@@ -1,8 +1,7 @@
 package com.nhatbh.basedefensev2.boss.skills;
 
-import com.nhatbh.basedefensev2.boss.core.AbstractBossEntity;
+import net.minecraft.world.entity.LivingEntity;
 import com.nhatbh.basedefensev2.boss.events.BossEvents;
-import net.minecraft.network.chat.Component;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 
@@ -16,11 +15,13 @@ public class SequenceRunner {
     private int tickInStep = 0;
     private boolean running = true;
 
-    public SequenceRunner(ActiveSequence sequence, AbstractBossEntity boss) {
+    public SequenceRunner(ActiveSequence sequence, LivingEntity boss) {
         this.sequence = sequence;
         this.steps = sequence.getSteps();
         this.context = new SkillContext(boss);
         
+        context.log("§bStarting sequence: " + sequence.getId() + "§r");
+
         if (!steps.isEmpty()) {
             startCurrentStep();
         } else {
@@ -32,7 +33,7 @@ public class SequenceRunner {
         return running;
     }
 
-    public void tick(AbstractBossEntity boss) {
+    public void tick(LivingEntity boss) {
         if (!running) return;
 
         ActiveSequence.Step step = steps.get(currentStepIndex);
@@ -59,7 +60,7 @@ public class SequenceRunner {
         if (isMelee && step.isParry) {
             context.interrupt();
             event.setAmount(0); // Parry negates damage
-            context.boss().sendSystemMessage(Component.literal("§6§lPARRIED!§r " + context.boss().getDisplayName().getString() + " was interrupted!"));
+            context.log("§6§lPARRIED!§r " + context.boss().getDisplayName().getString() + " was interrupted!");
             MinecraftForge.EVENT_BUS.post(new BossEvents.ParrySuccessful(context.boss()));
             return;
         }
@@ -102,6 +103,7 @@ public class SequenceRunner {
         currentStepIndex++;
         tickInStep = 0;
         if (currentStepIndex >= steps.size()) {
+            context.log("§bSequence " + sequence.getId() + " finished.§r");
             running = false;
         } else {
             startCurrentStep();
@@ -110,6 +112,7 @@ public class SequenceRunner {
 
     private void startCurrentStep() {
         ActiveSequence.Step step = steps.get(currentStepIndex);
+        context.log("  > Step [" + (currentStepIndex + 1) + "/" + steps.size() + "]: " + step.id + " (" + step.duration + " ticks)");
         if (step.onStart != null) {
             step.onStart.accept(context);
         }

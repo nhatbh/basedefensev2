@@ -1,6 +1,6 @@
 {
   "id": "stage_1",
-  "trigger_seconds": 60,
+  "trigger_seconds": 3600,
   "warmup_ticks": 6000,
   "spawn_area": {
     "x": 0.5,

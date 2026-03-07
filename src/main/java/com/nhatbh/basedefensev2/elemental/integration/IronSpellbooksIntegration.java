@@ -1,6 +1,6 @@
 package com.nhatbh.basedefensev2.elemental.integration;
 
-import com.nhatbh.basedefensev2.boss.core.AbstractBossEntity;
+import com.nhatbh.basedefensev2.boss.core.BossManager;
 import com.nhatbh.basedefensev2.elemental.ElementType;
 import com.nhatbh.basedefensev2.elemental.events.ElementalDamageEvent;
 import com.nhatbh.basedefensev2.strength.EntityEvents;
@@ -14,7 +14,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.MobEffectEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -127,8 +126,8 @@ public class IronSpellbooksIntegration {
             // Trigger exhaustion
             if (data.currentStrength <= 0) {
                 data.recoveryTicks = 300;
-                if (entity instanceof AbstractBossEntity boss) {
-                    boss.onPoiseBroken();
+                if (BossManager.isBoss(entity)) {
+                    // BossManager handles this generically via LivingDamageEvent
                 }
                 MinecraftForge.EVENT_BUS.post(new EntityEvents.PoiseBroken(entity));
             }

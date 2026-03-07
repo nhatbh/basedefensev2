@@ -2,7 +2,7 @@ package com.nhatbh.basedefensev2.client.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
-import com.nhatbh.basedefensev2.boss.core.AbstractBossEntity;
+import com.nhatbh.basedefensev2.boss.core.BossManager;
 import com.nhatbh.basedefensev2.elemental.ElementType;
 
 import net.minecraft.client.Camera;
@@ -41,7 +41,7 @@ public class MobElementRenderer {
         for (Entity e : MC.level.entitiesForRendering()) {
             if (!e.isAlive())
                 continue;
-            if (!(e instanceof Enemy) && !(e instanceof AbstractBossEntity))
+            if (!(e instanceof Enemy) && !(e instanceof net.minecraft.world.entity.LivingEntity le && BossManager.isBoss(le)))
                 continue;
 
             String elementTypeStr = e.getPersistentData().getString(ELEMENT_NBT_KEY);
@@ -69,7 +69,7 @@ public class MobElementRenderer {
         for (Entity entity : MC.level.entitiesForRendering()) {
             if (!entity.isAlive())
                 continue;
-            if (!(entity instanceof Enemy) && !(entity instanceof AbstractBossEntity))
+            if (!(entity instanceof Enemy) && !(entity instanceof net.minecraft.world.entity.LivingEntity le && BossManager.isBoss(le)))
                 continue;
             if (entity.distanceToSqr(MC.player) > MAX_RENDER_DISTANCE_SQ)
                 continue;

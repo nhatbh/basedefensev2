@@ -41,7 +41,7 @@ public class SanctityEventHandler {
 
             if (newSanctity > 0) {
                 data.addRespawn(player.getUUID(), RESPAWN_TICKS);
-                player.sendSystemMessage(Component.literal("Respawning in " + (RESPAWN_TICKS / 20) + " seconds...").withStyle(ChatFormatting.YELLOW));
+                player.displayClientMessage(Component.literal("Respawning in " + (RESPAWN_TICKS / 20) + "s").withStyle(ChatFormatting.YELLOW), true);
             } else {
                 triggerGameOver((ServerLevel) player.level());
             }
@@ -63,6 +63,17 @@ public class SanctityEventHandler {
             // Sync to all players every second (20 ticks) to update HUD grace
             if (overworld.getGameTime() % 20 == 0) {
                 syncToAll(data);
+                
+                // Actionbar for respawning players
+                for (Map.Entry<UUID, Integer> entry : data.getRespawnQueue().entrySet()) {
+                    ServerPlayer player = event.getServer().getPlayerList().getPlayer(entry.getKey());
+                    if (player != null) {
+                        int secondsRemaining = entry.getValue() / 20;
+                        if (secondsRemaining > 0) {
+                            player.displayClientMessage(Component.literal("Respawning in " + secondsRemaining + "s").withStyle(ChatFormatting.YELLOW), true);
+                        }
+                    }
+                }
             }
 
             Map<UUID, Integer> ready = data.tickRespawns();

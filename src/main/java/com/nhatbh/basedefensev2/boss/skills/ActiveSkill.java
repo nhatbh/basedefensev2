@@ -4,7 +4,6 @@ public class ActiveSkill {
     private final String id;
     private final int cooldown;
     private final ActiveSequence sequence;
-    private int currentCooldown = 0;
 
     private ActiveSkill(String id, int cooldown, ActiveSequence sequence) {
         this.id = id;
@@ -22,20 +21,6 @@ public class ActiveSkill {
 
     public ActiveSequence getSequence() {
         return sequence;
-    }
-
-    public void tickCooldown() {
-        if (currentCooldown > 0) {
-            currentCooldown--;
-        }
-    }
-
-    public boolean isReady() {
-        return currentCooldown <= 0;
-    }
-
-    public void startCooldown() {
-        this.currentCooldown = this.cooldown;
     }
 
     public static Builder builder(String id) {

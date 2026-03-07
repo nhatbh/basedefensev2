@@ -8,7 +8,8 @@ import java.util.function.Consumer;
 
 public class BossDefinition {
     private final String id;
-    private final EntityType<?> entityType; 
+    private final EntityType<?> entityType;
+    private final String baseEntity;
     private final BossStats baseStats;
     private final List<Element> elements;
     private final float maxPoise;
@@ -18,6 +19,7 @@ public class BossDefinition {
     private BossDefinition(Builder builder) {
         this.id = builder.id;
         this.entityType = builder.entityType;
+        this.baseEntity = builder.baseEntity;
         this.baseStats = builder.statsBuilder.build();
         this.elements = builder.elements;
         this.maxPoise = builder.maxPoise;
@@ -27,6 +29,7 @@ public class BossDefinition {
 
     public String getId() { return id; }
     public EntityType<?> getEntityType() { return entityType; }
+    public String getBaseEntity() { return baseEntity; }
     public BossStats getBaseStats() { return baseStats; }
     public List<Element> getElements() { return elements; }
     public float getMaxPoise() { return maxPoise; }
@@ -66,6 +69,7 @@ public class BossDefinition {
     public static class Builder {
         private final String id;
         private EntityType<?> entityType;
+        private String baseEntity;
         private final StatsBuilder statsBuilder = new StatsBuilder();
         private final List<Element> elements = new ArrayList<>();
         private float maxPoise = 100f;
@@ -78,6 +82,11 @@ public class BossDefinition {
 
         public Builder entity(EntityType<?> type) {
             this.entityType = type;
+            return this;
+        }
+
+        public Builder baseEntity(String baseEntity) {
+            this.baseEntity = baseEntity;
             return this;
         }
 

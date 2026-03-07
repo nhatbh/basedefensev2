@@ -1,6 +1,6 @@
 package com.nhatbh.basedefensev2.elemental;
 
-import com.nhatbh.basedefensev2.boss.core.AbstractBossEntity;
+import com.nhatbh.basedefensev2.boss.core.BossManager;
 import com.nhatbh.basedefensev2.elemental.network.MobElementSyncPacket;
 import com.nhatbh.basedefensev2.strength.network.NetworkManager;
 import net.minecraft.world.entity.LivingEntity;
@@ -17,7 +17,7 @@ public class MobElementService {
     public static void onEntityJoin(EntityJoinLevelEvent event) {
         if (event.getLevel().isClientSide) return;
 
-        if (event.getEntity() instanceof Enemy || event.getEntity() instanceof AbstractBossEntity) {
+        if (event.getEntity() instanceof Enemy || (event.getEntity() instanceof LivingEntity le && BossManager.isBoss(le))) {
             LivingEntity entity = (LivingEntity) event.getEntity();
             
             // Check if element is already assigned
@@ -41,7 +41,7 @@ public class MobElementService {
     @SubscribeEvent
     public static void onStartTracking(PlayerEvent.StartTracking event) {
         if (event.getTarget() instanceof LivingEntity living && !living.level().isClientSide) {
-            if (living instanceof Enemy || living instanceof AbstractBossEntity) {
+            if (living instanceof Enemy || BossManager.isBoss(living)) {
                 if (living.getPersistentData().contains("ElementType")) {
                     String elementStr = living.getPersistentData().getString("ElementType");
                     NetworkManager.sendToTracking(new MobElementSyncPacket(living.getId(), elementStr), living);
