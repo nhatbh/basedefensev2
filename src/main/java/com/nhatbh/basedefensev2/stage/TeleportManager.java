@@ -41,7 +41,7 @@ public class TeleportManager {
             if (!player.level().dimension().equals(ModDimensions.ARENA)) {
                 teleportToArena(player, arenaLevel);
                 player.sendSystemMessage(
-                        Component.literal("§6[Arena] §eThe battle is starting! You have been drafted."));
+                        Component.literal("§6[The Rift] §eThe ancients summon you! Step forth and fight!"));
             }
         });
     }
@@ -57,7 +57,7 @@ public class TeleportManager {
 
         StageConfig.SpawnArea area = ctx.getSpawnArea();
         player.teleportTo(arenaLevel, area.x, area.y, area.z, player.getYRot(), player.getXRot());
-        player.sendSystemMessage(Component.literal("§aTeleported to the Arena!"));
+        player.sendSystemMessage(Component.literal("§aYou have stepped into The Rift!"));
     }
 
     private static void teleportToSpawnAnchor(ServerPlayer player) {

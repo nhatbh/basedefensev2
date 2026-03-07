@@ -11,9 +11,11 @@ import com.nhatbh.basedefensev2.stage.ArenaCommands;
 import com.nhatbh.basedefensev2.registry.ModEntities;
 import com.nhatbh.basedefensev2.strength.ModAttributes;
 import com.nhatbh.basedefensev2.strength.network.NetworkManager;
+import net.minecraft.world.entity.EntityType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
+import net.minecraftforge.event.entity.EntityAttributeModificationEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -35,6 +37,7 @@ public class BaseDefenseMod {
         ModEntities.ENTITIES.register(modEventBus);
 
         modEventBus.addListener(this::onAttributeCreation);
+        modEventBus.addListener(this::onAttributeModification);
 
         // Register this class and all stage subsystems on the Forge event bus
         MinecraftForge.EVENT_BUS.register(this);
@@ -51,6 +54,9 @@ public class BaseDefenseMod {
         
         // Arena protection
         MinecraftForge.EVENT_BUS.register(com.nhatbh.basedefensev2.stage.ArenaProtectionHandler.class);
+        
+        // Stage mob drops and XP
+        MinecraftForge.EVENT_BUS.register(com.nhatbh.basedefensev2.stage.events.StageMobDropsHandler.class);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -68,6 +74,10 @@ public class BaseDefenseMod {
     private void onAttributeCreation(EntityAttributeCreationEvent event) {
         // Boss entities have been refactored to use standard entities with components
 
+    }
+
+    private void onAttributeModification(EntityAttributeModificationEvent event) {
+        event.add(EntityType.PLAYER, ModAttributes.STRENGTH_DAMAGE_MULTIPLIER.get());
     }
 
     /**

@@ -39,4 +39,14 @@ public class MobSpawnEntry {
     public float distance_min = 5.0f;
     /** Maximum distance from spawn origin along the arc direction. */
     public float distance_max = 15.0f;
+
+    /** Optional custom loot drops for this entry. */
+    public java.util.List<LootEntry> loot = new java.util.ArrayList<>();
+
+    public static class LootEntry {
+        public String item;
+        public int min = 1;
+        public int max = 1;
+        public int weight = 1;
+    }
 }

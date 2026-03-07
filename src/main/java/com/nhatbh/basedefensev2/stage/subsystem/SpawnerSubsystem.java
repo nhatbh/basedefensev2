@@ -186,6 +186,21 @@ public class SpawnerSubsystem {
             level.addFreshEntity(entity);
             uuidsOut.add(entity.getUUID());
             entitiesOut.add(entity);
+
+            // Mark as stage mob and store loot config
+            entity.getPersistentData().putBoolean("bdv2_stage_mob", true);
+            if (entry.loot != null && !entry.loot.isEmpty()) {
+                net.minecraft.nbt.ListTag lootList = new net.minecraft.nbt.ListTag();
+                for (MobSpawnEntry.LootEntry lootEntry : entry.loot) {
+                    net.minecraft.nbt.CompoundTag lootTag = new net.minecraft.nbt.CompoundTag();
+                    lootTag.putString("item", lootEntry.item != null ? lootEntry.item : "");
+                    lootTag.putInt("min", lootEntry.min);
+                    lootTag.putInt("max", lootEntry.max);
+                    lootTag.putInt("weight", lootEntry.weight);
+                    lootList.add(lootTag);
+                }
+                entity.getPersistentData().put("bdv2_custom_loot", lootList);
+            }
         }
     }
 
@@ -218,6 +233,22 @@ public class SpawnerSubsystem {
         level.addFreshEntity(entity);
         uuidsOut.add(entity.getUUID());
         entitiesOut.add(entity);
+
+        // Mark as stage mob and store loot config
+        entity.getPersistentData().putBoolean("bdv2_stage_mob", true);
+        if (entry.loot != null && !entry.loot.isEmpty()) {
+            net.minecraft.nbt.ListTag lootList = new net.minecraft.nbt.ListTag();
+            for (MobSpawnEntry.LootEntry lootEntry : entry.loot) {
+                net.minecraft.nbt.CompoundTag lootTag = new net.minecraft.nbt.CompoundTag();
+                lootTag.putString("item", lootEntry.item != null ? lootEntry.item : "");
+                lootTag.putInt("min", lootEntry.min);
+                lootTag.putInt("max", lootEntry.max);
+                lootTag.putInt("weight", lootEntry.weight);
+                lootList.add(lootTag);
+            }
+            entity.getPersistentData().put("bdv2_custom_loot", lootList);
+        }
+
         LOGGER.info("[SpawnerSubsystem] Spawned boss '{}' at origin.", entry.boss_id);
     }
 

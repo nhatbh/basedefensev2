@@ -59,6 +59,10 @@ public class StageContext extends SavedData {
     private String pendingStageId = null;
     /** True if the arena schematic has been pasted and barrier created for this world */
     private boolean arenaEstablished = false;
+    /** Transient flag to track if we've checked for player entry since server start */
+    private transient boolean sessionRestartChecked = false;
+    /** Transient flag to track if cleanup has already found and removed entities in this stage */
+    private transient boolean cleanupSuccessful = false;
 
     // ── Active stage state ───────────────────────────────────────────────────
     /** Null when no stage is currently active */
@@ -109,6 +113,15 @@ public class StageContext extends SavedData {
      * Called every server tick while the level is the arena dimension.
      */
     public void tick(ServerLevel level) {
+        // Handle server recovery: if a stage is active, wait for first player to enter and restart it
+        if (activeConfig != null && !sessionRestartChecked && !level.players().isEmpty()) {
+            sessionRestartChecked = true;
+            restartActiveStage(level);
+            return;
+        } else if (!sessionRestartChecked && !level.players().isEmpty()) {
+            sessionRestartChecked = true;
+        }
+
         if (activeConfig == null) {
             tryTriggerNextStage(level);
             return;
@@ -164,6 +177,10 @@ public class StageContext extends SavedData {
         LOGGER.info("[StageContext] Triggering stage '{}' from order {} (elapsed={} ticks)", candidate.id, currentOrder, elapsed);
         activeConfig = candidate;
         pendingStageId = null; // Clear pending state
+        
+        cleanupSuccessful = false;
+        cleanupArenaMobs(level);
+        
         stageState = StageState.WARMUP;
         waveState = null;
         stageTicks = 0;
@@ -172,22 +189,10 @@ public class StageContext extends SavedData {
         livingEnemies.clear();
         scavengeRewardFired = false;
 
-        broadcastToArena(level, "§6[Arena] §eA new stage is beginning! Prepare yourself...");
-
-        // Interactive JOIN message
-        Component joinMsg = Component.literal("§6[Arena] §eA new stage has started! ")
-                .append(Component.literal("§l[CLICK HERE TO JOIN]")
-                        .withStyle(style -> style
-                                .withColor(net.minecraft.ChatFormatting.GOLD)
-                                .withClickEvent(new net.minecraft.network.chat.ClickEvent(
-                                        net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, "/arena join"))
-                                .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
-                                        net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
-                                        Component.literal("Click to join the arena!")))));
-        level.getServer().getPlayerList().broadcastSystemMessage(joinMsg, false);
+        broadcastToArena(level, "§6[The Rift] §eA mystical trial begins! Steel your soul...");
 
         if (!arenaEstablished) {
-            broadcastToServer(level, "§c[Arena] Warning: Pasting arena schematic! You might experience lag.");
+            broadcastToServer(level, "§c[The Rift] §4The earth trembles as the ritual grounds manifest! (Lag Warning)");
             try {
                 // Load from assets folder in the mod jar
                 java.io.InputStream schematicStream = com.nhatbh.basedefensev2.BaseDefenseMod.class
@@ -213,6 +218,18 @@ public class StageContext extends SavedData {
             arenaEstablished = true;
         }
 
+        // Interactive JOIN message - Moved after schematic paste
+        Component joinMsg = Component.literal("§6[The Rift] §eThe gates are open! ")
+                .append(Component.literal("§l[ENTER]")
+                        .withStyle(style -> style
+                                .withColor(net.minecraft.ChatFormatting.GOLD)
+                                .withClickEvent(new net.minecraft.network.chat.ClickEvent(
+                                        net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, "/arena join"))
+                                .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
+                                        net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
+                                        Component.literal("Enter the trial!")))));
+        level.getServer().getPlayerList().broadcastSystemMessage(joinMsg, false);
+
         setDirty();
     }
 
@@ -222,11 +239,16 @@ public class StageContext extends SavedData {
         stageTicks++;
         int remaining = activeConfig.warmup_ticks - stageTicks;
 
-        // Countdown broadcasts at round intervals
-        if (remaining == 100 || remaining == 60 || remaining == 40 ||
-                remaining == 20 || remaining == 10 || remaining == 5 ||
-                remaining == 4 || remaining == 3 || remaining == 2 || remaining == 1) {
-            broadcastToArena(level, "§e[Arena] Stage begins in §c" + (remaining / 20) + "s§e...");
+        // PERIODIC CLEANUP: Every 10 ticks for the first 100 ticks of warmup.
+        // This ensures that asynchronously loaded entities are caught and removed.
+        // Stops sweeping once a cleanup actually finds and removes entities.
+        if (!cleanupSuccessful && stageTicks <= 100 && stageTicks % 10 == 0) {
+            cleanupSuccessful = cleanupArenaMobs(level);
+        }
+
+        // Countdown broadcasts in the last 5 seconds
+        if (remaining <= 100 && remaining >= 0 && remaining % 20 == 0) {
+            broadcastToArena(level, "§e[The Rift] The trial commences in §c" + (remaining / 20) + "s§e...");
         }
 
         if (stageTicks >= activeConfig.warmup_ticks) {
@@ -240,17 +262,17 @@ public class StageContext extends SavedData {
         if (level.players().isEmpty()) {
             if (remaining == 4800) { // 4 mins rem (3 mins until force)
                 broadcastToServer(level,
-                        "§6[Arena] §eWarning: All players will be forcefully teleported in §c3 minutes§e if no one enters the arena!");
+                        "§6[The Rift] §eThe ancients stir. All mortals shall be drawn into the fray in §c3 minutes§e!");
             } else if (remaining == 3600) { // 3 mins rem (2 mins until force)
                 broadcastToServer(level,
-                        "§6[Arena] §eWarning: All players will be forcefully teleported in §c2 minutes§e if no one enters the arena!");
+                        "§6[The Rift] §eThe ancients stir. All mortals shall be drawn into the fray in §c2 minutes§e!");
             } else if (remaining == 2400) { // 2 mins rem (1 min until force)
                 broadcastToServer(level,
-                        "§6[Arena] §eWarning: All players will be forcefully teleported in §c1 minute§e if no one enters the arena!");
+                        "§6[The Rift] §eThe ancients stir. All mortals shall be drawn into the fray in §c1 minute§e!");
             } else if (remaining == 1300) { // 5s before force
-                broadcastToServer(level, "§c[Arena] Warning: Forced teleportation in 5 seconds!");
+                broadcastToServer(level, "§c[The Rift] §4The summoning ritual is nearly complete! 5 seconds remain!");
             } else if (remaining == 1200) { // 1 min rem (ACTUAL FORCE)
-                broadcastToServer(level, "§c[Arena] No players in the arena! Commencing forced extraction...");
+                broadcastToServer(level, "§c[The Rift] §4No champions found! Commencing the grand summoning...");
                 com.nhatbh.basedefensev2.stage.TeleportManager.forceTeleportAll(level);
             }
         }
@@ -289,8 +311,8 @@ public class StageContext extends SavedData {
         waveTicks++;
         int remaining = 100 - waveTicks; // 5 seconds = 100 ticks
 
-        if (remaining % 20 == 0 && remaining > 0) {
-            broadcastToArena(level, "§e[Arena] Next wave in §c" + (remaining / 20) + "s§e...");
+        if (remaining >= 0 && remaining % 20 == 0) {
+            broadcastToArena(level, "§e[The Rift] The next onslaught arrives in §c" + (remaining / 20) + "s§e...");
         }
 
         if (waveTicks >= 100) {
@@ -308,7 +330,7 @@ public class StageContext extends SavedData {
         // Win condition
         if (livingEnemies.isEmpty()) {
             LOGGER.info("[StageContext] Wave '{}' — all enemies defeated → CLEARED", wave.id);
-            broadcastToArena(level, "§a[Arena] Wave cleared!");
+            broadcastToArena(level, "§a[The Rift] The horde has been vanquished!");
             waveState = WaveState.CLEARED;
             tickWaveCleared(level);
             return;
@@ -317,7 +339,7 @@ public class StageContext extends SavedData {
         // Lose condition
         if (wave.time_limit_ticks > 0 && waveTicks >= wave.time_limit_ticks) {
             LOGGER.info("[StageContext] Wave '{}' — time limit reached → TIMEOUT", wave.id);
-            broadcastToArena(level, "§c[Arena] Time's up! The wave could not be cleared.");
+            broadcastToArena(level, "§c[The Rift] §4The hourglass has emptied! The trial hardens...");
             waveState = WaveState.TIMEOUT;
             tickWaveTimeout(level);
         }
@@ -399,8 +421,8 @@ public class StageContext extends SavedData {
         // New wave total includes any mobs already in the arena.
         totalEnemiesInWave = livingEnemies.size();
 
-        broadcastToArena(level, "§6[Arena] §eWave §c" + (currentWaveIndex + 1)
-                + "§e / §c" + activeConfig.waves.size() + " §ebeginning!");
+        broadcastToArena(level, "§6[The Rift] §eAssault §c" + (currentWaveIndex + 1)
+                + "§e / §c" + activeConfig.waves.size() + " §eincoming!");
 
         LOGGER.info("[StageContext] Firing SpawnRequested for wave '{}'", wave.id);
         MinecraftForge.EVENT_BUS.post(new WaveEvents.SpawnRequested(wave, this, level));
@@ -414,19 +436,19 @@ public class StageContext extends SavedData {
             scavengeRewardFired = true;
             WaveConfig finalWave = activeConfig.waves.get(activeConfig.waves.size() - 1);
             List<ServerPlayer> players = new ArrayList<>(level.players());
-            broadcastToArena(level, "§a[Arena] §lVICTORY! §rCollect your loot. Arena closes in §e"
+            broadcastToArena(level, "§a[The Rift] §lTRIUMPH! §rClaim your spoils before the portal seals in §e"
                     + (activeConfig.scavenge_duration_ticks / 20) + "s§r.");
 
             // Interactive LEAVE message
-            Component leaveMsg = Component.literal("§a[Arena] §eVictory! Collect your loot. ")
-                    .append(Component.literal("§l[CLICK TO LEAVE]")
+            Component leaveMsg = Component.literal("§a[The Rift] §eVictory is yours! ")
+                    .append(Component.literal("§l[RETURN]")
                             .withStyle(style -> style
                                     .withColor(net.minecraft.ChatFormatting.GREEN)
                                     .withClickEvent(new net.minecraft.network.chat.ClickEvent(
                                             net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, "/arena leave"))
                                     .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
                                             net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
-                                            Component.literal("Click to leave the arena.")))));
+                                            Component.literal("Return to the mortal realm!")))));
             level.getServer().getPlayerList().broadcastSystemMessage(leaveMsg, false);
 
             MinecraftForge.EVENT_BUS.post(new WaveEvents.LootPhaseStarted(finalWave, level, players));
@@ -434,11 +456,10 @@ public class StageContext extends SavedData {
 
         stageTicks++;
 
-        // Countdown at 60 s, 30 s, 10 s, 5 s
+        // Countdown in the last 5 seconds
         int remaining = activeConfig.scavenge_duration_ticks - stageTicks;
-        if (remaining == 1200 || remaining == 600 || remaining == 200 ||
-                remaining == 100) {
-            broadcastToArena(level, "§e[Arena] Arena closes in §c" + (remaining / 20) + "s§e.");
+        if (remaining <= 100 && remaining >= 0 && remaining % 20 == 0) {
+            broadcastToArena(level, "§e[The Rift] The temporal anchor fades in §c" + (remaining / 20) + "s§e.");
         }
 
         if (stageTicks >= activeConfig.scavenge_duration_ticks) {
@@ -457,7 +478,7 @@ public class StageContext extends SavedData {
         AABB bounds = buildArenaBounds();
         MinecraftForge.EVENT_BUS.post(new WaveEvents.StageEnded(level, bounds));
 
-        broadcastToArena(level, "§7[Arena] The arena has been reset.");
+        broadcastToArena(level, "§7[The Rift] The sanctuary has been restored.");
 
         // Null out active config so the context is idle
         activeConfig = null;
@@ -465,6 +486,54 @@ public class StageContext extends SavedData {
         waveState = null;
         pendingStageId = null; // Reset for next order
         setDirty();
+    }
+
+    /**
+     * Resets the currently active stage to the beginning (WARMUP phase).
+     */
+    private void restartActiveStage(ServerLevel level) {
+        if (activeConfig == null) return;
+        
+        cleanupSuccessful = false;
+        cleanupArenaMobs(level);
+        
+        stageState = StageState.WARMUP;
+        waveState = null;
+        stageTicks = 0;
+        waveTicks = 0;
+        currentWaveIndex = 0;
+        livingEnemies.clear();
+        scavengeRewardFired = false;
+        
+        broadcastToArena(level, "§6[The Rift] §eThe celestial cycle resets. Prepare anew!");
+        setDirty();
+    }
+
+    /**
+     * Despawns all living entities (monsters) in the arena dimension to provide a clean slate.
+     * @return true if at least one entity was removed.
+     */
+    private boolean cleanupArenaMobs(ServerLevel level) {
+        // Define a huge AABB to capture all entities in the dimension
+        net.minecraft.world.phys.AABB hugeArea = new net.minecraft.world.phys.AABB(-2000, -64, -2000, 2000, 320, 2000);
+        
+        List<net.minecraft.world.entity.LivingEntity> living = level.getEntitiesOfClass(
+            net.minecraft.world.entity.LivingEntity.class,
+            hugeArea,
+            entity -> !(entity instanceof net.minecraft.world.entity.player.Player)
+        );
+
+        if (living.isEmpty()) {
+            return false;
+        }
+
+        for (net.minecraft.world.entity.LivingEntity entity : living) {
+            entity.discard();
+        }
+        
+        // Ensure the tracking set is also cleared
+        livingEnemies.clear();
+        return true;
     }
 
     // ── Public API for subsystems ────────────────────────────────────────────

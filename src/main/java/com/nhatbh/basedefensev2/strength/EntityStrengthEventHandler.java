@@ -87,16 +87,8 @@ public class EntityStrengthEventHandler {
 
             data.currentStrength -= strengthDamage;
 
-            if (source.getEntity() instanceof net.minecraft.world.entity.player.Player player) {
-                player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                    "Strength Hit! Target: " + entity.getName().getString() + " | Dmg: " + strengthDamage + " | Remaining: " + data.currentStrength + "/" + data.maxStrength
-                ));
-            }
 
             if (data.currentStrength <= 0) {
-                if (source.getEntity() instanceof net.minecraft.world.entity.player.Player player) {
-                    player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Strength Broken for " + entity.getName().getString() + "!"));
-                }
                 data.currentStrength = 0;
                 data.recoveryTicks = 300; 
                 if (BossManager.isBoss(entity)) {
