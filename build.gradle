@@ -118,7 +118,7 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 repositories {
     // Put repositories for dependencies here
     // ForgeGradle automatically adds the Forge maven and Maven Central for you
-
+    mavenLocal()
     maven {
         name = "Iron's Maven - Release"
         url = "https://code.redspace.io/releases"
@@ -148,6 +148,16 @@ repositories {
         url = "https://cursemaven.com"
     }
 
+    maven {
+        url = "https://api.modrinth.com/maven"
+    }
+
+    exclusiveContent {
+        forRepository { maven { name = "Modrinth"; url = "https://api.modrinth.com/maven" } }
+        forRepositories(fg.repository)
+        filter { includeGroup "maven.modrinth" }
+    }
+
     flatDir {
         dirs 'libs' // This points to a 'libs' folder in your project root
     }
@@ -167,13 +177,14 @@ dependencies {
     // WorldEdit Forge (CurseForge artifact for MC 1.20.1)
     // If you change WorldEdit version, update the file ID accordingly.
     implementation fg.deobf("curse.maven:worldedit-225608:4586218")
-
+    implementation fg.deobf("maven.modrinth:aaa-particles:1.20.1-1.4.10-forge")
+    implementation fg.deobf("maven.modrinth:architectury-api:9.2.14+forge")
     // Iron's Spellbooks - Required dependency for spell damage integration
     // Using compileOnly to allow compilation without requiring the mod to be present
     // The mod is still required at runtime as specified in mods.toml
     implementation fg.deobf("io.redspace.ironsspellbooks:irons_spellbooks:${irons_spells_version}")
-    implementation fg.deobf("curse.maven:timeless-and-classics-zero-1028108:6632240-sources-6633203")
-
+    implementation fg.deobf("com.complextalents:complextalents:1.0.0")
+    implementation fg.deobf("maven.modrinth:epic-fight:${epicfight_version}")
     // Iron's Spellbooks runtime dependencies - Required for :runClient
     runtimeOnly fg.deobf("software.bernie.geckolib:geckolib-forge-${minecraft_version}:${geckolib_version}")
     runtimeOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}")
