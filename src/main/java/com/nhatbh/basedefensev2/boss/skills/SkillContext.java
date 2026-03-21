@@ -3,7 +3,6 @@ package com.nhatbh.basedefensev2.boss.skills;
 import com.nhatbh.basedefensev2.boss.core.BossComponent;
 import com.nhatbh.basedefensev2.boss.core.BossManager;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.network.chat.Component;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,6 +23,14 @@ public class SkillContext {
 
     public void interrupt() {
         this.interrupted = true;
+    }
+
+    public void stopSequence() {
+        this.interrupted = true;
+        BossComponent comp = BossManager.get(boss);
+        if (comp != null) {
+            comp.setCurrentSequence(null);
+        }
     }
 
     public boolean isInterrupted() {
@@ -47,9 +54,15 @@ public class SkillContext {
         }
     }
 
+    public void setAllSkillsCooldown(int ticks) {
+        BossComponent comp = BossManager.get(boss);
+        if (comp != null) {
+            comp.setAllSkillsCooldown(ticks);
+        }
+    }
+
     public void log(String message) {
-        Component chatMessage = Component.literal("§7[BossSkill]§r " + message);
-        boss.level().players().forEach(player -> player.sendSystemMessage(chatMessage));
+        // Disabled log spam as requested
     }
     
     public double getHealthPercent() {

@@ -72,4 +72,15 @@ public class BossComponent {
     public void setCurrentPhase(Phase phase) {
         this.currentPhase = phase;
     }
+
+    public void setAllSkillsCooldown(int ticks) {
+        for (Phase phase : definition.getPhases()) {
+            for (Phase.ActiveSkillEntry entry : phase.getActives()) {
+                String skillId = entry.skill.getId();
+                if (getSkillCooldown(skillId) <= 0) {
+                    setSkillCooldown(skillId, ticks);
+                }
+            }
+        }
+    }
 }

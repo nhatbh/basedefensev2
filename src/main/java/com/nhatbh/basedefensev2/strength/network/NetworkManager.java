@@ -35,6 +35,11 @@ public class NetworkManager {
                  com.nhatbh.basedefensev2.sanctity.network.SanctitySyncPacket::toBytes,
                  com.nhatbh.basedefensev2.sanctity.network.SanctitySyncPacket::new,
                  com.nhatbh.basedefensev2.sanctity.network.SanctitySyncPacket::handle);
+
+          INSTANCE.registerMessage(id++, com.nhatbh.basedefensev2.boss.network.EntitySkillSyncPacket.class,
+                  com.nhatbh.basedefensev2.boss.network.EntitySkillSyncPacket::toBytes,
+                  com.nhatbh.basedefensev2.boss.network.EntitySkillSyncPacket::new,
+                  com.nhatbh.basedefensev2.boss.network.EntitySkillSyncPacket::handle);
     }
 
     public static void sendToTracking(Object packet, net.minecraft.world.entity.Entity entity) {

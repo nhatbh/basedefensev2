@@ -1,4 +1,6 @@
 package com.nhatbh.basedefensev2.boss.skills;
+import com.nhatbh.basedefensev2.elemental.ElementType;
+import net.minecraft.world.phys.Vec3;
 
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 
@@ -6,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraftforge.event.entity.living.LivingDamageEvent;
 
 public class ActiveSequence {
     private final String id;
@@ -41,12 +45,29 @@ public class ActiveSequence {
         public Consumer<SkillContext> onTick;
         public BiConsumer<SkillContext, LivingDamageEvent> onDamageTaken;
         public BiConsumer<SkillContext, LivingDamageEvent> onMeleeDamageTaken;
+
+        // Counter System
+        public CounterType counterType = CounterType.NONE;
+        public int counterWindowStart;
+        public int counterWindowEnd;
+        public BiConsumer<SkillContext, LivingDamageEvent> punishmentHandler;
+        public Vec3 counterDirection;
+        public ElementType magicElement;
+        public BiConsumer<SkillContext, LivingDamageEvent> onCountered;
         
         public Step(String id, int duration, boolean isParry) {
             this.id = id;
             this.duration = duration;
             this.isParry = isParry;
         }
+
+        public boolean isCounterable() {
+            return counterType != CounterType.NONE;
+        }
+    }
+
+    public enum CounterType {
+        NONE, NORMAL, DIRECTIONAL, MAGIC
     }
 
     public static class Builder {
@@ -87,6 +108,52 @@ public class ActiveSequence {
 
         public Builder onMeleeDamageTaken(BiConsumer<SkillContext, LivingDamageEvent> handler) {
             if (currentStep != null) currentStep.onMeleeDamageTaken = handler;
+            return this;
+        }
+
+        public Builder counter(CounterType type, int start, int end) {
+            if (currentStep != null) {
+                currentStep.counterType = type;
+                currentStep.counterWindowStart = start;
+                currentStep.counterWindowEnd = end;
+            }
+            return this;
+        }
+
+        public Builder directional(Vec3 dir) {
+            if (currentStep != null) {
+                currentStep.counterType = CounterType.DIRECTIONAL;
+                currentStep.counterDirection = dir;
+            }
+            return this;
+        }
+
+        public Builder magic(ElementType element) {
+            if (currentStep != null) {
+                currentStep.counterType = CounterType.MAGIC;
+                currentStep.magicElement = element;
+            }
+            return this;
+        }
+
+        public Builder punishment(float damage) {
+            if (currentStep != null) {
+                currentStep.punishmentHandler = (ctx, event) -> {
+                    if (event.getSource().getEntity() instanceof LivingEntity attacker) {
+                        attacker.hurt(ctx.boss().damageSources().mobAttack(ctx.boss()), damage);
+                    }
+                };
+            }
+            return this;
+        }
+
+        public Builder punishment(BiConsumer<SkillContext, LivingDamageEvent> handler) {
+            if (currentStep != null) currentStep.punishmentHandler = handler;
+            return this;
+        }
+
+        public Builder onCountered(BiConsumer<SkillContext, LivingDamageEvent> handler) {
+            if (currentStep != null) currentStep.onCountered = handler;
             return this;
         }
 

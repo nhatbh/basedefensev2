@@ -85,7 +85,7 @@ public class ArenaCommands {
                                         return 0;
                                     }
                                     
-                                    ResourceLocation entityLoc = new ResourceLocation(def.getBaseEntity());
+                                    ResourceLocation entityLoc = ResourceLocation.parse(def.getBaseEntity());
                                     EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(entityLoc);
                                     if (type == null) {
                                         context.getSource().sendFailure(Component.literal("Unknown base entity: " + def.getBaseEntity()));

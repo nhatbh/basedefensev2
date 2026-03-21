@@ -1,18 +1,21 @@
 package com.nhatbh.basedefensev2.boss.core;
 
 import com.nhatbh.basedefensev2.boss.events.BossEvents;
+import com.nhatbh.basedefensev2.boss.network.EntitySkillSyncPacket;
 import com.nhatbh.basedefensev2.boss.skills.ActiveSkill;
+import com.nhatbh.basedefensev2.boss.skills.BossSkillData;
+import com.nhatbh.basedefensev2.boss.skills.SkillIndicatorData;
 import com.nhatbh.basedefensev2.strength.EntityEvents;
-import com.nhatbh.basedefensev2.strength.EntityStrengthData;
-import net.minecraft.network.chat.Component;
+import com.nhatbh.basedefensev2.strength.network.NetworkManager;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -87,10 +90,6 @@ public class BossManager {
         Phase phase = comp.getCurrentPhase();
         if (phase != null) {
             phase.tickPassives(boss);
-            
-            if (boss.tickCount % 40 == 0) {
-                broadcastSkillStatus(boss, comp);
-            }
         }
 
         if (comp.getCurrentSequence() != null && comp.getCurrentSequence().isRunning()) {
@@ -157,7 +156,7 @@ public class BossManager {
         }
 
         // We want a mount
-        net.minecraft.resources.ResourceLocation mountLoc = new net.minecraft.resources.ResourceLocation(desiredMountId);
+        ResourceLocation mountLoc = ResourceLocation.parse(desiredMountId);
         if (currentMount != null) {
             if (net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.getKey(currentMount.getType()).equals(mountLoc)) {
                 // Already riding the correct type of entity
@@ -195,7 +194,7 @@ public class BossManager {
             return;
         }
 
-        net.minecraft.resources.ResourceLocation itemLoc = new net.minecraft.resources.ResourceLocation(weaponId);
+        ResourceLocation itemLoc = ResourceLocation.parse(weaponId);
         net.minecraft.world.item.Item item = net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(itemLoc);
         if (item != null && item != net.minecraft.world.item.Items.AIR) {
             boss.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new net.minecraft.world.item.ItemStack(item));
@@ -222,6 +221,7 @@ public class BossManager {
         }
     }
 
+
     @SubscribeEvent
     public static void onPoiseBroken(EntityEvents.PoiseBroken event) {
         BossComponent comp = get(event.getEntity());
@@ -230,6 +230,25 @@ public class BossManager {
                 comp.setCurrentSequence(null); // Interrupt sequence
             }
             comp.setExhaustionTicks(comp.getExhaustionTicks() + 100); // stunned
+        }
+    }
+
+    @SubscribeEvent
+    public static void onStartTracking(PlayerEvent.StartTracking event) {
+        if (event.getTarget() instanceof LivingEntity living) {
+            BossSkillData data = BossSkillData.get(living);
+            if (data != null) {
+                NetworkManager.sendToTracking(
+                    new EntitySkillSyncPacket(
+                        new SkillIndicatorData(
+                            living.getId(), data.stepId, data.tickInStep, data.totalDuration,
+                            data.counterType, data.counterWindowStart, data.counterWindowEnd,
+                            data.counterDirection, data.magicElement, data.isParry
+                        ), false
+                    ),
+                    living
+                );
+            }
         }
     }
 
@@ -243,23 +262,5 @@ public class BossManager {
                 comp.setCurrentMount(null);
             }
         }
-    }
-
-    private static void broadcastSkillStatus(LivingEntity boss, BossComponent comp) {
-        StringBuilder sb = new StringBuilder("§7[BossDebug]§r Skills: ");
-        List<Phase.ActiveSkillEntry> skills = comp.getCurrentPhase().getActives();
-        for (int i = 0; i < skills.size(); i++) {
-            ActiveSkill skill = skills.get(i).skill;
-            String skillId = skill.getId();
-            sb.append("§e").append(skillId).append("§r");
-            if (comp.isSkillReady(skillId)) {
-                sb.append(" (§aREADY§r)");
-            } else {
-                sb.append(" (§c").append(comp.getSkillCooldown(skillId) / 20).append("s§r)");
-            }
-            if (i < skills.size() - 1) sb.append(", ");
-        }
-        Component msg = Component.literal(sb.toString());
-        boss.level().players().forEach(p -> p.sendSystemMessage(msg));
     }
 }

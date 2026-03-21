@@ -7,12 +7,15 @@ import net.minecraft.world.entity.LivingEntity;
 public class TripleParrySkill {
     public static ActiveSequence create() {
         return ActiveSequence.builder("triple_parry")
-            // Stage 1
-            .parryStep("p1", 10)
-                .onStart(ctx -> ctx.log("Preparing attack 1... (Parry window open)"))
-            .step("a1", 5)
+                .parryStep("p1", 60)
+                .counter(ActiveSequence.CounterType.NORMAL, 30, 60)
+                .punishment((ctx, event) -> {
+                    if (event.getSource().getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker) {
+                        attacker.hurt(ctx.boss().damageSources().mobAttack(ctx.boss()), 5.0f);
+                    }
+                })
+                .step("a1", 5)
                 .onStart(ctx -> {
-                    ctx.log("Attack 1!");
                     LivingEntity target = null;
                     if (ctx.boss() instanceof net.minecraft.world.entity.Mob mob) {
                         target = mob.getTarget();
@@ -23,12 +26,15 @@ public class TripleParrySkill {
                         }
                     }
                 })
-            // Stage 2
-            .parryStep("p2", 10)
-                .onStart(ctx -> ctx.log("Preparing attack 2... (Parry window open)"))
-            .step("a2", 5)
+                .parryStep("p2", 60)
+                .counter(ActiveSequence.CounterType.NORMAL, 30, 60)
+                .punishment((ctx, event) -> {
+                    if (event.getSource().getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker) {
+                        attacker.hurt(ctx.boss().damageSources().mobAttack(ctx.boss()), 7.0f);
+                    }
+                })
+                .step("a2", 5)
                 .onStart(ctx -> {
-                    ctx.log("Attack 2!");
                     LivingEntity target = null;
                     if (ctx.boss() instanceof net.minecraft.world.entity.Mob mob) {
                         target = mob.getTarget();
@@ -39,12 +45,15 @@ public class TripleParrySkill {
                         }
                     }
                 })
-            // Stage 3
-            .parryStep("p3", 10)
-                .onStart(ctx -> ctx.log("Preparing attack 3... (Parry window open)"))
-            .step("a3", 5)
+                .parryStep("p3", 60)
+                .counter(ActiveSequence.CounterType.NORMAL, 30, 60)
+                .punishment((ctx, event) -> {
+                    if (event.getSource().getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker) {
+                        attacker.hurt(ctx.boss().damageSources().mobAttack(ctx.boss()), 10.0f);
+                    }
+                })
+                .step("a3", 5)
                 .onStart(ctx -> {
-                    ctx.log("Attack 3!");
                     LivingEntity target = null;
                     if (ctx.boss() instanceof net.minecraft.world.entity.Mob mob) {
                         target = mob.getTarget();
@@ -55,6 +64,6 @@ public class TripleParrySkill {
                         }
                     }
                 })
-            .build();
+                .build();
     }
 }

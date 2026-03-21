@@ -2,6 +2,7 @@ package com.nhatbh.basedefensev2.boss.impl.testboss;
 
 import net.minecraft.world.phys.Vec3;
 import com.nhatbh.basedefensev2.boss.skills.ActiveSequence;
+import com.nhatbh.basedefensev2.elemental.ElementType;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
@@ -14,9 +15,18 @@ public class DashSkill {
     public static ActiveSequence create() {
         return ActiveSequence.builder("dash")
             // Phase 1: Charge
-            .step("charge", 20)
+            .step("charge", 80)
+                .counter(ActiveSequence.CounterType.MAGIC, 10, 80)
+                .magic(ElementType.ICE)
+                .punishment((ctx, event) -> {
+                    if (event.getSource().getEntity() instanceof LivingEntity attacker) {
+                        attacker.hurt(ctx.boss().damageSources().mobAttack(ctx.boss()), 5.0f);
+                        attacker.setSecondsOnFire(3);
+                        // ctx.log("§cFire Counter!§r " + attacker.getDisplayName().getString() + " was burned while trying to stop the dash!");
+                    }
+                })
                 .onStart(ctx -> {
-                    ctx.log("§cBoss is charging up!§r");
+                    // ctx.log("§cBoss is charging up!§r (Magic counter window: ICE required!)");
                     ctx.boss().setDeltaMovement(Vec3.ZERO);
                 })
                 .onTick(ctx -> ctx.boss().setDeltaMovement(Vec3.ZERO))
@@ -24,7 +34,7 @@ public class DashSkill {
             // Phase 2: Target Lock
             .step("lock", 20)
                 .onStart(ctx -> {
-                    ctx.log("§4Locking target...§r");
+                    // ctx.log("§4Locking target...§r");
                     List<Player> players = ctx.boss().level().getEntitiesOfClass(Player.class, 
                         ctx.boss().getBoundingBox().inflate(100));
                     
@@ -68,7 +78,9 @@ public class DashSkill {
 
             // Phase 3: Dash
             .step("dash", 20)
-                .onStart(ctx -> ctx.log("§lDASHING!§r"))
+                .onStart(ctx -> {
+                    // ctx.log("§lDASHING!§r");
+                })
                 .onTick(ctx -> {
                     Vec3 dir = (Vec3) ctx.data().get("dash_dir");
                     if (dir != null) {

@@ -1,6 +1,6 @@
 {
   "id": "stage_2",
-  "trigger_seconds": 30,
+  "trigger_seconds": 9000,
   "order": 1,
   "warmup_ticks": 1300,
   "spawn_radius": 30,
