@@ -63,7 +63,7 @@ public class MobSkillRenderer {
     private static void renderSkillIndicator(PoseStack pose, BufferBuilder buffer, LivingEntity entity, BossSkillData data) {
         float partialTicks = MC.getFrameTime();
         double x = entity.xOld + (entity.getX() - entity.xOld) * partialTicks;
-        double y = entity.yOld + (entity.getY() - entity.yOld) * partialTicks + 0.1; // Slightly higher than strength circle
+        double y = entity.yOld + (entity.getY() - entity.yOld) * partialTicks + 0.1;
         double z = entity.zOld + (entity.getZ() - entity.zOld) * partialTicks;
 
         float radiusInner = entity.getBbWidth() * 0.9f;
@@ -79,42 +79,39 @@ public class MobSkillRenderer {
         float cy = (float) y;
         float cz = (float) z;
 
+        // Note: Without client-side ticking, tickInStep will only jump when a packet arrives
         float currentTick = data.tickInStep + partialTicks;
-        float progressPercent = Math.min(1.0f, currentTick / data.totalDuration);
 
         for (int i = 0; i < totalSegments; i++) {
             float startAngle = i * step;
             float endAngle = (i + 1) * step;
             float segmentMidAngle = (startAngle + endAngle) / 2.0f;
 
-            float r = 0.5f, g = 0.5f, b = 0.5f, a = 0.4f; // Default: Gray
+            float r = 0.5f, g = 0.5f, b = 0.5f, a = 0.4f;
 
-            // User specifies only 3 types of counter rendering.
             if (data.counterType == ActiveSequence.CounterType.NORMAL) {
                 a = 0.8f;
                 if (currentTick < data.counterWindowStart) {
-                    r = 1.0f; g = 0.0f; b = 0.0f; // Red ring
+                    r = 1.0f; g = 0.0f; b = 0.0f; 
                 } else if (currentTick <= data.counterWindowEnd) {
-                    r = 0.0f; g = 1.0f; b = 0.0f; // Green ring
+                    r = 0.0f; g = 1.0f; b = 0.0f;
                 } else {
-                    continue; // No render after window
+                    continue;
                 }
             } else if (data.counterType == ActiveSequence.CounterType.DIRECTIONAL) {
-                // Green arc: counter direction only
                 if (data.counterDirection != null) {
                     Vec3 segmentDir = new Vec3(Math.cos(segmentMidAngle), 0, Math.sin(segmentMidAngle));
                     double dot = segmentDir.dot(data.counterDirection);
-                    if (dot > 0.5) { // Roughly 90 degree arc
+                    if (dot > 0.5) {
                         a = 0.8f;
-                        r = 0.0f; g = 1.0f; b = 0.0f; // Green
+                        r = 0.0f; g = 1.0f; b = 0.0f;
                     } else {
-                        continue; // No render for wrong direction
+                        continue;
                     }
                 } else {
                     continue;
                 }
             } else if (data.counterType == ActiveSequence.CounterType.MAGIC) {
-                // Flashing ring: magic counter
                 float time = (float) (System.currentTimeMillis() % 1000L) / 1000.0f;
                 float flash = (float) Math.sin(time * 2.0f * Math.PI) * 0.5f + 0.5f;
                 a = flash * 0.8f;
@@ -125,7 +122,7 @@ public class MobSkillRenderer {
                     r = 1.0f; g = 1.0f; b = 1.0f;
                 }
             } else {
-                continue; // Other types don't need rendering
+                continue;
             }
 
             renderArcSegment(p, buffer, cx, cy, cz, startAngle, endAngle, radiusInner, radiusOuter, r, g, b, a);
@@ -133,6 +130,7 @@ public class MobSkillRenderer {
     }
 
     private static float[] getElementColor(com.nhatbh.basedefensev2.elemental.ElementType element) {
+        if (element == null) return new float[]{1.0f, 1.0f, 1.0f};
         return switch (element) {
             case FIRE -> new float[]{1.0f, 0.3f, 0.0f};
             case ICE -> new float[]{0.3f, 0.7f, 1.0f};
@@ -161,12 +159,10 @@ public class MobSkillRenderer {
         float x4 = cx + (float) Math.cos(a2) * r2;
         float z4 = cz + (float) Math.sin(a2) * r2;
 
-        // Quad 1: (x1,z1) -> (x2,z2) -> (x3,z3)
         buffer.vertex(p.pose(), x1, cy, z1).color(r, g, b, a).endVertex();
         buffer.vertex(p.pose(), x2, cy, z2).color(r, g, b, a).endVertex();
         buffer.vertex(p.pose(), x3, cy, z3).color(r, g, b, a).endVertex();
 
-        // Quad 2: (x2,z2) -> (x4,z4) -> (x3,z3)
         buffer.vertex(p.pose(), x2, cy, z2).color(r, g, b, a).endVertex();
         buffer.vertex(p.pose(), x4, cy, z4).color(r, g, b, a).endVertex();
         buffer.vertex(p.pose(), x3, cy, z3).color(r, g, b, a).endVertex();

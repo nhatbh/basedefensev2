@@ -1,5 +1,6 @@
 package com.nhatbh.basedefensev2.boss.core;
 
+import com.nhatbh.basedefensev2.elemental.ElementType;
 import net.minecraft.world.entity.EntityType;
 
 import java.util.ArrayList;
@@ -11,9 +12,10 @@ public class BossDefinition {
     private final EntityType<?> entityType;
     private final String baseEntity;
     private final BossStats baseStats;
-    private final List<Element> elements;
+    private final List<ElementType> elements;
     private final float maxPoise;
     private final float poiseDamageReduction;
+    private final float baseScale;
     private final List<Phase> phases;
 
     private BossDefinition(Builder builder) {
@@ -24,6 +26,7 @@ public class BossDefinition {
         this.elements = builder.elements;
         this.maxPoise = builder.maxPoise;
         this.poiseDamageReduction = builder.poiseDamageReduction;
+        this.baseScale = builder.baseScale;
         this.phases = builder.phases;
     }
 
@@ -31,9 +34,10 @@ public class BossDefinition {
     public EntityType<?> getEntityType() { return entityType; }
     public String getBaseEntity() { return baseEntity; }
     public BossStats getBaseStats() { return baseStats; }
-    public List<Element> getElements() { return elements; }
+    public List<ElementType> getElements() { return elements; }
     public float getMaxPoise() { return maxPoise; }
     public float getPoiseDamageReduction() { return poiseDamageReduction; }
+    public float getBaseScale() { return baseScale; }
     public List<Phase> getPhases() { return phases; }
 
     public static Builder builder(String id) {
@@ -71,9 +75,10 @@ public class BossDefinition {
         private EntityType<?> entityType;
         private String baseEntity;
         private final StatsBuilder statsBuilder = new StatsBuilder();
-        private final List<Element> elements = new ArrayList<>();
+        private final List<ElementType> elements = new ArrayList<>();
         private float maxPoise = 100f;
         private float poiseDamageReduction = 0f;
+        private float baseScale = 1.0f;
         private final List<Phase> phases = new ArrayList<>();
 
         public Builder(String id) {
@@ -95,7 +100,7 @@ public class BossDefinition {
             return this;
         }
 
-        public Builder elements(Element... elements) {
+        public Builder elements(ElementType... elements) {
             this.elements.addAll(List.of(elements));
             return this;
         }
@@ -107,6 +112,11 @@ public class BossDefinition {
 
         public Builder poiseDamageReduction(float reduction) {
             this.poiseDamageReduction = reduction;
+            return this;
+        }
+
+        public Builder baseScale(float scale) {
+            this.baseScale = scale;
             return this;
         }
 

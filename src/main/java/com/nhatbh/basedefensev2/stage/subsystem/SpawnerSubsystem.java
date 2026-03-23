@@ -1,6 +1,7 @@
 package com.nhatbh.basedefensev2.stage.subsystem;
 
 import com.mojang.logging.LogUtils;
+import com.nhatbh.basedefensev2.stage.ArenaConstants;
 import com.nhatbh.basedefensev2.stage.config.MobSpawnEntry;
 import com.nhatbh.basedefensev2.stage.config.StageConfig;
 import com.nhatbh.basedefensev2.stage.config.WaveConfig;
@@ -195,6 +196,7 @@ public class SpawnerSubsystem {
             entitiesOut.add(entity);
 
             // Mark as stage mob and store loot config
+            entity.addTag(ArenaConstants.ARENA_AFFILIATED_TAG);
             entity.getPersistentData().putBoolean("bdv2_stage_mob", true);
             if (entry.loot != null && !entry.loot.isEmpty()) {
                 net.minecraft.nbt.ListTag lootList = new net.minecraft.nbt.ListTag();
@@ -252,6 +254,7 @@ public class SpawnerSubsystem {
         entitiesOut.add(entity);
 
         // Mark as stage mob and store loot config
+        entity.addTag(ArenaConstants.ARENA_AFFILIATED_TAG);
         entity.getPersistentData().putBoolean("bdv2_stage_mob", true);
         if (entry.loot != null && !entry.loot.isEmpty()) {
             net.minecraft.nbt.ListTag lootList = new net.minecraft.nbt.ListTag();

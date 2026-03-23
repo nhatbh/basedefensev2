@@ -4,6 +4,9 @@ import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.event.entity.player.FillBucketEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
+import net.minecraftforge.event.entity.living.LivingDropsEvent;
+import net.minecraft.world.entity.Entity;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.event.level.ExplosionEvent;
 import net.minecraftforge.event.entity.EntityTravelToDimensionEvent;
@@ -19,6 +22,29 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  * Allows water handling with buckets.
  */
 public class ArenaProtectionHandler {
+
+    @SubscribeEvent
+    public static void onLivingAttack(LivingAttackEvent event) {
+        Entity attacker = event.getSource().getEntity();
+        Entity victim = event.getEntity();
+        if (attacker != null && victim != null) {
+            if (attacker.getTags().contains(ArenaConstants.ARENA_AFFILIATED_TAG) && 
+                victim.getTags().contains(ArenaConstants.ARENA_AFFILIATED_TAG)) {
+                event.setCanceled(true);
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onLivingDrops(LivingDropsEvent event) {
+        Entity entity = event.getEntity();
+        if (entity.getTags().contains(ArenaConstants.ARENA_AFFILIATED_TAG)) {
+            // Only allow drops if specifically configured via NBT
+            if (!entity.getPersistentData().contains("bdv2_stage_loot")) {
+                event.getDrops().clear();
+            }
+        }
+    }
 
     @SubscribeEvent
     public static void onBlockBreak(BlockEvent.BreakEvent event) {

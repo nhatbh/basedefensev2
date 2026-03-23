@@ -46,6 +46,13 @@ public class EntityStrengthData {
         persistentData.put(NBT_KEY, tag);
     }
 
+    public static void sync(LivingEntity entity, EntityStrengthData data) {
+        com.nhatbh.basedefensev2.strength.network.NetworkManager.sendToTracking(
+            new com.nhatbh.basedefensev2.strength.network.EntityStrengthSyncPacket(entity.getId(), data.currentStrength, data.maxStrength, data.recoveryTicks),
+            entity
+        );
+    }
+
     public void save(LivingEntity entity) {
         set(entity, this);
     }

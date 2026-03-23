@@ -52,8 +52,9 @@ public class ActiveSequence {
         public int counterWindowEnd;
         public BiConsumer<SkillContext, LivingDamageEvent> punishmentHandler;
         public Vec3 counterDirection;
-        public ElementType magicElement;
+        public com.nhatbh.basedefensev2.elemental.ElementType magicElement;
         public BiConsumer<SkillContext, LivingDamageEvent> onCountered;
+        public float magicThreshold = 0f;
         
         public Step(String id, int duration, boolean isParry) {
             this.id = id;
@@ -133,6 +134,11 @@ public class ActiveSequence {
                 currentStep.counterType = CounterType.MAGIC;
                 currentStep.magicElement = element;
             }
+            return this;
+        }
+
+        public Builder magicThreshold(float amount) {
+            if (currentStep != null) currentStep.magicThreshold = amount;
             return this;
         }
 

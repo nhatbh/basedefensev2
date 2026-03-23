@@ -12,6 +12,7 @@ public class SkillContext {
     private boolean interrupted = false;
     private final Map<String, Object> data = new HashMap<>();
     private String jumpToStepId = null;
+    private int tickInStep = 0;
 
     public SkillContext(LivingEntity boss) {
         this.boss = boss;
@@ -71,5 +72,37 @@ public class SkillContext {
 
     public Map<String, Object> data() {
         return data;
+    }
+
+    public int getTicks() {
+        return tickInStep;
+    }
+
+    public void setTickInStep(int tick) {
+        this.tickInStep = tick;
+    }
+
+    public float getStrength() {
+        com.nhatbh.basedefensev2.strength.EntityStrengthData data = com.nhatbh.basedefensev2.strength.EntityStrengthData.get(boss);
+        return data != null ? data.currentStrength : 0f;
+    }
+
+    public float getMaxStrength() {
+        com.nhatbh.basedefensev2.strength.EntityStrengthData data = com.nhatbh.basedefensev2.strength.EntityStrengthData.get(boss);
+        return data != null ? data.maxStrength : 0f;
+    }
+
+    public void applyStrengthDamage(float amount) {
+        com.nhatbh.basedefensev2.strength.EntityStrengthData data = com.nhatbh.basedefensev2.strength.EntityStrengthData.get(boss);
+        if (data != null && data.currentStrength > 0) {
+            data.currentStrength -= amount;
+            if (data.currentStrength <= 0) {
+                data.currentStrength = 0;
+                data.recoveryTicks = 300;
+                net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new com.nhatbh.basedefensev2.strength.EntityEvents.PoiseBroken(boss));
+            }
+            data.save(boss);
+            com.nhatbh.basedefensev2.strength.EntityStrengthData.sync(boss, data);
+        }
     }
 }

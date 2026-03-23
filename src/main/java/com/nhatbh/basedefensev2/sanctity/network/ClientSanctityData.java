@@ -6,6 +6,13 @@ public class ClientSanctityData {
     private static int maxSanctity;
     private static int maxGrace;
 
+    public static void reset() {
+        sanctity = 0;
+        grace = 0;
+        maxSanctity = 0;
+        maxGrace = 0;
+    }
+
     public static void setSanctity(int sanctity) {
         ClientSanctityData.sanctity = sanctity;
     }

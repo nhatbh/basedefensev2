@@ -37,7 +37,7 @@ public class SanctityEventHandler {
             player.setGameMode(GameType.SPECTATOR);
 
             int newSanctity = data.deductSanctity(50);
-            syncToAll(data);
+            syncToAll(level, data);
 
             if (newSanctity > 0) {
                 data.addRespawn(player.getUUID(), RESPAWN_TICKS);
@@ -62,7 +62,7 @@ public class SanctityEventHandler {
             
             // Sync to all players every second (20 ticks) to update HUD grace
             if (overworld.getGameTime() % 20 == 0) {
-                syncToAll(data);
+                syncToAll(overworld, data);
                 
                 // Actionbar for respawning players
                 for (Map.Entry<UUID, Integer> entry : data.getRespawnQueue().entrySet()) {
@@ -142,9 +142,11 @@ public class SanctityEventHandler {
         });
     }
 
-    private static void syncToAll(AltarSavedData data) {
+    private static void syncToAll(ServerLevel level, AltarSavedData data) {
         var config = com.nhatbh.basedefensev2.config.SanctityConfig.data;
-        NetworkManager.INSTANCE.send(PacketDistributor.ALL.noArg(), 
-            new SanctitySyncPacket(data.getSanctity(), data.getGrace(), config.maxSanctity, config.maxGrace));
+        SanctitySyncPacket packet = new SanctitySyncPacket(data.getSanctity(), data.getGrace(), config.maxSanctity, config.maxGrace);
+        level.getServer().getPlayerList().getPlayers().forEach(player -> {
+            NetworkManager.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), packet);
+        });
     }
 }

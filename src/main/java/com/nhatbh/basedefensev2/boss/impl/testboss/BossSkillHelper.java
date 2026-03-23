@@ -17,18 +17,45 @@ public class BossSkillHelper {
     }
 
     public static LivingEntity getClosestTarget(SkillContext ctx) {
-        LivingEntity target = null;
-        if (ctx.boss() instanceof Mob mob) {
-            target = mob.getTarget();
-        }
-        if (target == null) {
-            List<Player> players = ctx.boss().level().getEntitiesOfClass(Player.class, 
-                ctx.boss().getBoundingBox().inflate(32));
-            target = players.stream()
-                .min(Comparator.comparingDouble(p -> p.distanceTo(ctx.boss())))
-                .orElse(null);
-        }
-        return target;
+        return getClosestTarget(ctx, 32.0);
+    }
+
+    public static LivingEntity getClosestTarget(SkillContext ctx, double radius) {
+        List<Player> players = ctx.boss().level().getEntitiesOfClass(Player.class, 
+            ctx.boss().getBoundingBox().inflate(radius));
+        return players.stream()
+            .min(Comparator.comparingDouble(p -> p.distanceTo(ctx.boss())))
+            .orElse(null);
+    }
+
+    public static LivingEntity getFurthestTarget(SkillContext ctx, double radius) {
+        List<Player> players = ctx.boss().level().getEntitiesOfClass(Player.class, 
+            ctx.boss().getBoundingBox().inflate(radius));
+        return players.stream()
+            .max(Comparator.comparingDouble(p -> p.distanceTo(ctx.boss())))
+            .orElse(null);
+    }
+
+    public static LivingEntity getRandomTarget(SkillContext ctx, double radius) {
+        List<Player> players = ctx.boss().level().getEntitiesOfClass(Player.class, 
+            ctx.boss().getBoundingBox().inflate(radius));
+        if (players.isEmpty()) return null;
+        return players.get(ctx.boss().getRandom().nextInt(players.size()));
+    }
+
+    public static java.util.List<LivingEntity> getRandomTargets(SkillContext ctx, double radius, int count) {
+        List<Player> players = new java.util.ArrayList<>(ctx.boss().level().getEntitiesOfClass(Player.class, 
+            ctx.boss().getBoundingBox().inflate(radius)));
+        java.util.Collections.shuffle(players);
+        return players.stream().limit(count).map(p -> (LivingEntity)p).collect(java.util.stream.Collectors.toList());
+    }
+
+    public static LivingEntity getLowestHealthTarget(SkillContext ctx, double radius) {
+        List<Player> players = ctx.boss().level().getEntitiesOfClass(Player.class, 
+            ctx.boss().getBoundingBox().inflate(radius));
+        return players.stream()
+            .min(Comparator.comparingDouble(p -> p.getHealth()))
+            .orElse(null);
     }
 
     public static void stopMovement(SkillContext ctx) {
@@ -55,5 +82,79 @@ public class BossSkillHelper {
             ctx.boss().setYHeadRot(yaw);
             ctx.boss().setYBodyRot(yaw);
         }
+    }
+
+    public static void fireFastArrow(LivingEntity shooter, Vec3 pos, Vec3 dir, float speed, double damage) {
+        net.minecraft.world.entity.projectile.Arrow arrow = new net.minecraft.world.entity.projectile.Arrow(shooter.level(), shooter);
+        arrow.setPos(pos.x, pos.y, pos.z);
+        arrow.setBaseDamage(damage);
+        arrow.shoot(dir.x, dir.y, dir.z, speed, 1.0f);
+        arrow.addTag("boss_projectile");
+        arrow.addTag(com.nhatbh.basedefensev2.stage.ArenaConstants.ARENA_AFFILIATED_TAG);
+        shooter.level().addFreshEntity(arrow);
+    }
+
+    public static void depletePoise(SkillContext ctx, float percentage) {
+        com.nhatbh.basedefensev2.strength.EntityStrengthData strengthData = com.nhatbh.basedefensev2.strength.EntityStrengthData.get(ctx.boss());
+        if (strengthData != null) {
+            float depletion = strengthData.maxStrength * (percentage / 100.0f);
+            strengthData.currentStrength = Math.max(0, strengthData.currentStrength - depletion);
+            strengthData.save(ctx.boss());
+            com.nhatbh.basedefensev2.strength.EntityStrengthData.sync(ctx.boss(), strengthData);
+        }
+    }
+
+    public static void broadcastMessage(LivingEntity boss, String message) {
+        if (boss.level().isClientSide) return;
+        net.minecraft.network.chat.Component component = net.minecraft.network.chat.Component.literal("§l§c" + message);
+        boss.level().players().forEach(p -> p.sendSystemMessage(component));
+    }
+
+    public static float calculateMixedDamage(SkillContext ctx, LivingEntity target, float percent, float flat) {
+        if (target == null) return flat;
+        if (ctx != null && ctx.data().getOrDefault("is_lethal_retaliation", false).equals(true)) {
+            // Universal lethal damage: 150% Max HP + 1000 flat
+            return (target.getMaxHealth() * 1.5f) + 1000f;
+        }
+        return (target.getMaxHealth() * (percent / 100.0f)) + flat;
+    }
+
+    public static void performDynamicSweep(SkillContext ctx, Vec3 baseDir, double startAngleOffset, double endAngleOffset,
+            double radius, float percent, float flat, int duration, boolean applyKnockback, net.minecraft.core.particles.ParticleOptions particle) {
+        int tick = (int) ctx.data().getOrDefault("sweep_tick", 0);
+        double progress = tick / (double) (duration - 1);
+        if (progress > 1.0) progress = 1.0;
+
+        double currentAngleOffset = startAngleOffset + (endAngleOffset - startAngleOffset) * progress;
+        if (baseDir != null && ctx.boss().level() instanceof net.minecraft.server.level.ServerLevel level) {
+            Vec3 pos = getMovementEntity(ctx).position();
+
+            double angleRad = Math.toRadians(currentAngleOffset);
+            double cos = Math.cos(angleRad);
+            double sin = Math.sin(angleRad);
+            Vec3 rotatedDir = new Vec3(
+                    baseDir.x * cos - baseDir.z * sin,
+                    0,
+                    baseDir.x * sin + baseDir.z * cos).normalize();
+
+            double arcWidth = 35.0;
+            com.nhatbh.basedefensev2.boss.utils.ParticleUtils.renderFilledArc(level, particle, pos.add(0, 1, 0), rotatedDir, radius,
+                    arcWidth, 3, 3, 0.05);
+
+            @SuppressWarnings("unchecked")
+            java.util.List<java.util.UUID> hitTargets = (java.util.List<java.util.UUID>) ctx.data().get("sweep_hits");
+
+            com.nhatbh.basedefensev2.boss.utils.HitboxUtils.getEntitiesInArc(level, LivingEntity.class, pos, rotatedDir,
+                    radius, arcWidth, e -> e != ctx.boss() && !hitTargets.contains(e.getUUID())).forEach(target -> {
+                hitTargets.add(target.getUUID());
+                float damage = calculateMixedDamage(ctx, target, percent, flat);
+                target.hurt(ctx.boss().damageSources().mobAttack(ctx.boss()), damage);
+
+                if (applyKnockback) {
+                    target.setDeltaMovement(target.getDeltaMovement().add(rotatedDir.scale(2.0).add(0, 0.2, 0)));
+                }
+            });
+        }
+        ctx.data().put("sweep_tick", tick + 1);
     }
 }

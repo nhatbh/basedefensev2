@@ -56,7 +56,9 @@ public class ArenaDimensionTickHandler {
         syncCounter++;
         if (syncCounter % 10 == 0) {
             StageHudSyncPacket pkt = buildPacket(ctx, arenaLevel);
-            NetworkManager.INSTANCE.send(PacketDistributor.ALL.noArg(), pkt);
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                NetworkManager.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), pkt);
+            }
         }
     }
 

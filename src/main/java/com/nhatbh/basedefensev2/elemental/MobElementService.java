@@ -17,22 +17,35 @@ public class MobElementService {
     public static void onEntityJoin(EntityJoinLevelEvent event) {
         if (event.getLevel().isClientSide) return;
 
-        if (event.getEntity() instanceof Enemy || (event.getEntity() instanceof LivingEntity le && BossManager.isBoss(le))) {
+        if (event.getEntity() instanceof net.minecraft.world.entity.monster.Enemy || (event.getEntity() instanceof LivingEntity le && BossManager.isBoss(le))) {
             LivingEntity entity = (LivingEntity) event.getEntity();
             
             // Check if element is already assigned
             if (!entity.getPersistentData().contains("ElementType")) {
                 ElementType element = null;
                 
-                // Try from config first
-                net.minecraft.resources.ResourceLocation key = net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
-                if (key != null) {
-                    element = MobElementConfig.getElementFor(key.toString());
+                // 1. Try from BossDefinition if it's a boss
+                if (BossManager.isBoss(entity)) {
+                    var bossComp = BossManager.get(entity);
+                    if (bossComp != null && bossComp.getDefinition() != null) {
+                        var elements = bossComp.getDefinition().getElements();
+                        if (elements != null && !elements.isEmpty()) {
+                            element = elements.get(0);
+                        }
+                    }
+                }
+
+                // 2. Try from config if still null
+                if (element == null) {
+                    net.minecraft.resources.ResourceLocation key = net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+                    if (key != null) {
+                        element = MobElementConfig.getElementFor(key.toString());
+                    }
                 }
                 
                 if (element != null) {
                     entity.getPersistentData().putString("ElementType", element.name());
-                    NetworkManager.sendToTracking(new MobElementSyncPacket(entity.getId(), element.name()), entity);
+                    NetworkManager.sendToTracking(new com.nhatbh.basedefensev2.elemental.network.MobElementSyncPacket(entity.getId(), element.name()), entity);
                 }
             }
         }

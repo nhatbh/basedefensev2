@@ -75,9 +75,6 @@ minecraft {
             // Please read: https://stackoverflow.com/questions/2031163/when-to-use-the-different-log-levels
             property 'forge.logging.console.level', 'debug'
 
-            // Disable Mixin refmaps in dev environment to prevent issues with dependencies
-            property 'mixin.env.disableRefMap', 'true'
-
             mods {
                 "${mod_id}" {
                     source sourceSets.main
@@ -88,11 +85,18 @@ minecraft {
         client {
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             property 'forge.enabledGameTestNamespaces', mod_id
+             // Mixin properties for PlayerAnimator
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
         }
 
         server {
             property 'forge.enabledGameTestNamespaces', mod_id
             args '--nogui'
+             // Mixin properties for PlayerAnimator
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+
         }
 
         // This run config launches GameTestServer and runs all registered gametests, then exits.
@@ -159,7 +163,7 @@ repositories {
     }
 
     flatDir {
-        dirs 'libs' // This points to a 'libs' folder in your project root
+        dirs 'mods' // This points to a 'libs' folder in your project root
     }
 }
 
@@ -171,9 +175,7 @@ dependencies {
     // then special handling is done to allow a setup of a vanilla dependency without the use of an external repository.
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
-    // Apply Mixin AP
-    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
-
+    implementation fileTree(dir: 'mods', include: ['*.jar'])
     // WorldEdit Forge (CurseForge artifact for MC 1.20.1)
     // If you change WorldEdit version, update the file ID accordingly.
     implementation fg.deobf("curse.maven:worldedit-225608:4586218")
@@ -182,7 +184,7 @@ dependencies {
     // Iron's Spellbooks - Required dependency for spell damage integration
     // Using compileOnly to allow compilation without requiring the mod to be present
     // The mod is still required at runtime as specified in mods.toml
-    implementation fg.deobf("io.redspace.ironsspellbooks:irons_spellbooks:${irons_spells_version}")
+    implementation fg.deobf("io.redspace:irons_spellbooks:${irons_spells_version}")
     implementation fg.deobf("com.complextalents:complextalents:1.0.0")
     implementation fg.deobf("maven.modrinth:epic-fight:${epicfight_version}")
     // Iron's Spellbooks runtime dependencies - Required for :runClient
@@ -246,11 +248,6 @@ publishing {
             url "file://${project.projectDir}/mcmodsrepo"
         }
     }
-}
-
-mixin {
-    add sourceSets.main, "basedefensev2.refmap.json"
-    config "mixins.basedefensev2.json"
 }
 
 tasks.withType(JavaCompile).configureEach {

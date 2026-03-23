@@ -104,7 +104,7 @@ public class EntityStrengthEventHandler {
             }
             
             data.save(entity);
-            syncStrength(entity, data);
+            EntityStrengthData.sync(entity, data);
         }
     }
 
@@ -120,7 +120,7 @@ public class EntityStrengthEventHandler {
                 data.recoveryTicks = 0;
                 data.currentStrength = data.maxStrength;
                 if (!entity.level().isClientSide) {
-                    syncStrength(entity, data);
+                    EntityStrengthData.sync(entity, data);
                 }
             }
             data.save(entity);
@@ -147,10 +147,4 @@ public class EntityStrengthEventHandler {
         }
     }
 
-    private static void syncStrength(LivingEntity entity, EntityStrengthData data) {
-         NetworkManager.sendToTracking(
-             new EntityStrengthSyncPacket(entity.getId(), data.currentStrength, data.maxStrength, data.recoveryTicks),
-             entity
-         );
-    }
 }

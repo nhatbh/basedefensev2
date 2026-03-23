@@ -1,6 +1,8 @@
 package com.nhatbh.basedefensev2.boss.core;
 
+import com.nhatbh.basedefensev2.elemental.ElementType;
 import com.nhatbh.basedefensev2.boss.events.BossEvents;
+import com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper;
 import com.nhatbh.basedefensev2.boss.network.EntitySkillSyncPacket;
 import com.nhatbh.basedefensev2.boss.skills.ActiveSkill;
 import com.nhatbh.basedefensev2.boss.skills.BossSkillData;
@@ -27,10 +29,12 @@ public class BossManager {
     public static void registerBoss(LivingEntity entity, BossComponent component) {
         BOSS_REGISTRY.put(entity, component);
         initializeBossAttributes(entity, component.getDefinition());
+        applyScale(entity, component.getDefinition().getBaseScale());
         component.initialize(entity);
         if (component.getCurrentPhase() != null) {
             syncMount(entity, component, component.getCurrentPhase());
             syncWeapon(entity, component.getCurrentPhase());
+            syncArmor(entity, component.getCurrentPhase());
         }
     }
 
@@ -68,10 +72,12 @@ public class BossManager {
     @SubscribeEvent
     public static void onLivingTick(LivingEvent.LivingTickEvent event) {
         LivingEntity boss = event.getEntity();
-        if (boss.level().isClientSide()) return;
+        if (boss.level().isClientSide())
+            return;
 
         BossComponent comp = get(boss);
-        if (comp == null) return;
+        if (comp == null)
+            return;
 
         if (comp.getExhaustionTicks() > 0) {
             comp.setExhaustionTicks(comp.getExhaustionTicks() - 1);
@@ -90,26 +96,66 @@ public class BossManager {
         Phase phase = comp.getCurrentPhase();
         if (phase != null) {
             phase.tickPassives(boss);
+            comp.tickGlobalCooldowns();
+        }
+
+        // Stun Immunity & Strength-based Skill Blocking
+        com.nhatbh.basedefensev2.strength.EntityStrengthData strengthData = com.nhatbh.basedefensev2.strength.EntityStrengthData.get(boss);
+        if (strengthData != null && strengthData.currentStrength > 0) {
+            net.minecraft.world.effect.MobEffect stunImmunity = net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS.getValue(net.minecraft.resources.ResourceLocation.parse("efn:sin_stun_immunity"));
+            if (stunImmunity != null) {
+                boss.addEffect(new net.minecraft.world.effect.MobEffectInstance(stunImmunity, 3, 19, false, false));
+            }
         }
 
         if (comp.getCurrentSequence() != null && comp.getCurrentSequence().isRunning()) {
             comp.getCurrentSequence().tick(boss);
         } else {
             comp.setCurrentSequence(null);
-            ActiveSkill nextSkill = SkillEvaluator.getHighestPrioritySkill(comp, boss, phase);
-            if (nextSkill != null) {
-                comp.setSkillCooldown(nextSkill.getId(), nextSkill.getCooldown());
-                comp.setCurrentSequence(nextSkill.getSequence().start(boss));
+            
+            // Only select new skills if not exhausted AND has strength
+            if (comp.getExhaustionTicks() <= 0 && (strengthData == null || strengthData.currentStrength > 0)) {
+                ActiveSkill nextSkill = SkillEvaluator.selectSkill(comp, boss, phase);
+                if (nextSkill != null) {
+                    comp.setSkillCooldown(nextSkill.getId(), nextSkill.getCooldown());
+                    comp.markSkillUsed(nextSkill.getId(), nextSkill.getType());
+
+                    // Check if all skills of this type are used, then reset
+                    java.util.Set<String> used = (nextSkill.getType() == ActiveSkill.Type.BASIC)
+                            ? comp.getUsedBasicSkills()
+                            : comp.getUsedTacticalSkills();
+
+                    long totalOfType = phase.getActives().stream()
+                            .filter(e -> e.skill.getType() == nextSkill.getType())
+                            .count();
+
+                    if (used.size() >= totalOfType) {
+                        comp.clearUsedSkills(nextSkill.getType());
+                    }
+
+                    // Set global cooldowns based on type and skill override
+                    if (nextSkill.getType() == ActiveSkill.Type.BASIC) {
+                        comp.setBasicSkillCooldown(nextSkill.getGlobalCooldown());
+                    } else if (nextSkill.getType() == ActiveSkill.Type.TACTICAL) {
+                        comp.setTacticalSkillCooldown(nextSkill.getGlobalCooldown());
+                    }
+
+                    // Debug: broadcast skill name
+                    BossSkillHelper.broadcastMessage(boss, "[DEBUG] Skill Activated: " + nextSkill.getId());
+
+                    comp.setCurrentSequence(nextSkill.getSequence().start(boss));
+                }
             }
         }
     }
 
     private static void checkPhaseTransition(LivingEntity boss, BossComponent comp) {
         BossDefinition def = comp.getDefinition();
-        if (def.getPhases().isEmpty()) return;
-        
+        if (def.getPhases().isEmpty())
+            return;
+
         float hpPercent = boss.getHealth() / boss.getMaxHealth();
-        
+
         for (int i = 0; i < def.getPhases().size(); i++) {
             Phase phase = def.getPhases().get(i);
             if (i > comp.getCurrentPhaseIndex() && hpPercent <= phase.getHpThreshold()) {
@@ -123,24 +169,36 @@ public class BossManager {
         if (comp.getCurrentPhase() != null) {
             comp.getCurrentPhase().onExit(boss);
         }
-        
+
         int oldPhaseId = comp.getCurrentPhase() != null ? comp.getCurrentPhase().getId() : -1;
         comp.setCurrentPhaseIndex(newIndex);
         comp.setCurrentPhase(newPhase);
-        
+
         // Let clients know - later we sync this via packet
         boss.getPersistentData().putInt("BossPhaseIndex", newIndex);
-        
+
         MinecraftForge.EVENT_BUS.post(new BossEvents.PhaseAdvance(boss, oldPhaseId, newPhase.getId()));
         comp.setCurrentSequence(null); // Interrupted by phase shift
-        
+
         newPhase.onEnter(boss);
         syncMount(boss, comp, newPhase);
         syncWeapon(boss, newPhase);
+        syncArmor(boss, newPhase);
+
+        // Instant Strength Recovery to prevent phase skipping
+        com.nhatbh.basedefensev2.strength.EntityStrengthData strengthData = com.nhatbh.basedefensev2.strength.EntityStrengthData
+                .get(boss);
+        if (strengthData != null) {
+            strengthData.currentStrength = strengthData.maxStrength;
+            strengthData.recoveryTicks = 0;
+            strengthData.save(boss);
+            com.nhatbh.basedefensev2.strength.EntityStrengthData.sync(boss, strengthData);
+        }
     }
 
     public static void syncMount(LivingEntity boss, BossComponent comp, Phase phase) {
-        if (boss.level().isClientSide()) return;
+        if (boss.level().isClientSide())
+            return;
 
         String desiredMountId = phase.getMountEntity();
         net.minecraft.world.entity.Entity currentMount = comp.getCurrentMount();
@@ -158,7 +216,8 @@ public class BossManager {
         // We want a mount
         ResourceLocation mountLoc = ResourceLocation.parse(desiredMountId);
         if (currentMount != null) {
-            if (net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.getKey(currentMount.getType()).equals(mountLoc)) {
+            if (net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.getKey(currentMount.getType())
+                    .equals(mountLoc)) {
                 // Already riding the correct type of entity
                 if (!boss.isPassengerOfSameVehicle(currentMount)) {
                     boss.startRiding(currentMount, true);
@@ -173,7 +232,8 @@ public class BossManager {
         }
 
         // Spawn new mount
-        net.minecraft.world.entity.EntityType<?> type = net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.getValue(mountLoc);
+        net.minecraft.world.entity.EntityType<?> type = net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES
+                .getValue(mountLoc);
         if (type != null) {
             net.minecraft.world.entity.Entity newMount = type.create(boss.level());
             if (newMount != null) {
@@ -186,27 +246,81 @@ public class BossManager {
     }
 
     public static void syncWeapon(LivingEntity boss, Phase phase) {
-        if (boss.level().isClientSide()) return;
-        
+        if (boss.level().isClientSide())
+            return;
+
         String weaponId = phase.getMainhandWeapon();
+        String nbtStr = phase.getMainhandNbt();
+
         if (weaponId == null || weaponId.isEmpty()) {
-            boss.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, net.minecraft.world.item.ItemStack.EMPTY);
+            boss.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND,
+                    net.minecraft.world.item.ItemStack.EMPTY);
             return;
         }
 
         ResourceLocation itemLoc = ResourceLocation.parse(weaponId);
         net.minecraft.world.item.Item item = net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(itemLoc);
         if (item != null && item != net.minecraft.world.item.Items.AIR) {
-            boss.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new net.minecraft.world.item.ItemStack(item));
+            net.minecraft.world.item.ItemStack stack = new net.minecraft.world.item.ItemStack(item);
+            if (nbtStr != null && !nbtStr.isEmpty()) {
+                try {
+                    stack.setTag(net.minecraft.nbt.TagParser.parseTag(nbtStr));
+                } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+                    // Silently fail or log for debug
+                }
+            }
+            makeUnbreakable(stack);
+            boss.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, stack);
         } else {
-            boss.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, net.minecraft.world.item.ItemStack.EMPTY);
+            boss.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND,
+                    net.minecraft.world.item.ItemStack.EMPTY);
+        }
+    }
+
+    public static void syncArmor(LivingEntity boss, Phase phase) {
+        if (boss.level().isClientSide())
+            return;
+
+        equipItem(boss, net.minecraft.world.entity.EquipmentSlot.HEAD, phase.getHelmet());
+        equipItem(boss, net.minecraft.world.entity.EquipmentSlot.CHEST, phase.getChestplate());
+        equipItem(boss, net.minecraft.world.entity.EquipmentSlot.LEGS, phase.getLeggings());
+        equipItem(boss, net.minecraft.world.entity.EquipmentSlot.FEET, phase.getBoots());
+    }
+
+    private static void equipItem(LivingEntity entity, net.minecraft.world.entity.EquipmentSlot slot, String itemId) {
+        if (itemId == null || itemId.isEmpty())
+            return;
+
+        ResourceLocation loc = ResourceLocation.parse(itemId);
+        net.minecraft.world.item.Item item = net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(loc);
+        if (item != null && item != net.minecraft.world.item.Items.AIR) {
+            net.minecraft.world.item.ItemStack stack = new net.minecraft.world.item.ItemStack(item);
+            makeUnbreakable(stack);
+            entity.setItemSlot(slot, stack);
+        }
+    }
+
+    private static void makeUnbreakable(net.minecraft.world.item.ItemStack stack) {
+        if (!stack.isEmpty()) {
+            stack.getOrCreateTag().putBoolean("Unbreakable", true);
+        }
+    }
+
+    @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.HIGHEST)
+    public static void onSpellDamage(io.redspace.ironsspellbooks.api.events.SpellDamageEvent event) {
+        if (event.getEntity() == null || event.getEntity().level().isClientSide)
+            return;
+        BossComponent comp = get(event.getEntity());
+        if (comp != null) {
+            // Store raw damage for counter logic
+            event.getEntity().getPersistentData().putFloat("MagicCounterRawDamage", event.getAmount());
         }
     }
 
     @SubscribeEvent
     public static void onLivingDamage(LivingDamageEvent event) {
         LivingEntity entity = event.getEntity();
-        
+
         // Check if the entity is a mount for a boss
         if (entity.getFirstPassenger() instanceof LivingEntity rider && isBoss(rider)) {
             event.setCanceled(true);
@@ -216,11 +330,19 @@ public class BossManager {
 
         BossComponent comp = get(entity);
         if (comp != null && comp.getCurrentSequence() != null && comp.getCurrentSequence().isRunning()) {
-            boolean isMelee = !event.getSource().isIndirect();
-            comp.getCurrentSequence().onDamage(event, isMelee);
+            net.minecraft.world.damagesource.DamageSource source = event.getSource();
+            // Strict melee check: source has an attacker and the direct entity that hit is the attacker himself
+            boolean isMelee = source.getDirectEntity() != null && source.getDirectEntity() == source.getEntity();
+
+            float rawDamage = event.getAmount();
+            if (entity.getPersistentData().contains("MagicCounterRawDamage")) {
+                rawDamage = entity.getPersistentData().getFloat("MagicCounterRawDamage");
+                entity.getPersistentData().remove("MagicCounterRawDamage");
+            }
+
+            comp.getCurrentSequence().onDamage(event, isMelee, rawDamage);
         }
     }
-
 
     @SubscribeEvent
     public static void onPoiseBroken(EntityEvents.PoiseBroken event) {
@@ -239,15 +361,13 @@ public class BossManager {
             BossSkillData data = BossSkillData.get(living);
             if (data != null) {
                 NetworkManager.sendToTracking(
-                    new EntitySkillSyncPacket(
-                        new SkillIndicatorData(
-                            living.getId(), data.stepId, data.tickInStep, data.totalDuration,
-                            data.counterType, data.counterWindowStart, data.counterWindowEnd,
-                            data.counterDirection, data.magicElement, data.isParry
-                        ), false
-                    ),
-                    living
-                );
+                        new EntitySkillSyncPacket(
+                                new SkillIndicatorData(
+                                        living.getId(), data.stepId, data.tickInStep, data.totalDuration,
+                                        data.counterType, data.counterWindowStart, data.counterWindowEnd,
+                                        data.counterDirection, data.magicElement, data.isParry),
+                                false),
+                        living);
             }
         }
     }
@@ -262,5 +382,22 @@ public class BossManager {
                 comp.setCurrentMount(null);
             }
         }
+    }
+
+    public static void applyScale(LivingEntity boss, float scale) {
+        if (boss.level().isClientSide() || boss.getServer() == null)
+            return;
+
+        applyRawScale(boss, scale);
+    }
+
+    private static void applyRawScale(net.minecraft.world.entity.Entity entity, float scale) {
+        if (entity.level().isClientSide() || entity.getServer() == null)
+            return;
+
+        String command = String.format("scale set %.2f %s", scale, entity.getStringUUID());
+        entity.getServer().getCommands().performPrefixedCommand(
+                entity.createCommandSourceStack().withPermission(4).withSuppressedOutput(),
+                command);
     }
 }

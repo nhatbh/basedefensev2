@@ -3,6 +3,7 @@ package com.nhatbh.basedefensev2.boss.skills;
 import com.nhatbh.basedefensev2.boss.events.BossEvents;
 import com.nhatbh.basedefensev2.boss.network.EntitySkillSyncPacket;
 import com.nhatbh.basedefensev2.elemental.ElementType;
+import com.nhatbh.basedefensev2.elemental.MobElementService;
 import com.nhatbh.basedefensev2.strength.network.NetworkManager;
 import io.redspace.ironsspellbooks.damage.SpellDamageSource;
 import net.minecraft.world.entity.LivingEntity;
@@ -19,11 +20,17 @@ public class SequenceRunner {
     private int currentStepIndex = 0;
     private int tickInStep = 0;
     private boolean running = true;
+    private final java.util.function.Consumer<SequenceRunner> onFinished;
 
     public SequenceRunner(ActiveSequence sequence, LivingEntity boss) {
+        this(sequence, boss, null);
+    }
+
+    public SequenceRunner(ActiveSequence sequence, LivingEntity boss, java.util.function.Consumer<SequenceRunner> onFinished) {
         this.sequence = sequence;
         this.steps = sequence.getSteps();
         this.context = new SkillContext(boss);
+        this.onFinished = onFinished;
 
 
         if (!steps.isEmpty()) {
@@ -35,6 +42,16 @@ public class SequenceRunner {
 
     public boolean isRunning() {
         return running;
+    }
+
+    public SkillContext getContext() {
+        return context;
+    }
+
+    public void forceNextStep() {
+        if (running) {
+            nextStep();
+        }
     }
 
     private void syncToClients() {
@@ -74,13 +91,14 @@ public class SequenceRunner {
             return;
 
         ActiveSequence.Step step = steps.get(currentStepIndex);
+        context.setTickInStep(tickInStep);
 
         if (step.onTick != null) {
             step.onTick.accept(context);
         }
 
-        // Periodic sync to prevent drift
-        if (tickInStep % 20 == 0) {
+        // Periodic sync to prevent drift, and sync when counter window starts
+        if (tickInStep % 20 == 0 || (step.isCounterable() && tickInStep == step.counterWindowStart)) {
             syncToClients();
         }
 
@@ -94,7 +112,7 @@ public class SequenceRunner {
         }
     }
 
-    public void onDamage(LivingDamageEvent event, boolean isMelee) {
+    public void onDamage(LivingDamageEvent event, boolean isMelee, float rawDamage) {
         if (!running)
             return;
 
@@ -109,27 +127,30 @@ public class SequenceRunner {
         // 2. Check for Counter Accuracy (During window)
         if (step.isCounterable() && tickInStep >= step.counterWindowStart && tickInStep <= step.counterWindowEnd) {
             if (isValidCounter(event, isMelee, step)) {
-                triggerCounter(event, step);
-                return;
+                if (step.counterType == ActiveSequence.CounterType.MAGIC && step.magicThreshold > 0) {
+                    float damage = rawDamage; // Use raw damage before strength
+                    float currentAccumulated = (float) context.data().getOrDefault("magic_counter_damage", 0f);
+                    currentAccumulated += damage;
+                    context.data().put("magic_counter_damage", currentAccumulated);
+                    
+                    if (currentAccumulated >= step.magicThreshold) {
+                        triggerCounter(event, step);
+                        context.data().remove("magic_counter_damage");
+                    }
+                    return;
+                } else {
+                    triggerCounter(event, step);
+                    return;
+                }
             } else {
-                // If it's a magic counter, ANY damage that isn't the correct magic is a failure
-                if (step.counterType == ActiveSequence.CounterType.MAGIC) {
-                    applyPunishment(event, step);
-                    context.stopSequence(); // End the "flash until hit" phase immediately
-                    return;
-                }
-
-                // For other counters, strictly direct melee damage for success/punishment
-                if (isMelee) {
+                // For other counters (NORMAL, DIRECTIONAL), strictly direct melee damage for success/punishment
+                if (step.counterType != ActiveSequence.CounterType.MAGIC && isMelee) {
                     applyPunishment(event, step);
                     return;
                 }
-
-                // If it's indirect damage (e.g. arrow) during a melee counter phase, we can
-                // either ignore it or punish it.
-                // The user said "all other type of counter must be the result of direct melee
-                // damage".
-                // I'll ignore indirect damage for now unless it's a magic counter.
+                
+                // For MAGIC counter, we no longer punish or cancel on non-matching damage
+                // We just let it fall through to standard damage handling
             }
         }
 
@@ -173,12 +194,14 @@ public class SequenceRunner {
         }
         if (step.counterType == ActiveSequence.CounterType.MAGIC
                 && event.getSource() instanceof SpellDamageSource spellSource) {
-            ElementType requiredElement = step.magicElement;
-            if (requiredElement == null) {
+            
+            ElementType bossElement = MobElementService.getElement(context.boss());
+            ElementType requiredElement = getCounteringElement(bossElement);
+
+            // Allow override from data if specifically set
+            if (context.data().containsKey("counter_element")) {
                 requiredElement = (ElementType) context.data().get("counter_element");
             }
-            if (requiredElement == null)
-                return true;
 
             var spell = spellSource.spell();
             if (spell != null) {
@@ -187,6 +210,33 @@ public class SequenceRunner {
             }
         }
         return false;
+    }
+
+    private boolean isArcane(ElementType element) {
+        if (element == null) return false;
+        return switch (element) {
+            case HOLY, EVOCATION, ENDER, ELDRITCH, BLOOD -> true;
+            default -> false;
+        };
+    }
+
+    private ElementType getCounteringElement(ElementType bossElement) {
+        // Arcane elements are countered by themselves (exact same element)
+        if (isArcane(bossElement)) {
+            return bossElement;
+        }
+
+        // Primal elements are countered by the opposite element in the cycle
+        // Fire -> Nature -> Aqua -> Lightning -> Ice -> Fire
+        // So counter is reverse: Fire <- Ice, Nature <- Fire, Aqua <- Nature, Lightning <- Aqua, Ice <- Lightning
+        if (bossElement == ElementType.FIRE) return ElementType.ICE;
+        if (bossElement == ElementType.NATURE) return ElementType.FIRE;
+        if (bossElement == ElementType.AQUA) return ElementType.NATURE;
+        if (bossElement == ElementType.LIGHTNING) return ElementType.AQUA;
+        if (bossElement == ElementType.ICE) return ElementType.LIGHTNING;
+
+        // Fallback for PHYSICAL or others
+        return bossElement;
     }
 
     private void triggerCounter(LivingDamageEvent event, ActiveSequence.Step step) {
@@ -211,6 +261,10 @@ public class SequenceRunner {
     private void applyPunishment(LivingDamageEvent event, ActiveSequence.Step step) {
         if (step.punishmentHandler != null) {
             step.punishmentHandler.accept(context, event);
+        } else if (step.counterType == ActiveSequence.CounterType.NORMAL) {
+            // Default punishment for NORMAL counter: Jump to next step and make it lethal
+            context.data().put("is_lethal_retaliation", true);
+            nextStep(); 
         }
         event.setAmount(0);
         event.setCanceled(true);

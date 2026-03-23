@@ -18,14 +18,7 @@ public class VanguardAdvanceSkill {
     public static ActiveSequence create() {
         return ActiveSequence.builder("vanguard_advance")
                 // Phase 1: Target Lock (Telegraph)
-                .parryStep("lock", 60)
-                .counter(ActiveSequence.CounterType.NORMAL, 30, 60)
-                .punishment((ctx, event) -> {
-                    if (event.getSource().getEntity() instanceof LivingEntity attacker) {
-                        attacker.hurt(ctx.boss().damageSources().mobAttack(ctx.boss()), 8.0f);
-                        ctx.jumpToStep("thrust"); // Advance to next phase instantly
-                    }
-                })
+                .step("lock", 60)
                 .onStart(ctx -> {
                     ctx.boss().level().playSound(null, ctx.boss().getX(), ctx.boss().getY(), ctx.boss().getZ(),
                             SoundEvents.ENDER_DRAGON_GROWL, SoundSource.HOSTILE, 2.0f, 1.0f);
@@ -58,13 +51,15 @@ public class VanguardAdvanceSkill {
 
                         @SuppressWarnings("unchecked")
                         List<java.util.UUID> hitTargets = (List<java.util.UUID>) ctx.data().get("thrust_hits");
-                        List<LivingEntity> targets = HitboxUtils.getEntitiesInCircle(ctx.boss().level(),
-                                LivingEntity.class, ctx.boss().position(), 2.5, e -> e.isAlive() && e != ctx.boss()
-                                        && e != ctx.boss().getVehicle() && !hitTargets.contains(e.getUUID()));
+                        List<net.minecraft.world.entity.player.Player> targets = HitboxUtils.getEntitiesInCircle(
+                                ctx.boss().level(),
+                                net.minecraft.world.entity.player.Player.class, ctx.boss().position(), 2.5,
+                                e -> e.isAlive() && !hitTargets.contains(e.getUUID()));
 
                         for (LivingEntity target : targets) {
                             hitTargets.add(target.getUUID());
-                            target.hurt(ctx.boss().damageSources().mobAttack(ctx.boss()), 12f);
+                            float damage = BossSkillHelper.calculateMixedDamage(ctx, target, 5.0f, 10.0f);
+                            target.hurt(ctx.boss().damageSources().mobAttack(ctx.boss()), damage);
                             // Knock the target in the thrust direction
                             target.setDeltaMovement(target.getDeltaMovement().add(dir.scale(1.5).add(0, 0.2, 0)));
                             ctx.boss().level().playSound(null, target.getX(), target.getY(), target.getZ(),
@@ -107,11 +102,13 @@ public class VanguardAdvanceSkill {
                         ParticleUtils.renderArc(level, ParticleTypes.CLOUD, bossPos.add(0, 1, 0), dir, arcRadius,
                                 arcAngle, 13, 0.05);
 
-                        List<LivingEntity> targets = HitboxUtils.getEntitiesInArc(level, LivingEntity.class, bossPos,
+                        List<net.minecraft.world.entity.player.Player> targets = HitboxUtils.getEntitiesInArc(level,
+                                net.minecraft.world.entity.player.Player.class, bossPos,
                                 dir, arcRadius, arcAngle,
-                                e -> e.isAlive() && e != ctx.boss() && e != ctx.boss().getVehicle());
+                                e -> e.isAlive());
                         for (LivingEntity target : targets) {
-                            target.hurt(ctx.boss().damageSources().mobAttack(ctx.boss()), 10f);
+                            float damage = BossSkillHelper.calculateMixedDamage(ctx, target, 5.0f, 10.0f);
+                            target.hurt(ctx.boss().damageSources().mobAttack(ctx.boss()), damage);
                             target.setDeltaMovement(target.getDeltaMovement().add(dir.scale(1.2).add(0, 0.4, 0)));
                             ctx.boss().level().playSound(null, target.getX(), target.getY(), target.getZ(),
                                     SoundEvents.SHIELD_BLOCK, SoundSource.HOSTILE, 2.0f, 0.5f);
@@ -122,6 +119,23 @@ public class VanguardAdvanceSkill {
                 })
                 .onTick(ctx -> BossSkillHelper.stopMovement(ctx))
 
+                // Phase 3.5: Prepare for Jump (Counter Window)
+                 .parryStep("overhead_stab_prepare", 30)
+                .counter(ActiveSequence.CounterType.NORMAL, 20, 30)
+                .onCountered((ctx, event) -> BossSkillHelper.depletePoise(ctx, 10f))
+                .onStart(ctx -> {
+                    ctx.boss().level().playSound(null, ctx.boss().getX(), ctx.boss().getY(), ctx.boss().getZ(),
+                            SoundEvents.IRON_GOLEM_ATTACK, SoundSource.HOSTILE, 1.0f, 0.5f);
+                    BossSkillHelper.stopMovement(ctx);
+                })
+                .onTick(ctx -> {
+                    BossSkillHelper.stopMovement(ctx);
+                    if (ctx.getTicks() % 5 == 0 && ctx.boss().level() instanceof ServerLevel level) {
+                        level.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, ctx.boss().getX(), ctx.boss().getY() + 1.5,
+                                ctx.boss().getZ(), 5, 0.2, 0.2, 0.2, 0.05);
+                    }
+                })
+
                 // Phase 4: Plunging Overhead Stab (Circle Ground Stomp)
                 .step("overhead_stab_jump", 10)
                 .onStart(ctx -> {
@@ -130,9 +144,9 @@ public class VanguardAdvanceSkill {
                     BossSkillHelper.updateTracking(ctx);
                     Vec3 dir = (Vec3) ctx.data().get("vanguard_dir");
                     if (dir != null) {
-                        BossSkillHelper.getMovementEntity(ctx).setDeltaMovement(dir.scale(1.2).add(0, 0.8, 0));
+                        BossSkillHelper.getMovementEntity(ctx).setDeltaMovement(dir.scale(1.2).add(0, 1.0, 0));
                     } else {
-                        BossSkillHelper.getMovementEntity(ctx).setDeltaMovement(0, 0.8, 0);
+                        BossSkillHelper.getMovementEntity(ctx).setDeltaMovement(0, 1.0, 0);
                     }
                 })
                 .onTick(ctx -> BossSkillHelper.updateTracking(ctx))
@@ -155,12 +169,14 @@ public class VanguardAdvanceSkill {
                             ParticleUtils.renderCircle(level, ParticleTypes.LAVA, center.add(0, 0.2, 0), radius * 0.5,
                                     24, 0);
 
-                            List<LivingEntity> targets = HitboxUtils.getEntitiesInCircle(level, LivingEntity.class,
+                            List<net.minecraft.world.entity.player.Player> targets = HitboxUtils.getEntitiesInCircle(
+                                    level, net.minecraft.world.entity.player.Player.class,
                                     center, radius,
-                                    e -> e.isAlive() && e != ctx.boss() && e != ctx.boss().getVehicle());
+                                    e -> e.isAlive());
                             for (LivingEntity target : targets) {
-                                target.hurt(ctx.boss().damageSources().mobAttack(ctx.boss()), 20f);
-                                target.setDeltaMovement(target.getDeltaMovement().add(0, 0.8, 0));
+                                float damage = BossSkillHelper.calculateMixedDamage(ctx, target, 15.0f, 30.0f);
+                                target.hurt(ctx.boss().damageSources().mobAttack(ctx.boss()), damage);
+                                target.setDeltaMovement(target.getDeltaMovement().add(0, 2.5, 0));
                             }
                         }
                     } else if (!ctx.data().containsKey("stomp_done")) {
