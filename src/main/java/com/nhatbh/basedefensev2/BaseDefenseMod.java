@@ -11,7 +11,15 @@ import com.nhatbh.basedefensev2.stage.ArenaCommands;
 import com.nhatbh.basedefensev2.registry.ModEntities;
 import com.nhatbh.basedefensev2.strength.ModAttributes;
 import com.nhatbh.basedefensev2.strength.network.NetworkManager;
+import com.nhatbh.basedefensev2.sanctity.data.ReviveState;
+import com.nhatbh.basedefensev2.sanctity.data.ReviveStateProvider;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
+import net.minecraftforge.event.AttachCapabilitiesEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
@@ -38,6 +46,7 @@ public class BaseDefenseMod {
 
         modEventBus.addListener(this::onAttributeCreation);
         modEventBus.addListener(this::onAttributeModification);
+        modEventBus.addListener(this::registerCapabilities);
 
         // Register this class and all stage subsystems on the Forge event bus
         MinecraftForge.EVENT_BUS.register(this);
@@ -87,5 +96,29 @@ public class BaseDefenseMod {
     @SubscribeEvent
     public void onAddReloadListeners(AddReloadListenerEvent event) {
         event.addListener(StageLoader.INSTANCE);
+    }
+
+    private void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.register(ReviveState.class);
+    }
+
+    @SubscribeEvent
+    public void onAttachCapabilities(AttachCapabilitiesEvent<Entity> event) {
+        if (event.getObject() instanceof Player) {
+            if (!event.getObject().getCapability(ReviveStateProvider.REVIVE_STATE).isPresent()) {
+                event.addCapability(ResourceLocation.fromNamespaceAndPath(MODID, "revive_state"), new ReviveStateProvider());
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void onPlayerCloned(PlayerEvent.Clone event) {
+        if (event.isWasDeath()) {
+            event.getOriginal().getCapability(ReviveStateProvider.REVIVE_STATE).ifPresent(old -> {
+                event.getEntity().getCapability(ReviveStateProvider.REVIVE_STATE).ifPresent(newCap -> {
+                    newCap.copyFrom(old);
+                });
+            });
+        }
     }
 }

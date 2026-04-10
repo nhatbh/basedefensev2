@@ -40,6 +40,16 @@ public class NetworkManager {
                   com.nhatbh.basedefensev2.boss.network.EntitySkillSyncPacket::toBytes,
                   com.nhatbh.basedefensev2.boss.network.EntitySkillSyncPacket::new,
                   com.nhatbh.basedefensev2.boss.network.EntitySkillSyncPacket::handle);
+
+          INSTANCE.registerMessage(id++, com.nhatbh.basedefensev2.sanctity.network.PlayerReviveStateSyncPacket.class,
+                  com.nhatbh.basedefensev2.sanctity.network.PlayerReviveStateSyncPacket::toBytes,
+                  com.nhatbh.basedefensev2.sanctity.network.PlayerReviveStateSyncPacket::new,
+                  com.nhatbh.basedefensev2.sanctity.network.PlayerReviveStateSyncPacket::handle);
+
+          INSTANCE.registerMessage(id++, com.nhatbh.basedefensev2.sanctity.network.RescueRequestPacket.class,
+                  com.nhatbh.basedefensev2.sanctity.network.RescueRequestPacket::toBytes,
+                  com.nhatbh.basedefensev2.sanctity.network.RescueRequestPacket::new,
+                  com.nhatbh.basedefensev2.sanctity.network.RescueRequestPacket::handle);
     }
 
     public static void sendToTracking(Object packet, net.minecraft.world.entity.Entity entity) {
