@@ -1,0 +1,211 @@
+{
+    "id": "stage_5",
+    "trigger_seconds": 7200,
+    "order": 4,
+    "warmup_ticks": 1200,
+    "spawn_radius": 25,
+    "scavenge_duration_ticks": 6000,
+    "waves": [
+        {
+            "id": "wave_1",
+            "time_limit_ticks": 3600,
+            "arc_angle": 110,
+            "mobs": [
+                {
+                    "type": "minecraft:drowned",
+                    "count": 14,
+                    "formation": "arc",
+                    "distance_min": 5,
+                    "distance_max": 10,
+                    "hp_multiplier": 5.0,
+                    "damage_multiplier": 3.0
+                },
+                {
+                    "type": "cataclysm:deepling",
+                    "count": 8,
+                    "formation": "arc",
+                    "distance_min": 6,
+                    "distance_max": 12,
+                    "hp_multiplier": 5.0,
+                    "damage_multiplier": 3.0
+                },
+                {
+                    "type": "minecraft:guardian",
+                    "count": 6,
+                    "formation": "arc",
+                    "distance_min": 12,
+                    "distance_max": 18,
+                    "hp_multiplier": 5.0,
+                    "damage_multiplier": 3.0
+                }
+            ]
+        },
+        {
+            "id": "wave_2",
+            "time_limit_ticks": 3600,
+            "arc_angle": 120,
+            "mobs": [
+                {
+                    "type": "cataclysm:deepling_brute",
+                    "count": 8,
+                    "formation": "arc",
+                    "distance_min": 5,
+                    "distance_max": 10,
+                    "hp_multiplier": 5.0,
+                    "damage_multiplier": 3.0
+                },
+                {
+                    "type": "cataclysm:deepling_angler",
+                    "count": 6,
+                    "formation": "arc",
+                    "distance_min": 8,
+                    "distance_max": 14,
+                    "hp_multiplier": 5.0,
+                    "damage_multiplier": 3.0
+                },
+                {
+                    "type": "cataclysm:deepling_warlock",
+                    "count": 6,
+                    "formation": "arc",
+                    "distance_min": 12,
+                    "distance_max": 18,
+                    "hp_multiplier": 5.0,
+                    "damage_multiplier": 3.0
+                },
+                {
+                    "type": "alexscaves:deep_one",
+                    "count": 8,
+                    "formation": "arc",
+                    "distance_min": 6,
+                    "distance_max": 12,
+                    "hp_multiplier": 5.0,
+                    "damage_multiplier": 3.0
+                }
+            ]
+        },
+        {
+            "id": "wave_3_miniboss",
+            "time_limit_ticks": 54000,
+            "arc_angle": 360,
+            "mobs": [
+                {
+                    "is_boss": true,
+                    "boss_id": "coralssus_miniboss"
+                }
+            ],
+            "rewards": {
+                "xp": 2000,
+                "commands": [
+                    "givecrate @a random all rare 1",
+                    "givecrate @a random all uncommon 2..3"
+                ],
+                "items": []
+            }
+        },
+        {
+            "id": "wave_4",
+            "time_limit_ticks": 4800,
+            "arc_angle": 120,
+            "mobs": [
+                {
+                    "type": "cataclysm:deepling_brute",
+                    "count": 12,
+                    "formation": "arc",
+                    "distance_min": 5,
+                    "distance_max": 10,
+                    "hp_multiplier": 5.0,
+                    "damage_multiplier": 3.0
+                },
+                {
+                    "type": "alexscaves:deep_one_knight",
+                    "count": 8,
+                    "formation": "arc",
+                    "distance_min": 6,
+                    "distance_max": 12,
+                    "hp_multiplier": 5.0,
+                    "damage_multiplier": 3.0
+                },
+                {
+                    "type": "cataclysm:deepling_priest",
+                    "count": 6,
+                    "formation": "arc",
+                    "distance_min": 12,
+                    "distance_max": 18,
+                    "hp_multiplier": 5.0,
+                    "damage_multiplier": 3.0
+                },
+                {
+                    "type": "cataclysm:clawdian",
+                    "count": 5,
+                    "formation": "arc",
+                    "distance_min": 8,
+                    "distance_max": 14,
+                    "hp_multiplier": 5.0,
+                    "damage_multiplier": 3.0
+                }
+            ]
+        },
+        {
+            "id": "wave_5",
+            "time_limit_ticks": 4800,
+            "arc_angle": 130,
+            "mobs": [
+                {
+                    "type": "alexscaves:deep_one_knight",
+                    "count": 10,
+                    "formation": "arc",
+                    "distance_min": 5,
+                    "distance_max": 10,
+                    "hp_multiplier": 5.0,
+                    "damage_multiplier": 3.0
+                },
+                {
+                    "type": "cataclysm:clawdian",
+                    "count": 8,
+                    "formation": "arc",
+                    "distance_min": 6,
+                    "distance_max": 12,
+                    "hp_multiplier": 5.0,
+                    "damage_multiplier": 3.0
+                },
+                {
+                    "type": "cataclysm:deepling_warlock",
+                    "count": 8,
+                    "formation": "arc",
+                    "distance_min": 12,
+                    "distance_max": 18,
+                    "hp_multiplier": 5.0,
+                    "damage_multiplier": 3.0
+                },
+                {
+                    "type": "cataclysm:lionfish",
+                    "count": 10,
+                    "formation": "arc",
+                    "distance_min": 10,
+                    "distance_max": 16,
+                    "hp_multiplier": 5.0,
+                    "damage_multiplier": 3.0
+                }
+            ]
+        },
+        {
+            "id": "wave_6_boss",
+            "time_limit_ticks": 54000,
+            "arc_angle": 360,
+            "mobs": [
+                {
+                    "is_boss": true,
+                    "boss_id": "leviathan_boss"
+                }
+            ],
+            "rewards": {
+                "xp": 10000,
+                "commands": [
+                    "givecrate @a random all legendary 1",
+                    "givecrate @a random all epic 2..4"
+                ],
+                "items": []
+            }
+        }
+    ]
+}

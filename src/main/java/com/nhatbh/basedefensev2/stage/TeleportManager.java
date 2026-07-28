@@ -60,7 +60,7 @@ public class TeleportManager {
         player.sendSystemMessage(Component.literal("§aYou have stepped into The Rift!"));
     }
 
-    private static void teleportToSpawnAnchor(ServerPlayer player) {
+    public static void teleportToSpawnAnchor(ServerPlayer player) {
         ServerLevel respawnLevel = player.getServer().getLevel(player.getRespawnDimension());
         if (respawnLevel == null)
             respawnLevel = player.getServer().overworld();

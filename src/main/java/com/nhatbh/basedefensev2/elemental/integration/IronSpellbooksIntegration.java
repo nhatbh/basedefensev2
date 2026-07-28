@@ -120,6 +120,19 @@ public class IronSpellbooksIntegration {
             }
         }
 
+        // Apply strength damage taken attributes based on whether this spell is an elemental counter (special) or normal
+        boolean isCounterSpell = isElementalSchool && getElementalMultiplier(sourceElement, targetElement) > 1.0f;
+
+        if (isCounterSpell) {
+            if (entity.getAttributes().hasAttribute(com.nhatbh.basedefensev2.strength.ModAttributes.SPECIAL_STRENGTH_DAMAGE_TAKEN_MULTIPLIER.get())) {
+                strengthDamage *= entity.getAttributeValue(com.nhatbh.basedefensev2.strength.ModAttributes.SPECIAL_STRENGTH_DAMAGE_TAKEN_MULTIPLIER.get());
+            }
+        } else {
+            if (entity.getAttributes().hasAttribute(com.nhatbh.basedefensev2.strength.ModAttributes.STRENGTH_DAMAGE_TAKEN_MULTIPLIER.get())) {
+                strengthDamage *= entity.getAttributeValue(com.nhatbh.basedefensev2.strength.ModAttributes.STRENGTH_DAMAGE_TAKEN_MULTIPLIER.get());
+            }
+        }
+
         if (!isExhausted) {
             data.currentStrength = Math.max(0, data.currentStrength - strengthDamage);
             

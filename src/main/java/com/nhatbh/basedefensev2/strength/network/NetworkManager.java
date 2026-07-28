@@ -50,6 +50,13 @@ public class NetworkManager {
                   com.nhatbh.basedefensev2.sanctity.network.RescueRequestPacket::toBytes,
                   com.nhatbh.basedefensev2.sanctity.network.RescueRequestPacket::new,
                   com.nhatbh.basedefensev2.sanctity.network.RescueRequestPacket::handle);
+
+          INSTANCE.registerMessage(id++, com.nhatbh.basedefensev2.sanctity.network.GiveUpPacket.class,
+                  com.nhatbh.basedefensev2.sanctity.network.GiveUpPacket::toBytes,
+                  com.nhatbh.basedefensev2.sanctity.network.GiveUpPacket::new,
+                  com.nhatbh.basedefensev2.sanctity.network.GiveUpPacket::handle);
+
+
     }
 
     public static void sendToTracking(Object packet, net.minecraft.world.entity.Entity entity) {

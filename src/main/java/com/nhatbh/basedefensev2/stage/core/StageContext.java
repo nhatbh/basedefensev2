@@ -57,11 +57,19 @@ public class StageContext extends SavedData {
     private int nextStageIndex = 0;
     /** ID of the stage that has been randomly selected but not yet triggered */
     private String pendingStageId = null;
-    /** True if the arena schematic has been pasted and barrier created for this world */
+    /**
+     * True if the arena schematic has been pasted and barrier created for this
+     * world
+     */
     private boolean arenaEstablished = false;
-    /** Transient flag to track if we've checked for player entry since server start */
+    /**
+     * Transient flag to track if we've checked for player entry since server start
+     */
     private transient boolean sessionRestartChecked = false;
-    /** Transient flag to track if cleanup has already found and removed entities in this stage */
+    /**
+     * Transient flag to track if cleanup has already found and removed entities in
+     * this stage
+     */
     private transient boolean cleanupSuccessful = false;
 
     // ── Active stage state ───────────────────────────────────────────────────
@@ -89,6 +97,8 @@ public class StageContext extends SavedData {
 
     /** True on the first tick of SCAVENGE so rewards fire exactly once */
     private boolean scavengeRewardFired = false;
+    /** Ticks remaining in RETRY_INTERMISSION phase */
+    private int intermissionTicksRemaining = 0;
 
     // ── Arena Barrier State ──────────────────────────────────────────────────
     private net.minecraft.core.BlockPos arenaBarrierCenter = null;
@@ -113,7 +123,8 @@ public class StageContext extends SavedData {
      * Called every server tick while the level is the arena dimension.
      */
     public void tick(ServerLevel level) {
-        // Handle server recovery: if a stage is active, wait for first player to enter and restart it
+        // Handle server recovery: if a stage is active, wait for first player to enter
+        // and restart it
         if (activeConfig != null && !sessionRestartChecked && !level.players().isEmpty()) {
             sessionRestartChecked = true;
             restartActiveStage(level);
@@ -131,6 +142,7 @@ public class StageContext extends SavedData {
             case WARMUP -> tickWarmup(level);
             case ACTIVE -> tickActive(level);
             case SCAVENGE -> tickScavenge(level);
+            case RETRY_INTERMISSION -> tickRetryIntermission(level);
             case ENDED -> {
             } // No-op; ArenaDimensionTickHandler will see activeConfig == null next cycle
         }
@@ -146,7 +158,7 @@ public class StageContext extends SavedData {
             return; // All stages done
 
         int currentOrder = orders.get(nextStageIndex);
-        
+
         // Pick a stable candidate if we haven't already
         if (pendingStageId == null) {
             List<StageConfig> candidates = StageLoader.getStagesForOrder(currentOrder);
@@ -174,13 +186,14 @@ public class StageContext extends SavedData {
             return;
 
         // Trigger!
-        LOGGER.info("[StageContext] Triggering stage '{}' from order {} (elapsed={} ticks)", candidate.id, currentOrder, elapsed);
+        LOGGER.info("[StageContext] Triggering stage '{}' from order {} (elapsed={} ticks)", candidate.id, currentOrder,
+                elapsed);
         activeConfig = candidate;
         pendingStageId = null; // Clear pending state
-        
+
         cleanupSuccessful = false;
         cleanupArenaMobs(level);
-        
+
         stageState = StageState.WARMUP;
         waveState = null;
         stageTicks = 0;
@@ -191,32 +204,30 @@ public class StageContext extends SavedData {
 
         broadcastToArena(level, "§6[The Rift] §eA mystical trial begins! Steel your soul...");
 
-        if (!arenaEstablished) {
-            broadcastToServer(level, "§c[The Rift] §4The earth trembles as the ritual grounds manifest! (Lag Warning)");
-            try {
-                // Load from assets folder in the mod jar
-                java.io.InputStream schematicStream = com.nhatbh.basedefensev2.BaseDefenseMod.class
-                        .getResourceAsStream("/assets/basedefensev2/schematics/arena.schem");
-                String formatAlias = "sponge";
-                if (schematicStream == null) {
-                    schematicStream = com.nhatbh.basedefensev2.BaseDefenseMod.class
-                            .getResourceAsStream("/assets/basedefensev2/schematics/arena.schematic");
-                    formatAlias = "mcedit";
-                }
-                if (schematicStream != null) {
-                    com.nhatbh.basedefensev2.stage.utils.SchematicPaster.pasteSchematic(level,
-                            com.sk89q.worldedit.math.BlockVector3.at(0, 101, 0), schematicStream, formatAlias);
-                } else {
-                    LOGGER.warn(
-                            "Arena schematic not found at assets/basedefensev2/schematics/arena.schem or arena.schematic");
-                }
-            } catch (Exception e) {
-                LOGGER.error("Exception checking or pasting schematic", e);
+        broadcastToServer(level, "§c[The Rift] §4The earth trembles as the ritual grounds manifest! (Lag Warning)");
+        try {
+            // Load from assets folder in the mod jar
+            java.io.InputStream schematicStream = com.nhatbh.basedefensev2.BaseDefenseMod.class
+                    .getResourceAsStream("/assets/basedefensev2/schematics/arena.schem");
+            String formatAlias = "sponge";
+            if (schematicStream == null) {
+                schematicStream = com.nhatbh.basedefensev2.BaseDefenseMod.class
+                        .getResourceAsStream("/assets/basedefensev2/schematics/arena.schematic");
+                formatAlias = "mcedit";
             }
-
-            com.nhatbh.basedefensev2.stage.utils.ArenaBarrierManager.createArenaBarrier(level);
-            arenaEstablished = true;
+            if (schematicStream != null) {
+                com.nhatbh.basedefensev2.stage.utils.SchematicPaster.pasteSchematic(level,
+                        com.sk89q.worldedit.math.BlockVector3.at(0, 101, 0), schematicStream, formatAlias);
+            } else {
+                LOGGER.warn(
+                        "Arena schematic not found at assets/basedefensev2/schematics/arena.schem or arena.schematic");
+            }
+        } catch (Exception e) {
+            LOGGER.error("Exception checking or pasting schematic", e);
         }
+
+        com.nhatbh.basedefensev2.stage.utils.ArenaBarrierManager.createArenaBarrier(level);
+        arenaEstablished = true;
 
         // Interactive JOIN message - Moved after schematic paste
         Component joinMsg = Component.literal("§6[The Rift] §eThe gates are open! ")
@@ -327,6 +338,9 @@ public class StageContext extends SavedData {
         WaveConfig wave = currentWave();
         livingEnemies.removeIf(uuid -> level.getEntity(uuid) == null);
 
+        // Periodically enforce targeting on living players
+        enforceMobTargeting(level);
+
         // Win condition
         if (livingEnemies.isEmpty()) {
             LOGGER.info("[StageContext] Wave '{}' — all enemies defeated → CLEARED", wave.id);
@@ -405,7 +419,8 @@ public class StageContext extends SavedData {
                         double dist = Math.sqrt(level.random.nextDouble()); // uniform distribution
                         double px = cx + Math.cos(angle) * dist * rx;
                         double pz = cz + Math.sin(angle) * dist * rz;
-                        // Randomize Y slightly above 52 to prevent clipping, and add small vertical speed
+                        // Randomize Y slightly above 52 to prevent clipping, and add small vertical
+                        // speed
                         level.sendParticles(ParticleTypes.FLAME, px, 52.1, pz, 1, 0.1, 0.1, 0.1, 0.02);
                     }
                 }
@@ -435,7 +450,7 @@ public class StageContext extends SavedData {
         if (!scavengeRewardFired) {
             scavengeRewardFired = true;
             WaveConfig finalWave = activeConfig.waves.get(activeConfig.waves.size() - 1);
-            List<ServerPlayer> players = new ArrayList<>(level.players());
+            List<ServerPlayer> players = new ArrayList<>(level.getServer().getPlayerList().getPlayers());
             broadcastToArena(level, "§a[The Rift] §lTRIUMPH! §rClaim your spoils before the portal seals in §e"
                     + (activeConfig.scavenge_duration_ticks / 20) + "s§r.");
 
@@ -452,6 +467,10 @@ public class StageContext extends SavedData {
             level.getServer().getPlayerList().broadcastSystemMessage(leaveMsg, false);
 
             MinecraftForge.EVENT_BUS.post(new WaveEvents.LootPhaseStarted(finalWave, level, players));
+
+            // Fully restore base Sanctity health upon completing the stage
+            com.nhatbh.basedefensev2.sanctity.data.AltarSavedData altarData = com.nhatbh.basedefensev2.sanctity.data.AltarSavedData.get(level);
+            altarData.setSanctity(com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity);
         }
 
         stageTicks++;
@@ -466,6 +485,96 @@ public class StageContext extends SavedData {
             LOGGER.info("[StageContext] Scavenge phase over → ENDED");
             enterEnded(level);
         }
+    }
+
+    // ── RETRY INTERMISSION & FAILURE ─────────────────────────────────────────
+
+    public boolean triggerStageFailure(ServerLevel level) {
+        if (activeConfig == null) return false;
+
+        com.nhatbh.basedefensev2.sanctity.data.AltarSavedData altarData = com.nhatbh.basedefensev2.sanctity.data.AltarSavedData.get(level);
+        int retriesUsed = altarData.getRetriesUsed();
+        int maxRetries = com.nhatbh.basedefensev2.config.SanctityConfig.data.maxWorldRetries;
+
+        if (retriesUsed >= maxRetries) {
+            return false;
+        }
+
+        altarData.incrementRetriesUsed();
+        int newRetriesUsed = altarData.getRetriesUsed();
+
+        cleanupSuccessful = false;
+        cleanupArenaMobs(level);
+
+        for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
+            if (player.gameMode.getGameModeForPlayer() == net.minecraft.world.level.GameType.SPECTATOR) {
+                player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+                player.setGlowingTag(false);
+                player.setHealth(player.getMaxHealth() * 0.3f);
+            }
+            player.getCapability(com.nhatbh.basedefensev2.sanctity.data.ReviveStateProvider.REVIVE_STATE).ifPresent(state -> {
+                state.setKnockedDown(false);
+                state.setWantsRevive(false);
+                state.setDeathPos(null);
+                state.resetRescue();
+            });
+
+            if (player.level().dimension().equals(com.nhatbh.basedefensev2.stage.ModDimensions.ARENA)) {
+                com.nhatbh.basedefensev2.stage.TeleportManager.teleportToSpawnAnchor(player);
+            }
+        }
+
+        stageState = StageState.RETRY_INTERMISSION;
+        waveState = null;
+        intermissionTicksRemaining = com.nhatbh.basedefensev2.config.SanctityConfig.data.intermissionDurationTicks;
+
+        double bonusPct = (newRetriesUsed * com.nhatbh.basedefensev2.config.SanctityConfig.data.retryMobStatMultiplier) * 100.0;
+        broadcastToServer(level, String.format("§c[The Rift] Stage '%s' Failed! §eThe Altar consumes a Retry Relic (%d/%d).", activeConfig.id, newRetriesUsed, maxRetries));
+        broadcastToServer(level, String.format("§6[Borrowed Time] §eYou have %d minutes to prepare! Mob Threat: +%.0f%% HP/Dmg. Type /stage ready when prepared.", intermissionTicksRemaining / 1200, bonusPct));
+
+        setDirty();
+        return true;
+    }
+
+    private void tickRetryIntermission(ServerLevel level) {
+        if (intermissionTicksRemaining > 0) {
+            intermissionTicksRemaining--;
+
+            if (intermissionTicksRemaining > 0 && intermissionTicksRemaining % 6000 == 0) {
+                int mins = intermissionTicksRemaining / 1200;
+                broadcastToServer(level, "§6[Borrowed Time] §eIntermission ends in §c" + mins + " minutes§e! Prepare for the trial retry.");
+            } else if (intermissionTicksRemaining == 1200) {
+                broadcastToServer(level, "§6[Borrowed Time] §eIntermission ends in §c1 minute§e! Return to base!");
+            } else if (intermissionTicksRemaining == 200 || intermissionTicksRemaining == 100) {
+                broadcastToServer(level, "§6[Borrowed Time] §eThe trial restarts in §c" + (intermissionTicksRemaining / 20) + " seconds§e...");
+            }
+        }
+
+        if (intermissionTicksRemaining <= 0) {
+            startRetryStage(level);
+        }
+    }
+
+    public void startRetryStage(ServerLevel level) {
+        if (activeConfig == null) return;
+
+        com.nhatbh.basedefensev2.sanctity.data.AltarSavedData altarData = com.nhatbh.basedefensev2.sanctity.data.AltarSavedData.get(level);
+        int partialSanctity = (int) (com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity * com.nhatbh.basedefensev2.config.SanctityConfig.data.retrySanctityPercent);
+        altarData.setSanctity(partialSanctity);
+
+        cleanupSuccessful = false;
+        cleanupArenaMobs(level);
+
+        stageState = StageState.WARMUP;
+        waveState = null;
+        stageTicks = 0;
+        waveTicks = 0;
+        currentWaveIndex = 0;
+        livingEnemies.clear();
+        scavengeRewardFired = false;
+
+        broadcastToServer(level, String.format("§6[The Rift] §eCursed Retry commenced! Base Sanctity restored to %d/%d.", partialSanctity, com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity));
+        setDirty();
     }
 
     // ── ENDED ────────────────────────────────────────────────────────────────
@@ -492,11 +601,12 @@ public class StageContext extends SavedData {
      * Resets the currently active stage to the beginning (WARMUP phase).
      */
     private void restartActiveStage(ServerLevel level) {
-        if (activeConfig == null) return;
-        
+        if (activeConfig == null)
+            return;
+
         cleanupSuccessful = false;
         cleanupArenaMobs(level);
-        
+
         stageState = StageState.WARMUP;
         waveState = null;
         stageTicks = 0;
@@ -504,24 +614,25 @@ public class StageContext extends SavedData {
         currentWaveIndex = 0;
         livingEnemies.clear();
         scavengeRewardFired = false;
-        
+
         broadcastToArena(level, "§6[The Rift] §eThe celestial cycle resets. Prepare anew!");
         setDirty();
     }
 
     /**
-     * Despawns all living entities (monsters) in the arena dimension to provide a clean slate.
+     * Despawns all living entities (monsters) in the arena dimension to provide a
+     * clean slate.
+     * 
      * @return true if at least one entity was removed.
      */
     private boolean cleanupArenaMobs(ServerLevel level) {
         // Define a huge AABB to capture all entities in the dimension
         net.minecraft.world.phys.AABB hugeArea = new net.minecraft.world.phys.AABB(-2000, -64, -2000, 2000, 320, 2000);
-        
+
         List<net.minecraft.world.entity.LivingEntity> living = level.getEntitiesOfClass(
-            net.minecraft.world.entity.LivingEntity.class,
-            hugeArea,
-            entity -> !(entity instanceof net.minecraft.world.entity.player.Player)
-        );
+                net.minecraft.world.entity.LivingEntity.class,
+                hugeArea,
+                entity -> !(entity instanceof net.minecraft.world.entity.player.Player));
 
         if (living.isEmpty()) {
             return false;
@@ -530,10 +641,44 @@ public class StageContext extends SavedData {
         for (net.minecraft.world.entity.LivingEntity entity : living) {
             entity.discard();
         }
-        
+
         // Ensure the tracking set is also cleared
         livingEnemies.clear();
         return true;
+    }
+
+    /**
+     * Constantly forces all living wave mobs to target valid players in the arena.
+     */
+    private void enforceMobTargeting(ServerLevel level) {
+        if (waveTicks % 200 != 0 || livingEnemies.isEmpty()) return;
+
+        List<ServerPlayer> validPlayers = level.players().stream()
+                .filter(p -> p.isAlive() && !p.isCreative() && !p.isSpectator() && !p.isInvisible())
+                .toList();
+
+        if (validPlayers.isEmpty()) return;
+
+        for (UUID uuid : livingEnemies) {
+            net.minecraft.world.entity.Entity entity = level.getEntity(uuid);
+            if (entity instanceof net.minecraft.world.entity.Mob mob) {
+                net.minecraft.world.entity.LivingEntity target = mob.getTarget();
+                if (target == null || !target.isAlive() || !(target instanceof net.minecraft.world.entity.player.Player)) {
+                    ServerPlayer closest = null;
+                    double minSq = Double.MAX_VALUE;
+                    for (ServerPlayer player : validPlayers) {
+                        double distSq = mob.distanceToSqr(player);
+                        if (distSq < minSq) {
+                            minSq = distSq;
+                            closest = player;
+                        }
+                    }
+                    if (closest != null) {
+                        mob.setTarget(closest);
+                    }
+                }
+            }
+        }
     }
 
     // ── Public API for subsystems ────────────────────────────────────────────
@@ -622,6 +767,10 @@ public class StageContext extends SavedData {
         return waveTicks;
     }
 
+    public int getIntermissionTicksRemaining() {
+        return intermissionTicksRemaining;
+    }
+
     public StageConfig.SpawnArea getSpawnArea() {
         StageConfig.SpawnArea area = new StageConfig.SpawnArea();
         if (isArenaBarrierActive() && arenaBarrierCenter != null) {
@@ -695,6 +844,16 @@ public class StageContext extends SavedData {
         setDirty();
     }
 
+    public String getNextStageId() {
+        if (pendingStageId != null) return pendingStageId;
+        List<Integer> orders = StageLoader.getSortedOrders();
+        if (nextStageIndex >= orders.size()) return null;
+        int currentOrder = orders.get(nextStageIndex);
+        List<StageConfig> candidates = StageLoader.getStagesForOrder(currentOrder);
+        if (candidates.isEmpty()) return null;
+        return candidates.get(0).id;
+    }
+
     /**
      * Returns ticks remaining until the next stage can trigger, or -1 if no stages
      * remain.
@@ -702,11 +861,11 @@ public class StageContext extends SavedData {
     public int getTicksUntilNextStage(ServerLevel level) {
         if (activeConfig != null)
             return 0;
-            
+
         List<Integer> orders = StageLoader.getSortedOrders();
         if (nextStageIndex >= orders.size())
             return -1;
-            
+
         int currentOrder = orders.get(nextStageIndex);
         StageConfig nextCandidate = null;
 
@@ -716,7 +875,8 @@ public class StageContext extends SavedData {
 
         if (nextCandidate == null) {
             List<StageConfig> candidates = StageLoader.getStagesForOrder(currentOrder);
-            if (candidates.isEmpty()) return -1;
+            if (candidates.isEmpty())
+                return -1;
             nextCandidate = candidates.get(0); // Use first as fallback/preview
         }
 
@@ -743,6 +903,7 @@ public class StageContext extends SavedData {
                 tag.putString("WaveState", waveState.name());
             tag.putInt("StageTicks", stageTicks);
             tag.putInt("WaveTicks", waveTicks);
+            tag.putInt("IntermissionTicksRemaining", intermissionTicksRemaining);
             tag.putInt("CurrentWaveIndex", currentWaveIndex);
             tag.putBoolean("ScavengeRewardFired", scavengeRewardFired);
 
@@ -792,6 +953,7 @@ public class StageContext extends SavedData {
                 }
                 ctx.stageTicks = tag.getInt("StageTicks");
                 ctx.waveTicks = tag.getInt("WaveTicks");
+                ctx.intermissionTicksRemaining = tag.getInt("IntermissionTicksRemaining");
                 ctx.currentWaveIndex = tag.getInt("CurrentWaveIndex");
                 ctx.totalEnemiesInWave = tag.getInt("TotalEnemiesInWave");
                 ctx.scavengeRewardFired = tag.getBoolean("ScavengeRewardFired");

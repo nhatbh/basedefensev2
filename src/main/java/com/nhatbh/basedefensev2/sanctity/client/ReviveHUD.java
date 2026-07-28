@@ -104,8 +104,40 @@ public class ReviveHUD {
             String rescueText = "Being Rescued...";
             int rescueWidth = mc.font.width(rescueText);
             graphics.drawString(mc.font, rescueText, centerX - rescueWidth / 2, barY - 10, 0xFF00FF00, true);
-            
+
             RenderSystem.disableBlend();
+        }
+
+        // Give Up instruction / progress bar
+        int giveUpHold = ClientInputHandler.getGiveUpHoldTicks();
+        int giveUpMax = ClientInputHandler.getGiveUpRequiredTicks();
+
+        int giveUpY = centerY + 25;
+        if (progress > 0) {
+            giveUpY += 35; // Offset below rescue bar if being rescued
+        }
+
+        if (giveUpHold > 0) {
+            int barX = centerX - BAR_WIDTH / 2;
+            RenderSystem.enableBlend();
+            // Background
+            graphics.fill(barX, giveUpY, barX + BAR_WIDTH, giveUpY + BAR_HEIGHT, 0x99000000);
+
+            // Fill
+            float ratio = (float) giveUpHold / giveUpMax;
+            int filledWidth = (int) (BAR_WIDTH * ratio);
+            graphics.fill(barX, giveUpY, barX + filledWidth, giveUpY + BAR_HEIGHT, 0xFFFF3333);
+
+            // Label
+            String giveUpText = "Giving up...";
+            int giveUpWidth = mc.font.width(giveUpText);
+            graphics.drawString(mc.font, giveUpText, centerX - giveUpWidth / 2, giveUpY - 10, 0xFFFF3333, true);
+
+            RenderSystem.disableBlend();
+        } else {
+            String promptText = "Hold [I] to Give Up";
+            int promptWidth = mc.font.width(promptText);
+            graphics.drawString(mc.font, promptText, centerX - promptWidth / 2, giveUpY, 0xAAAAAA, true);
         }
     }
 }

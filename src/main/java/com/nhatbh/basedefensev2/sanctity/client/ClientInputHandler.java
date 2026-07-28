@@ -18,6 +18,8 @@ import org.lwjgl.glfw.GLFW;
 @Mod.EventBusSubscriber(modid = BaseDefenseMod.MODID, value = Dist.CLIENT)
 public class ClientInputHandler {
     private static Integer currentTargetId = null;
+    private static int giveUpHoldTicks = 0;
+    private static final int GIVE_UP_REQUIRED_TICKS = 40; // Hold for 2 seconds (40 ticks)
 
     public static Integer getCurrentTargetId() { return currentTargetId; }
 
@@ -73,5 +75,29 @@ public class ClientInputHandler {
             
             currentTargetId = foundTargetId;
         }
+
+        // Handle Give Up Key (Hold I key while knocked down)
+        if (ClientReviveData.isKnockedDown()) {
+            boolean isHoldingGiveUpKey = GLFW.glfwGetKey(mc.getWindow().getWindow(), GLFW.GLFW_KEY_I) == GLFW.GLFW_PRESS;
+            if (isHoldingGiveUpKey) {
+                giveUpHoldTicks++;
+                if (giveUpHoldTicks >= GIVE_UP_REQUIRED_TICKS) {
+                    NetworkManager.INSTANCE.sendToServer(new com.nhatbh.basedefensev2.sanctity.network.GiveUpPacket());
+                    giveUpHoldTicks = 0;
+                }
+            } else {
+                giveUpHoldTicks = 0;
+            }
+        } else {
+            giveUpHoldTicks = 0;
+        }
+    }
+
+    public static int getGiveUpHoldTicks() {
+        return giveUpHoldTicks;
+    }
+
+    public static int getGiveUpRequiredTicks() {
+        return GIVE_UP_REQUIRED_TICKS;
     }
 }

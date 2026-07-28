@@ -10,6 +10,7 @@ public class AltarSavedData extends SavedData {
 
     private int sanctity = com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity;
     private double grace = 0;
+    private int retriesUsed = 0;
 
     public AltarSavedData() {
     }
@@ -25,6 +26,7 @@ public class AltarSavedData extends SavedData {
         AltarSavedData data = new AltarSavedData();
         data.sanctity = tag.getInt("Sanctity");
         data.grace = tag.getDouble("Grace");
+        data.retriesUsed = tag.getInt("RetriesUsed");
         return data;
     }
 
@@ -32,6 +34,7 @@ public class AltarSavedData extends SavedData {
     public CompoundTag save(CompoundTag tag) {
         tag.putInt("Sanctity", sanctity);
         tag.putDouble("Grace", grace);
+        tag.putInt("RetriesUsed", retriesUsed);
         return tag;
     }
 
@@ -57,6 +60,21 @@ public class AltarSavedData extends SavedData {
     public void setGrace(double grace) {
         this.grace = Math.min(com.nhatbh.basedefensev2.config.SanctityConfig.data.maxGrace, grace);
         setDirty();
+    }
+
+    public int getRetriesUsed() {
+        return retriesUsed;
+    }
+
+    public void setRetriesUsed(int retriesUsed) {
+        this.retriesUsed = Math.max(0, retriesUsed);
+        setDirty();
+    }
+
+    public int incrementRetriesUsed() {
+        this.retriesUsed++;
+        setDirty();
+        return this.retriesUsed;
     }
 
     public void regenGrace() {

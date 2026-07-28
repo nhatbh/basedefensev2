@@ -69,7 +69,7 @@ public class HitboxUtils {
         
         double radiusSqr = (width / 2.0) * (width / 2.0);
         for (T entity : entities) {
-            Vec3 p = entity.position();
+            Vec3 p = entity.getBoundingBox().getCenter();
             Vec3 toP = p.subtract(start);
             // Project toP onto normalizedDir
             double t = toP.dot(normalizedDir);

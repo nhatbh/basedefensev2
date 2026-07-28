@@ -43,6 +43,8 @@ public class BaseDefenseMod {
 
         ModAttributes.ATTRIBUTES.register(modEventBus);
         ModEntities.ENTITIES.register(modEventBus);
+        com.nhatbh.basedefensev2.registry.ModItems.ITEMS.register(modEventBus);
+        com.nhatbh.basedefensev2.registry.ModEffects.MOB_EFFECTS.register(modEventBus);
 
         modEventBus.addListener(this::onAttributeCreation);
         modEventBus.addListener(this::onAttributeModification);
@@ -54,18 +56,19 @@ public class BaseDefenseMod {
         MinecraftForge.EVENT_BUS.register(new SpawnerSubsystem());
         MinecraftForge.EVENT_BUS.register(new RewardSubsystem());
         MinecraftForge.EVENT_BUS.register(new CleanupSubsystem());
-        
+
         // Arena commands and teleportation
         MinecraftForge.EVENT_BUS.register(ArenaCommands.class);
-        
+
         // Sanctity system
         MinecraftForge.EVENT_BUS.register(com.nhatbh.basedefensev2.sanctity.events.SanctityEventHandler.class);
-        
+
         // Arena protection
         MinecraftForge.EVENT_BUS.register(com.nhatbh.basedefensev2.stage.ArenaProtectionHandler.class);
-        
+
         // Stage mob drops and XP
         MinecraftForge.EVENT_BUS.register(com.nhatbh.basedefensev2.stage.events.StageMobDropsHandler.class);
+
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -77,6 +80,20 @@ public class BaseDefenseMod {
         com.nhatbh.basedefensev2.config.SpellPenaltyConfig.load();
         com.nhatbh.basedefensev2.config.SanctityConfig.load();
 
+        com.nhatbh.basedefensev2.boss.impl.generic.ZombieTestBoss.register();
+        com.nhatbh.basedefensev2.boss.impl.stage_1.InfernalDragonBoss.register();
+        com.nhatbh.basedefensev2.boss.impl.stage_2.YetiBoss.register();
+        com.nhatbh.basedefensev2.boss.impl.stage_3.WadjetMiniboss.register();
+        com.nhatbh.basedefensev2.boss.impl.stage_3.HarbingerBoss.register();
+        com.nhatbh.basedefensev2.boss.impl.stage_4.ProwlerMiniboss.register();
+        com.nhatbh.basedefensev2.boss.impl.stage_4.AncientRemnantBoss.register();
+        com.nhatbh.basedefensev2.boss.impl.stage_5.CoralssusMiniboss.register();
+        com.nhatbh.basedefensev2.boss.impl.stage_5.LeviathanBoss.register();
+        com.nhatbh.basedefensev2.boss.impl.stage_6.EnderGolemMiniboss.register();
+        com.nhatbh.basedefensev2.boss.impl.stage_6.EnderGuardianBoss.register();
+        com.nhatbh.basedefensev2.boss.impl.stage_7.NetheriteMonstrosityMiniboss.register();
+        com.nhatbh.basedefensev2.boss.impl.stage_7.IgnisBoss.register();
+
         LOGGER.info("Base Defense V2 initialized!");
     }
 
@@ -87,6 +104,10 @@ public class BaseDefenseMod {
 
     private void onAttributeModification(EntityAttributeModificationEvent event) {
         event.add(EntityType.PLAYER, ModAttributes.STRENGTH_DAMAGE_MULTIPLIER.get());
+        for (EntityType<? extends net.minecraft.world.entity.LivingEntity> entityType : event.getTypes()) {
+            event.add(entityType, ModAttributes.STRENGTH_DAMAGE_TAKEN_MULTIPLIER.get());
+            event.add(entityType, ModAttributes.SPECIAL_STRENGTH_DAMAGE_TAKEN_MULTIPLIER.get());
+        }
     }
 
     /**
@@ -106,7 +127,8 @@ public class BaseDefenseMod {
     public void onAttachCapabilities(AttachCapabilitiesEvent<Entity> event) {
         if (event.getObject() instanceof Player) {
             if (!event.getObject().getCapability(ReviveStateProvider.REVIVE_STATE).isPresent()) {
-                event.addCapability(ResourceLocation.fromNamespaceAndPath(MODID, "revive_state"), new ReviveStateProvider());
+                event.addCapability(ResourceLocation.fromNamespaceAndPath(MODID, "revive_state"),
+                        new ReviveStateProvider());
             }
         }
     }

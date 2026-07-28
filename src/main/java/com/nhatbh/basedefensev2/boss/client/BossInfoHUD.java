@@ -21,20 +21,25 @@ import java.util.List;
 @Mod.EventBusSubscriber(modid = BaseDefenseMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class BossInfoHUD {
 
-    private static final int HP_BAR_WIDTH   = 220;
-    private static final int HP_BAR_HEIGHT  = 4;  // Reduced height 
-    private static final int STR_BAR_WIDTH  = 170; // Slightly shorter for a tiered look
-    private static final int STR_BAR_HEIGHT = 2;  // Reduced height
-    private static final int MARGIN_TOP     = 10;
-    
-    private static final int ORB_SIZE       = 4;  // Sized down from 8
-    private static final int ORB_SPACING    = 2;
+    private static final int HP_BAR_WIDTH   = 140;
+    private static final int HP_BAR_HEIGHT  = 7;
+    private static final int STR_BAR_WIDTH  = 120;
+    private static final int STR_BAR_HEIGHT = 5;
+    private static final int RES_BAR_WIDTH  = 120;
+    private static final int RES_BAR_HEIGHT = 5;
 
-    // ── Colors ───────────────────────────────────────────────────────────────
+    private static final int MARGIN_LEFT    = 10;
+    private static final int MARGIN_TOP     = 28;
+
     private static final int COLOR_GOLD_BRIGHT = 0xFFFFD700;
     private static final int COLOR_GOLD_DARK   = 0xFFAA7700;
     private static final int COLOR_FRAME_BG    = 0xFF1A1A1A;
-    private static final int COLOR_SHADOW      = 0xFF000000;
+
+    private static int lastRenderedBottomY  = MARGIN_TOP;
+
+    public static int getBottomY() {
+        return lastRenderedBottomY;
+    }
 
     @SubscribeEvent
     public static void registerOverlays(RegisterGuiOverlaysEvent event) {
@@ -47,7 +52,10 @@ public class BossInfoHUD {
 
     public static void render(ForgeGui gui, GuiGraphics graphics, float partialTick, int width, int height) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.options.renderDebug || mc.screen != null || mc.level == null || mc.player == null) return;
+        if (mc.options.renderDebug || mc.screen != null || mc.level == null || mc.player == null) {
+            lastRenderedBottomY = MARGIN_TOP;
+            return;
+        }
 
         Player player = mc.player;
         List<LivingEntity> nearbyBosses = mc.level.getEntitiesOfClass(
@@ -55,21 +63,29 @@ public class BossInfoHUD {
                 player.getBoundingBox().inflate(64)
         ).stream().filter(BossManager::isBoss).toList();
 
-        if (nearbyBosses.isEmpty()) return;
+        if (nearbyBosses.isEmpty()) {
+            lastRenderedBottomY = MARGIN_TOP;
+            return;
+        }
 
         LivingEntity boss = nearbyBosses.stream()
                 .min(Comparator.<LivingEntity>comparingDouble(b -> b.distanceToSqr(player)))
                 .orElse(null);
 
-        if (boss == null || !boss.isAlive()) return;
+        if (boss == null || !boss.isAlive()) {
+            lastRenderedBottomY = MARGIN_TOP;
+            return;
+        }
 
         BossComponent comp = BossManager.get(boss);
-        if (comp == null) return;
+        if (comp == null) {
+            lastRenderedBottomY = MARGIN_TOP;
+            return;
+        }
 
-        String bossName = boss.getDisplayName().getString();
         int bossHp = (int) Math.ceil(boss.getHealth());
         int bossMaxHp = (int) boss.getMaxHealth();
-        
+
         EntityStrengthData strengthData = EntityStrengthData.get(boss);
         int bossStrength = strengthData != null ? (int) strengthData.currentStrength : 0;
         int bossMaxStrength = strengthData != null ? (int) strengthData.maxStrength : 1;
@@ -77,93 +93,73 @@ public class BossInfoHUD {
         int currentPhase = comp.getCurrentPhaseIndex() + 1;
         int maxPhases = comp.getDefinition().getPhases().size();
 
-        int centerX = width / 2;
+        int startX = MARGIN_LEFT;
         int currentY = MARGIN_TOP;
 
-        graphics.pose().pushPose();
-        
-        // --- Scale down text by 50% ---
-        graphics.pose().scale(0.5f, 0.5f, 1.0f);
-        
-        // Note: Because we scaled down by 0.5, our rendering coordinates for text 
-        // need to be multiplied by 2 to stay at the correct screen position
-        float textScaleY = (currentY) * 2;
-        
-        // 1. Render Boss Name with Ornate Flourishes
-        int nameWidth = mc.font.width(bossName);
-        float textScaleCenterX = centerX * 2;
-        
-        graphics.pose().popPose(); // Pop scale for flourishes
-        renderTextFlourish(graphics, centerX, currentY, (int)(nameWidth * 0.5f));
-        
-        graphics.pose().pushPose();
-        graphics.pose().scale(0.5f, 0.5f, 1.0f);
-        graphics.drawString(mc.font, bossName, (int)(textScaleCenterX - (nameWidth / 2)), (int)textScaleY, 0xFF5555, true);
-        graphics.pose().popPose(); // Pop scale after text
-
-        currentY += 8;
-
-        // 2. Render Jewel Phase Orbs
-        renderJewelOrbs(graphics, centerX, currentY, currentPhase, maxPhases);
+        // 1. Render Yellow Phase Bars (Height: 2px)
         if (maxPhases > 1) {
-            currentY += ORB_SIZE + 4;
+            renderPhaseBars(graphics, startX, currentY, currentPhase, maxPhases);
+            currentY += 5;
         }
 
-        // 3. Render Ornate HP Bar
-        int hpStartX = centerX - (HP_BAR_WIDTH / 2);
-        renderOrnateBar(graphics, hpStartX, currentY, HP_BAR_WIDTH, HP_BAR_HEIGHT, bossHp, bossMaxHp, 0xFFFF4444, 0xFF880000);
-        
-        // HP Text Centered
+        // 2. Render HP Bar
+        renderOrnateBar(graphics, startX, currentY, HP_BAR_WIDTH, HP_BAR_HEIGHT, bossHp, bossMaxHp, 0xFFFF4444, 0xFF880000);
+        currentY += HP_BAR_HEIGHT + 2;
+
+        // Larger HP Text (Scale 0.65f)
         String hpText = bossHp + " / " + bossMaxHp;
-        int hpTextWidth = mc.font.width(hpText);
-        
         graphics.pose().pushPose();
-        graphics.pose().scale(0.5f, 0.5f, 1.0f);
-        graphics.drawString(mc.font, hpText, (int)(centerX * 2 - (hpTextWidth / 2)), (int)((currentY + 1) * 2), 0xFFFFFF, true);
-        graphics.pose().popPose(); // Pop after text
-        
-        currentY += HP_BAR_HEIGHT + 3; // Add gap for the frame
+        graphics.pose().scale(0.65f, 0.65f, 1.0f);
+        graphics.drawString(mc.font, hpText, (int) (startX / 0.65f), (int) (currentY / 0.65f), 0xFFFFFFFF, true);
+        graphics.pose().popPose();
 
-        // 4. Render Ornate Strength Bar (Tiered below HP)
+        currentY += (int) (mc.font.lineHeight * 0.65f) + 2;
+
+        // 3. Render Strength Bar
         if (bossMaxStrength > 0 && strengthData != null) {
-            int strStartX = centerX - (STR_BAR_WIDTH / 2);
-            renderOrnateBar(graphics, strStartX, currentY, STR_BAR_WIDTH, STR_BAR_HEIGHT, bossStrength, bossMaxStrength, 0xFFFFAA00, 0xFF884400);
+            renderOrnateBar(graphics, startX, currentY, STR_BAR_WIDTH, STR_BAR_HEIGHT, bossStrength, bossMaxStrength, 0xFFFFAA00, 0xFF884400);
+            currentY += STR_BAR_HEIGHT + 4;
         }
+
+        // 4. Render Passive Secondary Resource Bar (Larger Text Scale 0.6f)
+        BossResourceBarRegistry.ResourceBarInfo barInfo = BossResourceBarRegistry.getBar(boss);
+        if (barInfo != null) {
+            float currentVal = barInfo.currentSupplier.get();
+            float maxVal = barInfo.maxSupplier.get();
+            if (maxVal > 0) {
+                String labelText = barInfo.nameSupplier.get() + ": " + (int) currentVal + " / " + (int) maxVal;
+                graphics.pose().pushPose();
+                graphics.pose().scale(0.6f, 0.6f, 1.0f);
+                graphics.drawString(mc.font, labelText, (int) (startX / 0.6f), (int) (currentY / 0.6f), 0xFFFFFFFF, true);
+                graphics.pose().popPose();
+
+                currentY += (int) (mc.font.lineHeight * 0.6f) + 2;
+
+                renderOrnateBar(graphics, startX, currentY, RES_BAR_WIDTH, RES_BAR_HEIGHT, (int) currentVal, (int) maxVal, barInfo.colorTopSupplier.get(), barInfo.colorBottomSupplier.get());
+                currentY += RES_BAR_HEIGHT + 2;
+            }
+        }
+
+        lastRenderedBottomY = currentY;
     }
 
-    private static void renderTextFlourish(GuiGraphics graphics, int centerX, int y, int textWidth) {
-        int lineLength = 20; // smaller flourish
-        int leftEnd = centerX - (textWidth / 2) - 4;
-        int rightStart = centerX + (textWidth / 2) + 4;
-        int lineY = y + 2; // Vertically center 
-
-        // Left Line
-        graphics.fillGradient(leftEnd - lineLength, lineY, leftEnd, lineY + 1, COLOR_SHADOW, COLOR_GOLD_BRIGHT);
-        graphics.fill(leftEnd - 1, lineY - 1, leftEnd + 1, lineY + 2, COLOR_GOLD_BRIGHT); // Stud
-
-        // Right Line
-        graphics.fillGradient(rightStart, lineY, rightStart + lineLength, lineY + 1, COLOR_GOLD_BRIGHT, COLOR_SHADOW);
-        graphics.fill(rightStart - 1, lineY - 1, rightStart + 1, lineY + 2, COLOR_GOLD_BRIGHT); // Stud
-    }
-
-    private static void renderJewelOrbs(GuiGraphics graphics, int centerX, int y, int current, int max) {
+    private static void renderPhaseBars(GuiGraphics graphics, int startX, int y, int current, int max) {
         if (max <= 1) return;
 
-        int totalWidth = (max * ORB_SIZE) + ((max - 1) * ORB_SPACING);
-        int startX = centerX - (totalWidth / 2);
+        int barWidth = 12;
+        int barHeight = 2;
+        int spacing = 2;
         int remainingPhases = max - current + 1;
 
         for (int i = 0; i < max; i++) {
-            int orbX = startX + (i * (ORB_SIZE + ORB_SPACING));
+            int barX = startX + (i * (barWidth + spacing));
 
             if (i < remainingPhases) {
-                // Active Gem (Gradient Red)
-                graphics.fillGradient(orbX, y, orbX + ORB_SIZE, y + ORB_SIZE, 0xFFFF3333, 0xFF660000);
-                // Gem Highlight (Top Left glint)
-                graphics.fill(orbX, y, orbX + 2, y + 2, 0xFFFFCCCC);
+                // Active Phase (Bright Yellow / Gold Gradient)
+                graphics.fillGradient(barX, y, barX + barWidth, y + barHeight, COLOR_GOLD_BRIGHT, COLOR_GOLD_DARK);
             } else {
-                // Empty Socket (Dark indented look)
-                graphics.fillGradient(orbX, y, orbX + ORB_SIZE, y + ORB_SIZE, 0xFF222222, 0xFF050505);
+                // Defeated Phase (Dark Gray)
+                graphics.fill(barX, y, barX + barWidth, y + barHeight, 0xFF333333);
             }
         }
     }

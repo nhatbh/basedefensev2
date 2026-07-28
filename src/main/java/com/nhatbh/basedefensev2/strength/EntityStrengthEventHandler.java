@@ -85,6 +85,10 @@ public class EntityStrengthEventHandler {
                 }
             }
 
+            if (entity.getAttributes().hasAttribute(ModAttributes.STRENGTH_DAMAGE_TAKEN_MULTIPLIER.get())) {
+                strengthDamage *= entity.getAttributeValue(ModAttributes.STRENGTH_DAMAGE_TAKEN_MULTIPLIER.get());
+            }
+
             data.currentStrength -= strengthDamage;
 
 

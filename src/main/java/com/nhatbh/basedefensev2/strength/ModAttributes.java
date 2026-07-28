@@ -11,4 +11,10 @@ public class ModAttributes {
 
     public static final RegistryObject<Attribute> STRENGTH_DAMAGE_MULTIPLIER = ATTRIBUTES.register("strength_damage_multiplier",
             () -> new RangedAttribute("attribute.name.strength_damage_multiplier", 1.0D, 0.0D, 1024.0D).setSyncable(true));
+
+    public static final RegistryObject<Attribute> STRENGTH_DAMAGE_TAKEN_MULTIPLIER = ATTRIBUTES.register("strength_damage_taken_multiplier",
+            () -> new RangedAttribute("attribute.name.strength_damage_taken_multiplier", 1.0D, 0.0D, 1024.0D).setSyncable(true));
+
+    public static final RegistryObject<Attribute> SPECIAL_STRENGTH_DAMAGE_TAKEN_MULTIPLIER = ATTRIBUTES.register("special_strength_damage_taken_multiplier",
+            () -> new RangedAttribute("attribute.name.special_strength_damage_taken_multiplier", 1.0D, 0.0D, 1024.0D).setSyncable(true));
 }

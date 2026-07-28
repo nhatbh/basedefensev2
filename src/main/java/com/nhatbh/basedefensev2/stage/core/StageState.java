@@ -6,11 +6,10 @@ public enum StageState {
     WARMUP,
     /** Main combat phase. Delegates to WaveState for inner loop. */
     ACTIVE,
-    /**
-     * Victory phase. Rewards are granted on tick 1. Players then have
-     * scavenge_duration_ticks to collect dropped loot before cleanup.
-     */
+    /** Victory phase. Rewards are granted on tick 1. */
     SCAVENGE,
+    /** Intermission phase after stage failure where players prepare before retry. */
+    RETRY_INTERMISSION,
     /** Cleanup complete. Arena is wiped, players are teleported out. */
     ENDED
 }

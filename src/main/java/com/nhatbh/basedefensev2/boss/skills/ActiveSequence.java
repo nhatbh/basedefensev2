@@ -32,8 +32,8 @@ public class ActiveSequence {
         return steps;
     }
 
-    public SequenceRunner start(net.minecraft.world.entity.LivingEntity boss) {
-        return new SequenceRunner(this, boss);
+    public SequenceRunner start(net.minecraft.world.entity.LivingEntity boss, ActiveSkill.Type type) {
+        return new SequenceRunner(this, boss, type);
     }
 
     public static class Step {
@@ -55,6 +55,8 @@ public class ActiveSequence {
         public com.nhatbh.basedefensev2.elemental.ElementType magicElement;
         public BiConsumer<SkillContext, LivingDamageEvent> onCountered;
         public float magicThreshold = 0f;
+        public boolean isInterruptibleDash = false;
+        public BiConsumer<SkillContext, com.complextalents.epicfight.event.EpicFightGuardEvent> onDashParried;
         
         public Step(String id, int duration, boolean isParry) {
             this.id = id;
@@ -129,10 +131,21 @@ public class ActiveSequence {
             return this;
         }
 
+
+
         public Builder magic(ElementType element) {
             if (currentStep != null) {
                 currentStep.counterType = CounterType.MAGIC;
                 currentStep.magicElement = element;
+            }
+            return this;
+        }
+        
+
+        public Builder interruptibleDash(BiConsumer<SkillContext, com.complextalents.epicfight.event.EpicFightGuardEvent> onParried) {
+            if (currentStep != null) {
+                 currentStep.isInterruptibleDash = true;
+                 currentStep.onDashParried = onParried;
             }
             return this;
         }

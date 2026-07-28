@@ -5,12 +5,16 @@ public class ClientSanctityData {
     private static double grace;
     private static int maxSanctity;
     private static int maxGrace;
+    private static int retriesUsed;
+    private static int maxWorldRetries;
 
     public static void reset() {
         sanctity = 0;
         grace = 0;
         maxSanctity = 0;
         maxGrace = 0;
+        retriesUsed = 0;
+        maxWorldRetries = 0;
     }
 
     public static void setSanctity(int sanctity) {
@@ -29,6 +33,14 @@ public class ClientSanctityData {
         ClientSanctityData.maxGrace = maxGrace;
     }
 
+    public static void setRetriesUsed(int retriesUsed) {
+        ClientSanctityData.retriesUsed = retriesUsed;
+    }
+
+    public static void setMaxWorldRetries(int maxWorldRetries) {
+        ClientSanctityData.maxWorldRetries = maxWorldRetries;
+    }
+
     public static int getSanctity() {
         return sanctity;
     }
@@ -43,5 +55,13 @@ public class ClientSanctityData {
 
     public static int getMaxGrace() {
         return maxGrace;
+    }
+
+    public static int getRetriesUsed() {
+        return retriesUsed;
+    }
+
+    public static int getMaxWorldRetries() {
+        return maxWorldRetries;
     }
 }

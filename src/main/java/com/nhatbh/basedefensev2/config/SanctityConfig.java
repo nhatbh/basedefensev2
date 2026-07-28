@@ -26,6 +26,14 @@ public class SanctityConfig {
         public int maxGrace = 100;
         /** Amount of grace regenerated per tick (default 0.05 per tick, or 1 every 20 ticks). */
         public double graceRegenRate = 0.05;
+        /** Maximum number of world retries before game over. */
+        public int maxWorldRetries = 3;
+        /** Duration of intermission countdown in ticks (default 54000 ticks = 45 mins). */
+        public int intermissionDurationTicks = 54000;
+        /** Percentage of max Sanctity restored upon retrying a stage (default 0.40 = 40% of maxSanctity). */
+        public double retrySanctityPercent = 0.40;
+        /** Mob health and damage multiplier increase per retry stack (default 0.25 = +25% per retry). */
+        public double retryMobStatMultiplier = 0.25;
     }
 
     public static void load() {

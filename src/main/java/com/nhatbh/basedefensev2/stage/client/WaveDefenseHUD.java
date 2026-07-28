@@ -2,6 +2,7 @@ package com.nhatbh.basedefensev2.stage.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.nhatbh.basedefensev2.BaseDefenseMod;
+import com.nhatbh.basedefensev2.boss.client.BossInfoHUD;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraftforge.api.distmarker.Dist;
@@ -12,48 +13,32 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 /**
- * Renders the Wave Defense Stage and Wave progress at the top-right of the screen.
- * Data is supplied by {@link ClientStageData}, which is updated by
- * {@link com.nhatbh.basedefensev2.stage.network.StageHudSyncPacket} every 10 ticks.
+ * Renders the Wave Defense Stage and Wave progress on the LEFT side of the screen directly under the Boss HUD.
+ * Footprint is kept compact to maximize visibility.
  */
 @Mod.EventBusSubscriber(modid = BaseDefenseMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class WaveDefenseHUD {
 
-    private static final int BAR_WIDTH    = 150;
-    private static final int BAR_HEIGHT   = 5;
-    private static final int MARGIN_TOP   = 10;
-    private static final int MARGIN_RIGHT = 10;
+    private static final int BAR_WIDTH   = 110;
+    private static final int BAR_HEIGHT  = 4;
+    private static final int MARGIN_LEFT = 10;
 
     // ── Text cache ───────────────────────────────────────────────────────────
+    private static String cachedHeaderLine = "";
+    private static String cachedSubLine    = "";
+    private static String cachedIdleText   = "";
 
-    private static String cachedStageText    = "";
-    private static String cachedWaveText     = "";
-    private static String cachedTimerText     = "";
-    private static String cachedProgressText = "";
-    private static String cachedIdleText     = "";
-
-    private static int cachedStageTextWidth    = 0;
-    private static int cachedWaveTextWidth     = 0;
-    private static int cachedTimerTextWidth    = 0;
-    private static int cachedProgressTextWidth = 0;
-    private static int cachedIdleTextWidth     = 0;
-
-    // ── State trackers (detect changes to avoid spamming mc.font.width) ─────
-
+    // ── State trackers ───────────────────────────────────────────────────────
     private static String lastStageState    = "";
     private static String lastWaveState     = "";
     private static int    lastWaveIndex     = -1;
     private static int    lastMaxWaves      = -1;
     private static int    lastEnemies       = -1;
     private static int    lastTotalEnemies  = -1;
-    private static int    lastStageSeconds  = -1;
-    private static int    lastStageRemSeconds = -1;
-    private static int    lastWaveRemSeconds = -1;
-    private static float  lastWaveRatio     = -1f;
+    private static int    lastWaveRemSec    = -1;
     private static int    lastIdleSeconds   = -1;
 
     // ── Registration ─────────────────────────────────────────────────────────
-
     @SubscribeEvent
     public static void registerOverlays(RegisterGuiOverlaysEvent event) {
         event.registerAbove(
@@ -64,59 +49,57 @@ public class WaveDefenseHUD {
     }
 
     // ── Render entry point ───────────────────────────────────────────────────
-
     public static void render(ForgeGui gui, GuiGraphics graphics, float partialTick, int width, int height) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.options.renderDebug || mc.screen != null) return;
 
-        updateCaches(mc);
+        updateCaches();
 
-        // The right boundary anchor — all text and the bar flush right to this X
-        int anchorX  = width - MARGIN_RIGHT;
-        int currentY = MARGIN_TOP;
+        int startX = MARGIN_LEFT;
+        int currentY = BossInfoHUD.getBottomY() + 4;
 
         if (!ClientStageData.isActive()) {
-            if (ClientStageData.getIdleTicks() >= 0) {
-                graphics.drawString(mc.font, cachedIdleText,
-                        anchorX - cachedIdleTextWidth, currentY, 0xAAAAAA, true);
+            if (ClientStageData.getIdleTicks() >= 0 && !cachedIdleText.isEmpty()) {
+                graphics.pose().pushPose();
+                graphics.pose().scale(0.7f, 0.7f, 1.0f);
+                graphics.drawString(mc.font, cachedIdleText, (int) (startX / 0.7f), (int) (currentY / 0.7f), 0xAAAAAA, true);
+                graphics.pose().popPose();
             }
             return;
         }
 
         if (ClientStageData.getStageState().equals("ACTIVE")) {
-            // Wave info line
-            graphics.drawString(mc.font, cachedWaveText,
-                    anchorX - cachedWaveTextWidth, currentY, 0xFFFFFF, true);
-            currentY += 12;
+            // Line 1: Header (Wave X/Y • Enemies: A/B)
+            graphics.pose().pushPose();
+            graphics.pose().scale(0.75f, 0.75f, 1.0f);
+            graphics.drawString(mc.font, cachedHeaderLine, (int) (startX / 0.75f), (int) (currentY / 0.75f), 0xFFFFFF, true);
+            graphics.pose().popPose();
 
-            // Timer Text Line
-            if (!cachedTimerText.isEmpty()) {
-                graphics.drawString(mc.font, cachedTimerText,
-                        anchorX - cachedTimerTextWidth, currentY, 0xAAAAAA, true);
-                currentY += 12;
+            currentY += (int) (mc.font.lineHeight * 0.75f) + 1;
+
+            // Line 2: Timer
+            if (!cachedSubLine.isEmpty()) {
+                graphics.pose().pushPose();
+                graphics.pose().scale(0.7f, 0.7f, 1.0f);
+                graphics.drawString(mc.font, cachedSubLine, (int) (startX / 0.7f), (int) (currentY / 0.7f), 0xFFFFAA, true);
+                graphics.pose().popPose();
+
+                currentY += (int) (mc.font.lineHeight * 0.7f) + 2;
             }
 
-            // Enemy / status line
-            graphics.drawString(mc.font, cachedProgressText,
-                    anchorX - cachedProgressTextWidth, currentY, 0xFFFFAA, true);
-            currentY += 10; // Spaced correctly before the bar
-
-            // Enemy Progress Bar (empties left to right)
-            renderEnemyProgressBar(graphics, anchorX, currentY);
+            // Compact Enemy Progress Bar
+            renderEnemyProgressBar(graphics, startX, currentY);
         } else {
-            // Stage header (coloured by stage state) for WARMUP / SCAVENGE / etc.
-            graphics.drawString(mc.font, cachedStageText,
-                    anchorX - cachedStageTextWidth, currentY, getStageColor(), true);
-            currentY += 12;
-
-            // Optional: You could show ClientStageData.getWaveState() but the user 
-            // specifically asked for wave information ONLY when active.
+            // Stage WARMUP / SCAVENGE Header
+            graphics.pose().pushPose();
+            graphics.pose().scale(0.75f, 0.75f, 1.0f);
+            graphics.drawString(mc.font, cachedHeaderLine, (int) (startX / 0.75f), (int) (currentY / 0.75f), getStageColor(), true);
+            graphics.pose().popPose();
         }
     }
 
     // ── Cache update ─────────────────────────────────────────────────────────
-
-    private static void updateCaches(Minecraft mc) {
+    private static void updateCaches() {
         if (!ClientStageData.isActive()) {
             int idleSec = ClientStageData.getIdleSeconds();
             if (idleSec != lastIdleSeconds) {
@@ -126,98 +109,62 @@ public class WaveDefenseHUD {
                 } else {
                     int m = idleSec / 60;
                     int s = idleSec % 60;
-                    cachedIdleText = "Next Stage in: " + m + ":" + (s < 10 ? "0" + s : s);
+                    cachedIdleText = "Next Stage: " + m + ":" + (s < 10 ? "0" + s : s);
                 }
-                cachedIdleTextWidth = mc.font.width(cachedIdleText);
             }
             return;
         }
 
-        String currentStageState = ClientStageData.getStageState();
-        int    stageSeconds      = ClientStageData.getStageSecondsElapsed();
-        int    stageRemSeconds   = ClientStageData.getStageRemainingSeconds();
+        String stageState = ClientStageData.getStageState();
+        String waveState  = ClientStageData.getWaveState();
+        int waveIndex     = ClientStageData.getCurrentWaveIndex();
+        int maxWaves      = ClientStageData.getMaxWaves();
+        int enemies       = ClientStageData.getEnemiesRemaining();
+        int totalEnemies  = ClientStageData.getTotalEnemiesInWave();
+        int waveRemSec    = ClientStageData.getWaveRemainingTicks() > 0 ? ClientStageData.getWaveRemainingSeconds() : -1;
 
-        if (!currentStageState.equals(lastStageState) || stageSeconds != lastStageSeconds || stageRemSeconds != lastStageRemSeconds) {
-            lastStageState   = currentStageState;
-            lastStageSeconds = stageSeconds;
-            lastStageRemSeconds = stageRemSeconds;
+        if (!stageState.equals(lastStageState) || !waveState.equals(lastWaveState) 
+                || waveIndex != lastWaveIndex || maxWaves != lastMaxWaves 
+                || enemies != lastEnemies || totalEnemies != lastTotalEnemies || waveRemSec != lastWaveRemSec) {
 
-            String timeStr;
-            if (currentStageState.equals("WARMUP") || currentStageState.equals("SCAVENGE")) {
-                int m = stageRemSeconds / 60;
-                int s = stageRemSeconds % 60;
-                timeStr = m + ":" + (s < 10 ? "0" + s : s);
-            } else {
-                int m = stageSeconds / 60;
-                int s = stageSeconds % 60;
-                timeStr = m + ":" + (s < 10 ? "0" + s : s);
-            }
-
-            cachedStageText      = "Stage: " + currentStageState + " (" + timeStr + ")";
-            cachedStageTextWidth = mc.font.width(cachedStageText);
-        }
-
-        String currentWaveState = ClientStageData.getWaveState();
-        int    waveIndex        = ClientStageData.getCurrentWaveIndex();
-        int    maxWaves         = ClientStageData.getMaxWaves();
-
-        if (!currentWaveState.equals(lastWaveState) || waveIndex != lastWaveIndex || maxWaves != lastMaxWaves) {
-            lastWaveState  = currentWaveState;
-            lastWaveIndex  = waveIndex;
-            lastMaxWaves   = maxWaves;
-
-            cachedWaveText      = "Wave " + (waveIndex + 1) + "/" + maxWaves;
-            if (!currentWaveState.equals("COMBAT")) {
-                String stateDisplay = currentWaveState.equals("WAITING_NEXT_WAVE") ? "NEXT WAVE" : currentWaveState;
-                cachedWaveText += " (" + stateDisplay + ")";
-            }
-            cachedWaveTextWidth = mc.font.width(cachedWaveText);
-        }
-
-        int waveRemSeconds = ClientStageData.getWaveRemainingTicks() > 0 ? ClientStageData.getWaveRemainingSeconds() : -1;
-        float waveRatio    = ClientStageData.getWaveTimerRatio();
-
-        if (waveRemSeconds != lastWaveRemSeconds || waveRatio != lastWaveRatio) {
-            lastWaveRemSeconds = waveRemSeconds;
-            lastWaveRatio      = waveRatio;
-
-            if (waveRatio < 0) {
-                cachedTimerText = "Time: Unlimited";
-            } else {
-                int m = waveRemSeconds / 60;
-                int s = waveRemSeconds % 60;
-                cachedTimerText = "Time: " + m + ":" + (s < 10 ? "0" + s : s);
-            }
-            cachedTimerTextWidth = mc.font.width(cachedTimerText);
-        }
-
-        int enemies      = ClientStageData.getEnemiesRemaining();
-        int totalEnemies = ClientStageData.getTotalEnemiesInWave();
-
-        if (enemies != lastEnemies || totalEnemies != lastTotalEnemies) {
+            lastStageState   = stageState;
+            lastWaveState    = waveState;
+            lastWaveIndex    = waveIndex;
+            lastMaxWaves     = maxWaves;
             lastEnemies      = enemies;
             lastTotalEnemies = totalEnemies;
+            lastWaveRemSec   = waveRemSec;
 
-            if (currentWaveState.equals("WARMUP") || currentWaveState.equals("SPAWNING")) {
-                cachedProgressText = "Prepare for battle...";
-            } else if (currentWaveState.equals("WAITING_NEXT_WAVE")) {
-                cachedProgressText = "Next wave in: " + ClientStageData.getWaveRemainingSeconds() + "s";
-            } else if (currentStageState.equals("SCAVENGE")) {
-                cachedProgressText = "Collect your loot!";
+            if (!stageState.equals("ACTIVE")) {
+                int stageRemSec = ClientStageData.getStageRemainingSeconds();
+                int m = stageRemSec / 60;
+                int s = stageRemSec % 60;
+                cachedHeaderLine = "STAGE " + stageState + " (" + m + ":" + (s < 10 ? "0" + s : s) + ")";
+                cachedSubLine = "";
             } else {
-                cachedProgressText = "Enemies: " + enemies + " / " + totalEnemies;
+                cachedHeaderLine = "WAVE " + (waveIndex + 1) + "/" + maxWaves;
+                if (!waveState.equals("COMBAT")) {
+                    String stateDisplay = waveState.equals("WAITING_NEXT_WAVE") ? "NEXT WAVE" : waveState;
+                    cachedHeaderLine += " (" + stateDisplay + ")";
+                }
+
+                if (totalEnemies > 0 && waveState.equals("COMBAT")) {
+                    cachedHeaderLine += "  •  Enemies: " + enemies + "/" + totalEnemies;
+                }
+
+                if (waveRemSec >= 0) {
+                    int m = waveRemSec / 60;
+                    int s = waveRemSec % 60;
+                    cachedSubLine = "Time Limit: " + m + ":" + (s < 10 ? "0" + s : s);
+                } else {
+                    cachedSubLine = "Time: Unlimited";
+                }
             }
-            cachedProgressTextWidth = mc.font.width(cachedProgressText);
         }
     }
 
     // ── Enemy Progress Bar ────────────────────────────────────────────────────
-    
-    /**
-     * Renders a bar representing enemies remaining. 
-     * Empties from LEFT to RIGHT (filled part stays on the right).
-     */
-    private static void renderEnemyProgressBar(GuiGraphics graphics, int anchorX, int y) {
+    private static void renderEnemyProgressBar(GuiGraphics graphics, int x, int y) {
         int enemies      = ClientStageData.getEnemiesRemaining();
         int totalEnemies = ClientStageData.getTotalEnemiesInWave();
         
@@ -227,42 +174,29 @@ public class WaveDefenseHUD {
         float clamped   = Math.max(0.0f, Math.min(1.0f, ratio));
         int filledWidth = (int) (BAR_WIDTH * clamped);
 
-        int x = anchorX - BAR_WIDTH;
-
         RenderSystem.enableBlend();
 
-        // Background (semi-transparent black)
-        graphics.fill(x, y, x + BAR_WIDTH, y + BAR_HEIGHT, 0x99000000);
+        // Frame background
+        graphics.fill(x, y, x + BAR_WIDTH, y + BAR_HEIGHT, 0xAA111111);
 
-        // Fill - Anchored to the RIGHT
-        // Empty space grows from left (x), filled part starts at (x + BAR_WIDTH - filledWidth)
+        // Fill bar (filled portion left to right)
         if (filledWidth > 0) {
-            int fillStart = x + (BAR_WIDTH - filledWidth);
-            // Red/Orange/Green transition based on enemies left
-            int color = 0xFF55FF55; // Default Green
-            if (clamped > 0.6f) color = 0xFFFF5555; // Mostly full = Red (lots of enemies)
+            int color = 0xFF55FF55; // Green
+            if (clamped > 0.6f) color = 0xFFFF5555; // Red (many enemies)
             else if (clamped > 0.3f) color = 0xFFFFAA00; // Orange
 
-            graphics.fill(fillStart, y, x + BAR_WIDTH, y + BAR_HEIGHT, color);
+            graphics.fill(x, y, x + filledWidth, y + BAR_HEIGHT, color);
         }
-
-        // Border (subtle grey/white outline)
-        graphics.fill(x,               y,                x + BAR_WIDTH, y + 1,              0x99FFFFFF);
-        graphics.fill(x,               y + BAR_HEIGHT-1, x + BAR_WIDTH, y + BAR_HEIGHT,     0x99FFFFFF);
-        graphics.fill(x,               y,                x + 1,         y + BAR_HEIGHT,     0x99FFFFFF);
-        graphics.fill(x + BAR_WIDTH-1, y,                x + BAR_WIDTH, y + BAR_HEIGHT,     0x99FFFFFF);
 
         RenderSystem.disableBlend();
     }
 
-    // ── Colour helper ────────────────────────────────────────────────────────
-
     private static int getStageColor() {
         return switch (lastStageState) {
-            case "WARMUP"   -> 0xFFD700; // gold
-            case "SCAVENGE" -> 0x55FF55; // green
-            case "ENDED"    -> 0xAAAAAA; // grey
-            default         -> 0xFF5555; // red (ACTIVE / fallback)
+            case "WARMUP"   -> 0xFFFFD700; // Gold
+            case "SCAVENGE" -> 0xFF55FF55; // Green
+            case "ENDED"    -> 0xAAAAAA; // Grey
+            default         -> 0xFFFF5555; // Red
         };
     }
 }

@@ -20,10 +20,22 @@ public class BossSkillHelper {
         return getClosestTarget(ctx, 32.0);
     }
 
+    public static boolean isValidTarget(LivingEntity entity) {
+        if (entity == null || !entity.isAlive()) return false;
+        if (entity instanceof net.minecraft.world.entity.player.Player player) {
+            if (player.isCreative() || player.isSpectator()) return false;
+            return player.getCapability(com.nhatbh.basedefensev2.sanctity.data.ReviveStateProvider.REVIVE_STATE)
+                    .map(state -> !state.isKnockedDown())
+                    .orElse(true);
+        }
+        return true;
+    }
+
     public static LivingEntity getClosestTarget(SkillContext ctx, double radius) {
         List<Player> players = ctx.boss().level().getEntitiesOfClass(Player.class, 
             ctx.boss().getBoundingBox().inflate(radius));
         return players.stream()
+            .filter(BossSkillHelper::isValidTarget)
             .min(Comparator.comparingDouble(p -> p.distanceTo(ctx.boss())))
             .orElse(null);
     }
@@ -32,20 +44,25 @@ public class BossSkillHelper {
         List<Player> players = ctx.boss().level().getEntitiesOfClass(Player.class, 
             ctx.boss().getBoundingBox().inflate(radius));
         return players.stream()
+            .filter(BossSkillHelper::isValidTarget)
             .max(Comparator.comparingDouble(p -> p.distanceTo(ctx.boss())))
             .orElse(null);
     }
 
     public static LivingEntity getRandomTarget(SkillContext ctx, double radius) {
         List<Player> players = ctx.boss().level().getEntitiesOfClass(Player.class, 
-            ctx.boss().getBoundingBox().inflate(radius));
+            ctx.boss().getBoundingBox().inflate(radius)).stream()
+            .filter(BossSkillHelper::isValidTarget)
+            .toList();
         if (players.isEmpty()) return null;
         return players.get(ctx.boss().getRandom().nextInt(players.size()));
     }
 
     public static java.util.List<LivingEntity> getRandomTargets(SkillContext ctx, double radius, int count) {
-        List<Player> players = new java.util.ArrayList<>(ctx.boss().level().getEntitiesOfClass(Player.class, 
-            ctx.boss().getBoundingBox().inflate(radius)));
+        List<Player> players = ctx.boss().level().getEntitiesOfClass(Player.class, 
+            ctx.boss().getBoundingBox().inflate(radius)).stream()
+            .filter(BossSkillHelper::isValidTarget)
+            .collect(java.util.stream.Collectors.toList());
         java.util.Collections.shuffle(players);
         return players.stream().limit(count).map(p -> (LivingEntity)p).collect(java.util.stream.Collectors.toList());
     }
@@ -54,6 +71,7 @@ public class BossSkillHelper {
         List<Player> players = ctx.boss().level().getEntitiesOfClass(Player.class, 
             ctx.boss().getBoundingBox().inflate(radius));
         return players.stream()
+            .filter(BossSkillHelper::isValidTarget)
             .min(Comparator.comparingDouble(p -> p.getHealth()))
             .orElse(null);
     }
@@ -156,5 +174,18 @@ public class BossSkillHelper {
             });
         }
         ctx.data().put("sweep_tick", tick + 1);
+    }
+
+    public static void clearBeneficialEffects(LivingEntity entity) {
+        if (entity == null) return;
+        List<net.minecraft.world.effect.MobEffect> beneficial = new java.util.ArrayList<>();
+        for (net.minecraft.world.effect.MobEffectInstance instance : entity.getActiveEffects()) {
+            if (instance.getEffect().getCategory() == net.minecraft.world.effect.MobEffectCategory.BENEFICIAL) {
+                beneficial.add(instance.getEffect());
+            }
+        }
+        for (net.minecraft.world.effect.MobEffect effect : beneficial) {
+            entity.removeEffect(effect);
+        }
     }
 }

@@ -66,6 +66,18 @@ public class SanctityEventHandler {
                             Component.literal("You are KNOCKED DOWN! Wait for rescue or timer to expire.")
                                     .withStyle(ChatFormatting.RED, ChatFormatting.BOLD),
                             true);
+
+                    // Clear targets targeting this player
+                    if (player.level() instanceof ServerLevel serverLevel) {
+                        for (Entity entity : serverLevel.getAllEntities()) {
+                            if (entity instanceof net.minecraft.world.entity.Mob mob && mob.getTarget() == player) {
+                                mob.setTarget(null);
+                                if (com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(mob)) {
+                                    com.nhatbh.basedefensev2.boss.core.BossManager.selectRandomTarget(mob);
+                                }
+                            }
+                        }
+                    }
                 } else {
                     enterSpectator(player, state);
                 }
@@ -74,7 +86,7 @@ public class SanctityEventHandler {
         }
     }
 
-    private static void enterSpectator(ServerPlayer player, ReviveState state) {
+    public static void enterSpectator(ServerPlayer player, ReviveState state) {
         state.setKnockedDown(false);
         player.setGlowingTag(false);
         state.setDeathPos(player.blockPosition());
@@ -194,6 +206,12 @@ public class SanctityEventHandler {
                 // Apply Jump Boost 128 to block jump
                 player.addEffect(new MobEffectInstance(MobEffects.JUMP, 20, 128, false, false, false));
 
+                // Apply complextalents:engaged effect while knocked down
+                net.minecraft.world.effect.MobEffect engagedEffect = net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS.getValue(net.minecraft.resources.ResourceLocation.parse("complextalents:engaged"));
+                if (engagedEffect != null) {
+                    player.addEffect(new MobEffectInstance(engagedEffect, 20, 0, false, false, false));
+                }
+
                 if (state.getKnockedDownTimer() <= 0) {
                     enterSpectator(player, state);
                 }
@@ -278,10 +296,15 @@ public class SanctityEventHandler {
 
     private static void checkGameOver(ServerLevel level) {
         AltarSavedData data = AltarSavedData.get(level);
-        if (data.getSanctity() > 0)
-            return;
+        net.minecraft.server.MinecraftServer server = level.getServer();
+        if (server == null) return;
 
-        List<ServerPlayer> players = level.getServer().getPlayerList().getPlayers();
+        ServerLevel arenaLevel = server.getLevel(com.nhatbh.basedefensev2.stage.ModDimensions.ARENA);
+        com.nhatbh.basedefensev2.stage.core.StageContext stageCtx = arenaLevel != null ? com.nhatbh.basedefensev2.stage.core.StageContext.getOrCreate(arenaLevel) : null;
+
+        boolean sanctityZero = data.getSanctity() <= 0;
+
+        List<ServerPlayer> players = server.getPlayerList().getPlayers();
         boolean anyAlive = false;
         for (ServerPlayer player : players) {
             if (player.gameMode.getGameModeForPlayer() != GameType.SPECTATOR) {
@@ -290,8 +313,18 @@ public class SanctityEventHandler {
             }
         }
 
-        if (!anyAlive) {
-            triggerGameOver(level);
+        if (sanctityZero || !anyAlive) {
+            if (stageCtx != null && stageCtx.isActive() && (stageCtx.getStageState() == com.nhatbh.basedefensev2.stage.core.StageState.ACTIVE || stageCtx.getStageState() == com.nhatbh.basedefensev2.stage.core.StageState.WARMUP)) {
+                boolean retryTriggered = stageCtx.triggerStageFailure(arenaLevel != null ? arenaLevel : level);
+                if (retryTriggered) {
+                    syncToAll(level, data);
+                    return;
+                }
+            }
+
+            if (!anyAlive || sanctityZero) {
+                triggerGameOver(level);
+            }
         }
     }
 
@@ -435,6 +468,16 @@ public class SanctityEventHandler {
                                                     true);
                                     return 1;
                                 })))
+                .then(Commands.literal("restore")
+                        .executes(context -> {
+                            AltarSavedData data = AltarSavedData.get(context.getSource().getLevel());
+                            int maxSanctity = com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity;
+                            data.setSanctity(maxSanctity);
+                            syncToAll(context.getSource().getLevel(), data);
+                            context.getSource().sendSuccess(
+                                    () -> Component.literal("Base health fully restored to " + maxSanctity + "!"), true);
+                            return 1;
+                        }))
                 .then(Commands.literal("get")
                         .executes(context -> {
                             AltarSavedData data = AltarSavedData.get(context.getSource().getLevel());
@@ -450,7 +493,7 @@ public class SanctityEventHandler {
             AltarSavedData data = AltarSavedData.get((ServerLevel) player.level());
             var config = com.nhatbh.basedefensev2.config.SanctityConfig.data;
             NetworkManager.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
-                    new SanctitySyncPacket(data.getSanctity(), data.getGrace(), config.maxSanctity, config.maxGrace));
+                    new SanctitySyncPacket(data.getSanctity(), data.getGrace(), config.maxSanctity, config.maxGrace, data.getRetriesUsed(), config.maxWorldRetries));
 
             player.getCapability(ReviveStateProvider.REVIVE_STATE).ifPresent(state -> syncReviveState(player, state));
         }
@@ -520,7 +563,7 @@ public class SanctityEventHandler {
     private static void syncToAll(ServerLevel level, AltarSavedData data) {
         var config = com.nhatbh.basedefensev2.config.SanctityConfig.data;
         SanctitySyncPacket packet = new SanctitySyncPacket(data.getSanctity(), data.getGrace(), config.maxSanctity,
-                config.maxGrace);
+                config.maxGrace, data.getRetriesUsed(), config.maxWorldRetries);
         level.getServer().getPlayerList().getPlayers().forEach(player -> {
             NetworkManager.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), packet);
         });

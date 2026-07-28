@@ -17,21 +17,23 @@ public class SequenceRunner {
     private final ActiveSequence sequence;
     private final List<ActiveSequence.Step> steps;
     private final SkillContext context;
+    private final ActiveSkill.Type type;
     private int currentStepIndex = 0;
     private int tickInStep = 0;
     private boolean running = true;
     private final java.util.function.Consumer<SequenceRunner> onFinished;
 
-    public SequenceRunner(ActiveSequence sequence, LivingEntity boss) {
-        this(sequence, boss, null);
+    public SequenceRunner(ActiveSequence sequence, LivingEntity boss, ActiveSkill.Type type) {
+        this(sequence, boss, type, null);
     }
 
-    public SequenceRunner(ActiveSequence sequence, LivingEntity boss, java.util.function.Consumer<SequenceRunner> onFinished) {
+    public SequenceRunner(ActiveSequence sequence, LivingEntity boss, ActiveSkill.Type type,
+            java.util.function.Consumer<SequenceRunner> onFinished) {
         this.sequence = sequence;
         this.steps = sequence.getSteps();
         this.context = new SkillContext(boss);
+        this.type = type;
         this.onFinished = onFinished;
-
 
         if (!steps.isEmpty()) {
             startCurrentStep();
@@ -46,6 +48,21 @@ public class SequenceRunner {
 
     public SkillContext getContext() {
         return context;
+    }
+
+    public String getSequenceId() {
+        return sequence.getId();
+    }
+
+    public ActiveSkill.Type getType() {
+        return type;
+    }
+
+    public String getCurrentStepId() {
+        if (currentStepIndex < steps.size()) {
+            return steps.get(currentStepIndex).id;
+        }
+        return "";
     }
 
     public void forceNextStep() {
@@ -132,7 +149,7 @@ public class SequenceRunner {
                     float currentAccumulated = (float) context.data().getOrDefault("magic_counter_damage", 0f);
                     currentAccumulated += damage;
                     context.data().put("magic_counter_damage", currentAccumulated);
-                    
+
                     if (currentAccumulated >= step.magicThreshold) {
                         triggerCounter(event, step);
                         context.data().remove("magic_counter_damage");
@@ -143,12 +160,13 @@ public class SequenceRunner {
                     return;
                 }
             } else {
-                // For other counters (NORMAL, DIRECTIONAL), strictly direct melee damage for success/punishment
+                // For other counters (NORMAL, DIRECTIONAL), strictly direct melee damage for
+                // success/punishment
                 if (step.counterType != ActiveSequence.CounterType.MAGIC && isMelee) {
                     applyPunishment(event, step);
                     return;
                 }
-                
+
                 // For MAGIC counter, we no longer punish or cancel on non-matching damage
                 // We just let it fall through to standard damage handling
             }
@@ -174,6 +192,26 @@ public class SequenceRunner {
         checkContextFlags();
     }
 
+
+    public void onGuard(com.complextalents.epicfight.event.EpicFightGuardEvent event) {
+        if (!running)
+            return;
+        ActiveSequence.Step step = steps.get(currentStepIndex);
+
+        net.minecraft.world.entity.LivingEntity player = event.getPlayer();
+        if (player == null)
+            return;
+
+        // Interruptible Dash - Staggers the boss if parried (Count as a guard counter)
+        if (step.isInterruptibleDash && event.isParry()) {
+            context.stopSequence();
+
+            if (step.onDashParried != null) {
+                step.onDashParried.accept(context, event);
+            }
+        }
+    }
+
     private boolean isValidCounter(LivingDamageEvent event, boolean isMelee, ActiveSequence.Step step) {
         if (step.counterType == ActiveSequence.CounterType.NORMAL && isMelee) {
             return true;
@@ -194,7 +232,7 @@ public class SequenceRunner {
         }
         if (step.counterType == ActiveSequence.CounterType.MAGIC
                 && event.getSource() instanceof SpellDamageSource spellSource) {
-            
+
             ElementType bossElement = MobElementService.getElement(context.boss());
             ElementType requiredElement = getCounteringElement(bossElement);
 
@@ -213,7 +251,8 @@ public class SequenceRunner {
     }
 
     private boolean isArcane(ElementType element) {
-        if (element == null) return false;
+        if (element == null)
+            return false;
         return switch (element) {
             case HOLY, EVOCATION, ENDER, ELDRITCH, BLOOD -> true;
             default -> false;
@@ -228,12 +267,18 @@ public class SequenceRunner {
 
         // Primal elements are countered by the opposite element in the cycle
         // Fire -> Nature -> Aqua -> Lightning -> Ice -> Fire
-        // So counter is reverse: Fire <- Ice, Nature <- Fire, Aqua <- Nature, Lightning <- Aqua, Ice <- Lightning
-        if (bossElement == ElementType.FIRE) return ElementType.ICE;
-        if (bossElement == ElementType.NATURE) return ElementType.FIRE;
-        if (bossElement == ElementType.AQUA) return ElementType.NATURE;
-        if (bossElement == ElementType.LIGHTNING) return ElementType.AQUA;
-        if (bossElement == ElementType.ICE) return ElementType.LIGHTNING;
+        // So counter is reverse: Fire <- Ice, Nature <- Fire, Aqua <- Nature, Lightning
+        // <- Aqua, Ice <- Lightning
+        if (bossElement == ElementType.FIRE)
+            return ElementType.ICE;
+        if (bossElement == ElementType.NATURE)
+            return ElementType.FIRE;
+        if (bossElement == ElementType.AQUA)
+            return ElementType.NATURE;
+        if (bossElement == ElementType.LIGHTNING)
+            return ElementType.AQUA;
+        if (bossElement == ElementType.ICE)
+            return ElementType.LIGHTNING;
 
         // Fallback for PHYSICAL or others
         return bossElement;
@@ -264,7 +309,7 @@ public class SequenceRunner {
         } else if (step.counterType == ActiveSequence.CounterType.NORMAL) {
             // Default punishment for NORMAL counter: Jump to next step and make it lethal
             context.data().put("is_lethal_retaliation", true);
-            nextStep(); 
+            nextStep();
         }
         event.setAmount(0);
         event.setCanceled(true);

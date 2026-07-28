@@ -76,11 +76,13 @@ public class SpawnerSubsystem {
         List<UUID> uuids = new ArrayList<>();
         List<Entity> entities = new ArrayList<>();
 
+        double retryMultiplier = 1.0 + (com.nhatbh.basedefensev2.sanctity.data.AltarSavedData.get(level).getRetriesUsed() * com.nhatbh.basedefensev2.config.SanctityConfig.data.retryMobStatMultiplier);
+
         for (MobSpawnEntry entry : wave.mobs) {
             if (entry.is_boss) {
-                spawnBoss(entry, level, area, uuids, entities);
+                spawnBoss(entry, level, area, uuids, entities, retryMultiplier);
             } else {
-                spawnMobs(entry, level, area, waveAngle, halfArc, uuids, entities);
+                spawnMobs(entry, level, area, waveAngle, halfArc, uuids, entities, retryMultiplier);
             }
         }
 
@@ -158,7 +160,8 @@ public class SpawnerSubsystem {
     private void spawnMobs(MobSpawnEntry entry, ServerLevel level,
             StageConfig.SpawnArea area,
             double waveAngle, double halfArc,
-            List<UUID> uuidsOut, List<Entity> entitiesOut) {
+            List<UUID> uuidsOut, List<Entity> entitiesOut,
+            double retryMultiplier) {
         EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(parseId(entry.type));
         if (type == null) {
             LOGGER.warn("[SpawnerSubsystem] Unknown entity type: {}", entry.type);
@@ -184,10 +187,36 @@ public class SpawnerSubsystem {
                         level.getCurrentDifficultyAt(BlockPos.containing(pos[0], pos[1], pos[2])),
                         MobSpawnType.EVENT, null, null);
 
-                // Set follow range to 300 blocks
+                // Set follow range to 300 blocks and target nearest player
                 var followAttr = mob.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE);
                 if (followAttr != null) {
                     followAttr.setBaseValue(300.0);
+                }
+
+                // Apply HP Multiplier
+                double finalHpMult = entry.hp_multiplier * retryMultiplier;
+                if (finalHpMult != 1.0) {
+                    var maxHealthAttr = mob.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH);
+                    if (maxHealthAttr != null) {
+                        double newMax = maxHealthAttr.getBaseValue() * finalHpMult;
+                        maxHealthAttr.setBaseValue(newMax);
+                        mob.setHealth((float) newMax);
+                    }
+                }
+
+                // Apply Damage Multiplier
+                double finalDmgMult = entry.damage_multiplier * retryMultiplier;
+                if (finalDmgMult != 1.0) {
+                    var attackDmgAttr = mob.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+                    if (attackDmgAttr != null) {
+                        double newDmg = attackDmgAttr.getBaseValue() * finalDmgMult;
+                        attackDmgAttr.setBaseValue(newDmg);
+                    }
+                }
+
+                net.minecraft.server.level.ServerPlayer target = level.getNearestPlayer(mob, 300.0) instanceof net.minecraft.server.level.ServerPlayer sp && com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.isValidTarget(sp) && !sp.isInvisible() ? sp : null;
+                if (target != null) {
+                    mob.setTarget(target);
                 }
             }
 
@@ -215,7 +244,8 @@ public class SpawnerSubsystem {
 
     private void spawnBoss(MobSpawnEntry entry, ServerLevel level,
             StageConfig.SpawnArea area,
-            List<UUID> uuidsOut, List<Entity> entitiesOut) {
+            List<UUID> uuidsOut, List<Entity> entitiesOut,
+            double retryMultiplier) {
         if (entry.boss_id == null || entry.boss_id.isEmpty()) {
             LOGGER.warn("[SpawnerSubsystem] Boss entry has no boss_id; skipping.");
             return;
@@ -245,8 +275,23 @@ public class SpawnerSubsystem {
             com.nhatbh.basedefensev2.boss.core.BossComponent comp = new com.nhatbh.basedefensev2.boss.core.BossComponent(def);
             com.nhatbh.basedefensev2.boss.core.BossManager.registerBoss(mob, comp);
 
+            if (retryMultiplier != 1.0) {
+                var maxHealthAttr = mob.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH);
+                if (maxHealthAttr != null) {
+                    double newMax = maxHealthAttr.getBaseValue() * retryMultiplier;
+                    maxHealthAttr.setBaseValue(newMax);
+                    mob.setHealth((float) newMax);
+                }
+                var attackDmgAttr = mob.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+                if (attackDmgAttr != null) {
+                    double newDmg = attackDmgAttr.getBaseValue() * retryMultiplier;
+                    attackDmgAttr.setBaseValue(newDmg);
+                }
+            }
+
             mob.setCustomName(Component.literal(entry.boss_id.toUpperCase()));
             mob.setCustomNameVisible(true);
+            com.nhatbh.basedefensev2.boss.core.BossManager.selectRandomTarget(mob);
         }
 
         level.addFreshEntity(entity);

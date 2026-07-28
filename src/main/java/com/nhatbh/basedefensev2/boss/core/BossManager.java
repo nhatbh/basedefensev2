@@ -2,7 +2,6 @@ package com.nhatbh.basedefensev2.boss.core;
 
 import com.nhatbh.basedefensev2.elemental.ElementType;
 import com.nhatbh.basedefensev2.boss.events.BossEvents;
-import com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper;
 import com.nhatbh.basedefensev2.boss.network.EntitySkillSyncPacket;
 import com.nhatbh.basedefensev2.boss.skills.ActiveSkill;
 import com.nhatbh.basedefensev2.boss.skills.BossSkillData;
@@ -53,6 +52,10 @@ public class BossManager {
             var damageAttr = atts.getInstance(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
             if (damageAttr != null) {
                 damageAttr.setBaseValue(def.getBaseStats().damage);
+            }
+            var kbAttr = atts.getInstance(net.minecraft.world.entity.ai.attributes.Attributes.KNOCKBACK_RESISTANCE);
+            if (kbAttr != null) {
+                kbAttr.setBaseValue(def.getBaseStats().knockbackResistance);
             }
             var followAttr = atts.getInstance(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE);
             if (followAttr != null) {
@@ -108,11 +111,36 @@ public class BossManager {
             }
         }
 
-        if (comp.getCurrentSequence() != null && comp.getCurrentSequence().isRunning()) {
-            comp.getCurrentSequence().tick(boss);
-        } else {
+        boolean sequenceJustEnded = false;
+        if (comp.getCurrentSequence() != null) {
+            if (comp.getCurrentSequence().isRunning()) {
+                comp.getCurrentSequence().tick(boss);
+                if (!comp.getCurrentSequence().isRunning()) {
+                    sequenceJustEnded = true;
+                }
+            } else {
+                sequenceJustEnded = true;
+            }
+        }
+
+        if (sequenceJustEnded) {
             comp.setCurrentSequence(null);
-            
+            selectRandomTarget(boss);
+
+            // Trigger post-skill vulnerability window during Desperation Mode (Last Phase)
+            com.nhatbh.basedefensev2.boss.impl.generic.DragonsFuryPassive fury = com.nhatbh.basedefensev2.boss.impl.generic.DragonsFuryPassive.get(boss);
+            if (fury != null) {
+                fury.triggerPostSkillVulnerability(boss);
+            }
+        }
+
+        if (boss instanceof net.minecraft.world.entity.Mob mob) {
+            if (mob.getTarget() != null && !com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.isValidTarget(mob.getTarget())) {
+                selectRandomTarget(boss);
+            }
+        }
+
+        if (comp.getCurrentSequence() == null) {
             // Only select new skills if not exhausted AND has strength
             if (comp.getExhaustionTicks() <= 0 && (strengthData == null || strengthData.currentStrength > 0)) {
                 ActiveSkill nextSkill = SkillEvaluator.selectSkill(comp, boss, phase);
@@ -140,10 +168,8 @@ public class BossManager {
                         comp.setTacticalSkillCooldown(nextSkill.getGlobalCooldown());
                     }
 
-                    // Debug: broadcast skill name
-                    BossSkillHelper.broadcastMessage(boss, "[DEBUG] Skill Activated: " + nextSkill.getId());
 
-                    comp.setCurrentSequence(nextSkill.getSequence().start(boss));
+                    comp.setCurrentSequence(nextSkill.getSequence().start(boss, nextSkill.getType()));
                 }
             }
         }
@@ -179,6 +205,7 @@ public class BossManager {
 
         MinecraftForge.EVENT_BUS.post(new BossEvents.PhaseAdvance(boss, oldPhaseId, newPhase.getId()));
         comp.setCurrentSequence(null); // Interrupted by phase shift
+        selectRandomTarget(boss);
 
         newPhase.onEnter(boss);
         syncMount(boss, comp, newPhase);
@@ -344,6 +371,17 @@ public class BossManager {
         }
     }
 
+
+    @SubscribeEvent
+    public static void onGuard(com.complextalents.epicfight.event.EpicFightGuardEvent event) {
+        if (event.getAttacker() == null || event.getAttacker().level().isClientSide) return;
+        
+        BossComponent comp = get(event.getAttacker());
+        if (comp != null && comp.getCurrentSequence() != null && comp.getCurrentSequence().isRunning()) {
+            comp.getCurrentSequence().onGuard(event);
+        }
+    }
+
     @SubscribeEvent
     public static void onPoiseBroken(EntityEvents.PoiseBroken event) {
         BossComponent comp = get(event.getEntity());
@@ -352,6 +390,57 @@ public class BossManager {
                 comp.setCurrentSequence(null); // Interrupt sequence
             }
             comp.setExhaustionTicks(comp.getExhaustionTicks() + 100); // stunned
+            selectRandomTarget(event.getEntity());
+        }
+    }
+
+    public static void selectRandomTarget(LivingEntity boss) {
+        if (boss == null || boss.level().isClientSide()) return;
+
+        double range = 100.0;
+        var followAttr = boss.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE);
+        if (followAttr != null && followAttr.getValue() > 0) {
+            range = followAttr.getValue();
+        }
+
+        double maxDistSqr = range * range;
+        java.util.List<net.minecraft.server.level.ServerPlayer> validPlayers = new java.util.ArrayList<>();
+        for (net.minecraft.world.entity.player.Player p : boss.level().players()) {
+            if (p instanceof net.minecraft.server.level.ServerPlayer player) {
+                if (com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.isValidTarget(player) && boss.distanceToSqr(player) <= maxDistSqr) {
+                    validPlayers.add(player);
+                }
+            }
+        }
+
+        if (boss instanceof net.minecraft.world.entity.Mob mob) {
+            if (!validPlayers.isEmpty()) {
+                net.minecraft.server.level.ServerPlayer randomTarget = validPlayers.get(boss.getRandom().nextInt(validPlayers.size()));
+                mob.setTarget(randomTarget);
+            } else {
+                mob.setTarget(null);
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onLivingChangeTarget(net.minecraftforge.event.entity.living.LivingChangeTargetEvent event) {
+        if (event.getEntity().level().isClientSide()) return;
+        net.minecraft.world.entity.LivingEntity newTarget = event.getNewTarget();
+        if (newTarget != null && !com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.isValidTarget(newTarget)) {
+            event.setCanceled(true);
+            event.setNewTarget(null);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onMobTick(LivingEvent.LivingTickEvent event) {
+        if (event.getEntity().level().isClientSide()) return;
+        if (event.getEntity() instanceof net.minecraft.world.entity.Mob mob && !isBoss(mob)) {
+            net.minecraft.world.entity.LivingEntity target = mob.getTarget();
+            if (target != null && !com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.isValidTarget(target)) {
+                mob.setTarget(null);
+            }
         }
     }
 

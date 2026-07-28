@@ -54,14 +54,12 @@ public class ParticleUtils {
     }
 
     /**
-     * Renders a line of particles from start to end.
-     * @param count Number of particles to spawn along the line.
+     * Renders a line of particles from start to end with a specific spacing.
+     * @param spacing Distance between each particle in blocks.
      */
-    public static void renderLine(ServerLevel level, ParticleOptions particle, Vec3 start, Vec3 end, int count, double speed) {
-        if (count <= 1) {
-            level.sendParticles(particle, start.x, start.y, start.z, 1, 0, 0, 0, speed);
-            return;
-        }
+    public static void renderLine(ServerLevel level, ParticleOptions particle, Vec3 start, Vec3 end, double spacing, double speed) {
+        double distance = start.distanceTo(end);
+        int count = (int) Math.max(2, distance / spacing);
         
         Vec3 delta = end.subtract(start);
         Vec3 step = delta.scale(1.0 / (count - 1));

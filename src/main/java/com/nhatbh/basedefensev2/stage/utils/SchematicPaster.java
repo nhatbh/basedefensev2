@@ -23,11 +23,15 @@ public final class SchematicPaster {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private SchematicPaster() {}
+    private SchematicPaster() {
+    }
 
-    public static boolean pasteSchematic(ServerLevel level, BlockVector3 origin, InputStream schematicStream, String formatAlias) {
-        if (level == null) return false;
-        if (schematicStream == null) return false;
+    public static boolean pasteSchematic(ServerLevel level, BlockVector3 origin, InputStream schematicStream,
+            String formatAlias) {
+        if (level == null)
+            return false;
+        if (schematicStream == null)
+            return false;
 
         try {
             World weWorld = ForgeAdapter.adapt(level);
@@ -44,16 +48,16 @@ public final class SchematicPaster {
             }
 
             try (EditSession editSession = WorldEdit.getInstance()
-                .newEditSessionBuilder()
-                .world(weWorld)
-                .build()) {
+                    .newEditSessionBuilder()
+                    .world(weWorld)
+                    .build()) {
 
                 ClipboardHolder holder = new ClipboardHolder(clipboard);
                 Operation operation = holder
-                    .createPaste(editSession)
-                    .to(origin)
-                    .ignoreAirBlocks(false)
-                    .build();
+                        .createPaste(editSession)
+                        .to(origin)
+                        .ignoreAirBlocks(false)
+                        .build();
 
                 Operations.complete(operation);
             }

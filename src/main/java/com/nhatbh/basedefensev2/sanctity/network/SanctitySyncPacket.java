@@ -10,12 +10,16 @@ public class SanctitySyncPacket {
     private final double grace;
     private final int maxSanctity;
     private final int maxGrace;
+    private final int retriesUsed;
+    private final int maxWorldRetries;
 
-    public SanctitySyncPacket(int sanctity, double grace, int maxSanctity, int maxGrace) {
+    public SanctitySyncPacket(int sanctity, double grace, int maxSanctity, int maxGrace, int retriesUsed, int maxWorldRetries) {
         this.sanctity = sanctity;
         this.grace = grace;
         this.maxSanctity = maxSanctity;
         this.maxGrace = maxGrace;
+        this.retriesUsed = retriesUsed;
+        this.maxWorldRetries = maxWorldRetries;
     }
 
     public SanctitySyncPacket(FriendlyByteBuf buf) {
@@ -23,6 +27,8 @@ public class SanctitySyncPacket {
         this.grace = buf.readDouble();
         this.maxSanctity = buf.readInt();
         this.maxGrace = buf.readInt();
+        this.retriesUsed = buf.readInt();
+        this.maxWorldRetries = buf.readInt();
     }
 
     public void toBytes(FriendlyByteBuf buf) {
@@ -30,6 +36,8 @@ public class SanctitySyncPacket {
         buf.writeDouble(grace);
         buf.writeInt(maxSanctity);
         buf.writeInt(maxGrace);
+        buf.writeInt(retriesUsed);
+        buf.writeInt(maxWorldRetries);
     }
 
     public boolean handle(Supplier<NetworkEvent.Context> supplier) {
@@ -39,6 +47,8 @@ public class SanctitySyncPacket {
             ClientSanctityData.setGrace(grace);
             ClientSanctityData.setMaxSanctity(maxSanctity);
             ClientSanctityData.setMaxGrace(maxGrace);
+            ClientSanctityData.setRetriesUsed(retriesUsed);
+            ClientSanctityData.setMaxWorldRetries(maxWorldRetries);
         });
         context.setPacketHandled(true);
         return true;

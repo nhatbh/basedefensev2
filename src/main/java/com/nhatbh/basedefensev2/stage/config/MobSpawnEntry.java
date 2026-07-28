@@ -27,6 +27,12 @@ public class MobSpawnEntry {
     /** Boss definition ID (used only when is_boss = true) */
     public String boss_id;
 
+    // ── Stat Scaling ─────────────────────────────────────────────────────────
+    /** Multiplier applied to mob max health (default 1.0) */
+    public double hp_multiplier = 1.0;
+    /** Multiplier applied to mob attack damage (default 1.0) */
+    public double damage_multiplier = 1.0;
+
     // ── Formation ─────────────────────────────────────────────────────────────
     /**
      * "random" (default) — scatter uniformly within spawn_area radius.

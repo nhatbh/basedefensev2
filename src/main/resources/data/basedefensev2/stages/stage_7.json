@@ -1,0 +1,211 @@
+{
+    "id": "stage_7",
+    "trigger_seconds": 7200,
+    "order": 6,
+    "warmup_ticks": 1200,
+    "spawn_radius": 25,
+    "scavenge_duration_ticks": 6000,
+    "waves": [
+        {
+            "id": "wave_1",
+            "time_limit_ticks": 4200,
+            "arc_angle": 110,
+            "mobs": [
+                {
+                    "type": "cataclysm:ignited_berserker",
+                    "count": 12,
+                    "formation": "arc",
+                    "distance_min": 5,
+                    "distance_max": 10,
+                    "hp_multiplier": 12.0,
+                    "damage_multiplier": 6.0
+                },
+                {
+                    "type": "minecraft:wither_skeleton",
+                    "count": 12,
+                    "formation": "arc",
+                    "distance_min": 6,
+                    "distance_max": 12,
+                    "hp_multiplier": 12.0,
+                    "damage_multiplier": 6.0
+                },
+                {
+                    "type": "minecraft:piglin_brute",
+                    "count": 8,
+                    "formation": "arc",
+                    "distance_min": 8,
+                    "distance_max": 14,
+                    "hp_multiplier": 12.0,
+                    "damage_multiplier": 6.0
+                }
+            ]
+        },
+        {
+            "id": "wave_2",
+            "time_limit_ticks": 4800,
+            "arc_angle": 120,
+            "mobs": [
+                {
+                    "type": "cataclysm:ignited_revenant",
+                    "count": 10,
+                    "formation": "arc",
+                    "distance_min": 5,
+                    "distance_max": 10,
+                    "hp_multiplier": 12.0,
+                    "damage_multiplier": 6.0
+                },
+                {
+                    "type": "cataclysm:ignited_berserker",
+                    "count": 10,
+                    "formation": "arc",
+                    "distance_min": 6,
+                    "distance_max": 12,
+                    "hp_multiplier": 12.0,
+                    "damage_multiplier": 6.0
+                },
+                {
+                    "type": "cataclysm:cindaria",
+                    "count": 8,
+                    "formation": "arc",
+                    "distance_min": 10,
+                    "distance_max": 16,
+                    "hp_multiplier": 12.0,
+                    "damage_multiplier": 6.0
+                },
+                {
+                    "type": "minecraft:wither_skeleton",
+                    "count": 8,
+                    "formation": "arc",
+                    "distance_min": 8,
+                    "distance_max": 14,
+                    "hp_multiplier": 12.0,
+                    "damage_multiplier": 6.0
+                }
+            ]
+        },
+        {
+            "id": "wave_3_miniboss",
+            "time_limit_ticks": 54000,
+            "arc_angle": 360,
+            "mobs": [
+                {
+                    "is_boss": true,
+                    "boss_id": "netherite_monstrosity_miniboss"
+                }
+            ],
+            "rewards": {
+                "xp": 8000,
+                "commands": [
+                    "givecrate @a random all epic 1",
+                    "givecrate @a random all rare 3..5"
+                ],
+                "items": []
+            }
+        },
+        {
+            "id": "wave_4",
+            "time_limit_ticks": 6000,
+            "arc_angle": 120,
+            "mobs": [
+                {
+                    "type": "cataclysm:ignited_revenant",
+                    "count": 14,
+                    "formation": "arc",
+                    "distance_min": 5,
+                    "distance_max": 10,
+                    "hp_multiplier": 12.0,
+                    "damage_multiplier": 6.0
+                },
+                {
+                    "type": "cataclysm:ignited_berserker",
+                    "count": 14,
+                    "formation": "arc",
+                    "distance_min": 6,
+                    "distance_max": 12,
+                    "hp_multiplier": 12.0,
+                    "damage_multiplier": 6.0
+                },
+                {
+                    "type": "cataclysm:cindaria",
+                    "count": 10,
+                    "formation": "arc",
+                    "distance_min": 10,
+                    "distance_max": 16,
+                    "hp_multiplier": 12.0,
+                    "damage_multiplier": 6.0
+                },
+                {
+                    "type": "minecraft:piglin_brute",
+                    "count": 8,
+                    "formation": "arc",
+                    "distance_min": 8,
+                    "distance_max": 14,
+                    "hp_multiplier": 12.0,
+                    "damage_multiplier": 6.0
+                }
+            ]
+        },
+        {
+            "id": "wave_5",
+            "time_limit_ticks": 6000,
+            "arc_angle": 130,
+            "mobs": [
+                {
+                    "type": "cataclysm:ignited_revenant",
+                    "count": 16,
+                    "formation": "arc",
+                    "distance_min": 5,
+                    "distance_max": 10,
+                    "hp_multiplier": 12.0,
+                    "damage_multiplier": 6.0
+                },
+                {
+                    "type": "cataclysm:ignited_berserker",
+                    "count": 16,
+                    "formation": "arc",
+                    "distance_min": 6,
+                    "distance_max": 12,
+                    "hp_multiplier": 12.0,
+                    "damage_multiplier": 6.0
+                },
+                {
+                    "type": "cataclysm:cindaria",
+                    "count": 12,
+                    "formation": "arc",
+                    "distance_min": 10,
+                    "distance_max": 16,
+                    "hp_multiplier": 12.0,
+                    "damage_multiplier": 6.0
+                },
+                {
+                    "type": "minecraft:wither_skeleton",
+                    "count": 12,
+                    "formation": "arc",
+                    "distance_min": 8,
+                    "distance_max": 14,
+                    "hp_multiplier": 12.0,
+                    "damage_multiplier": 6.0
+                }
+            ]
+        },
+        {
+            "id": "wave_6_boss",
+            "time_limit_ticks": 54000,
+            "arc_angle": 360,
+            "mobs": [
+                {
+                    "is_boss": true,
+                    "boss_id": "ignis_boss"
+                }
+            ],
+            "rewards": {
+                "xp": 40000,
+                "commands": [
+                    "givecrate @a random all legendary 2",
+                    "givecrate @a random all epic 4..6"
+                ],
+                "items": []
+            }
+        }
+    ]
+}

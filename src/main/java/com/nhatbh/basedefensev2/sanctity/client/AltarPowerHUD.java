@@ -68,6 +68,19 @@ public class AltarPowerHUD {
         // Render Bars
         renderHorizontalBar(graphics, mc, startX, sanctityBarY, lastSanctity, lastMaxSanctity, 0xFFFF3333, cachedSanctityText, cachedSanctityTextWidth); // Red
         renderHorizontalBar(graphics, mc, startX, graceBarY, (float)lastGrace, (float)lastMaxGrace, 0xFF3333FF, cachedGraceText, cachedGraceTextWidth);       // Blue
+
+        // Render Retry Tracker text above Sanctity bar
+        int retriesUsed = ClientSanctityData.getRetriesUsed();
+        int maxRetries = ClientSanctityData.getMaxWorldRetries();
+        if (maxRetries > 0) {
+            String retryText = "Retries: " + retriesUsed + "/" + maxRetries;
+            graphics.pose().pushPose();
+            graphics.pose().translate(startX, sanctityBarY - 9, 0);
+            graphics.pose().scale(0.7f, 0.7f, 0.7f);
+            int retryColor = retriesUsed >= maxRetries ? 0xFFFF4444 : (retriesUsed > 0 ? 0xFFFFAA00 : 0xFF55FF55);
+            graphics.drawString(mc.font, retryText, 0, 0, retryColor, true);
+            graphics.pose().popPose();
+        }
     }
 
     // ── Cache update ─────────────────────────────────────────────────────────
