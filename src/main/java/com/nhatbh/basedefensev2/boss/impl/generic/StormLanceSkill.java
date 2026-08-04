@@ -43,7 +43,7 @@ public class StormLanceSkill {
 
                     // Lock onto a random player in range (100 blocks)
                     List<Player> nearbyPlayers = HitboxUtils.getEntitiesInCircle(
-                            ctx.boss().level(), Player.class, ctx.boss().position(), 100.0, Player::isAlive);
+                            ctx.boss().level(), Player.class, ctx.boss().position(), 100.0, BossSkillHelper::isValidTarget);
 
                     if (!nearbyPlayers.isEmpty()) {
                         Collections.shuffle(nearbyPlayers);
@@ -135,7 +135,7 @@ public class StormLanceSkill {
                                            currentPos.x + 2.0, currentPos.y + 2.0, currentPos.z + 2.0);
 
                     level.getEntitiesOfClass(Player.class, hitBox).forEach(player -> {
-                        if (player.isAlive() && !player.isCreative() && !player.isSpectator() && !hitEntities.contains(player.getUUID())) {
+                        if (BossSkillHelper.canBeHitBySkill(player) && !hitEntities.contains(player.getUUID())) {
                             hitEntities.add(player.getUUID()); // Pass through players while dealing 1 hit per player
 
                             // Clear beneficial effects before applying damage

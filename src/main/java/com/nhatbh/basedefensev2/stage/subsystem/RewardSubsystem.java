@@ -29,16 +29,11 @@ public class RewardSubsystem {
         WaveRewardConfig rewards = event.getFinalWave().rewards;
         ServerLevel level = event.getLevel();
 
-        LOGGER.info("[RewardSubsystem] Processing LootPhaseStarted for wave '{}' with {} player(s)",
-                event.getFinalWave() != null ? event.getFinalWave().id : "unknown", event.getPlayers().size());
-
         // 1. XP
         if (rewards.xp > 0) {
             for (ServerPlayer player : event.getPlayers()) {
                 player.giveExperiencePoints(rewards.xp);
             }
-            LOGGER.info("[RewardSubsystem] Granted {} XP to {} player(s)",
-                    rewards.xp, event.getPlayers().size());
         }
 
         // 2. Commands — run as server's command source bound to active level
@@ -48,7 +43,6 @@ public class RewardSubsystem {
             for (String cmd : rewards.commands) {
                 try {
                     server.getCommands().performPrefixedCommand(cmdSrc, cmd);
-                    LOGGER.info("[RewardSubsystem] Successfully executed command: '{}'", cmd);
                 } catch (Exception e) {
                     LOGGER.error("[RewardSubsystem] Failed command '{}': {}", cmd, e.getMessage());
                 }
@@ -81,7 +75,6 @@ public class RewardSubsystem {
                 itemEntity.setPickUpDelay(20);
                 level.addFreshEntity(itemEntity);
             }
-            LOGGER.info("[RewardSubsystem] Dropped {} item type(s).", rewards.items.size());
         }
     }
 }

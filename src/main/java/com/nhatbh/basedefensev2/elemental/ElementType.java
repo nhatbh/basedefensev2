@@ -2,28 +2,34 @@ package com.nhatbh.basedefensev2.elemental;
 
 public enum ElementType {
     // Elemental Schools (Primal Cycle)
-    FIRE("Fire", "§c"),
-    ICE("Ice", "§b"),
-    LIGHTNING("Lightning", "§e"),
-    NATURE("Nature", "§a"),
-    AQUA("Aqua", "§3"),
+    FIRE("Fire", "§c", "🔥"),
+    ICE("Ice", "§b", "❄"),
+    LIGHTNING("Lightning", "§e", "⚡"),
+    NATURE("Nature", "§a", "🌿"),
+    AQUA("Aqua", "§3", "💧"),
 
     // Arcane Schools (Unique Mechanics)
-    HOLY("Holy", "§e"),
-    EVOCATION("Evocation", "§d"),
-    ENDER("Ender", "§5"),
-    ELDRITCH("Eldritch", "§4"),
-    BLOOD("Blood", "§c"),
+    HOLY("Holy", "§e", "✨"),
+    EVOCATION("Evocation", "§d", "🔮"),
+    ENDER("Ender", "§5", "👁"),
+    ELDRITCH("Eldritch", "§4", "🐙"),
+    BLOOD("Blood", "§c", "🩸"),
 
     // Fallback/Physical
-    PHYSICAL("Physical", "§7");
+    PHYSICAL("Physical", "§7", "⚔");
 
     private final String displayName;
     private final String colorCode;
+    private final String icon;
 
-    ElementType(String displayName, String colorCode) {
+    ElementType(String displayName, String colorCode, String icon) {
         this.displayName = displayName;
         this.colorCode = colorCode;
+        this.icon = icon;
+    }
+
+    public String getIcon() {
+        return icon;
     }
 
     public String getDisplayName() {

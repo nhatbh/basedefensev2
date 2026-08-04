@@ -30,7 +30,7 @@ public class StaticShockSkill {
 
                     // Target random player within 40 blocks
                     List<Player> nearbyPlayers = HitboxUtils.getEntitiesInCircle(
-                            ctx.boss().level(), Player.class, ctx.boss().position(), 40.0, Player::isAlive);
+                            ctx.boss().level(), Player.class, ctx.boss().position(), 40.0, BossSkillHelper::isValidTarget);
 
                     if (!nearbyPlayers.isEmpty()) {
                         Collections.shuffle(nearbyPlayers);

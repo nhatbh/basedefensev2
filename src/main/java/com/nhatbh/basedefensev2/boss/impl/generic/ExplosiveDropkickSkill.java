@@ -44,7 +44,7 @@ public class ExplosiveDropkickSkill {
 
                     // Find closest player within 35 blocks to aim the dropkick line
                     List<Player> nearbyPlayers = HitboxUtils.getEntitiesInCircle(
-                            ctx.boss().level(), Player.class, ctx.boss().position(), 35.0, Player::isAlive);
+                            ctx.boss().level(), Player.class, ctx.boss().position(), 35.0, BossSkillHelper::isValidTarget);
 
                     Vec3 travelDir;
                     if (!nearbyPlayers.isEmpty()) {

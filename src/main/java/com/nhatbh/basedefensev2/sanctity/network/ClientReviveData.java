@@ -10,13 +10,15 @@ public class ClientReviveData {
 
     public static class ReviveStateData {
         public final int knockedDownTimer;
+        public final int spectatorTimer;
         public final boolean isKnockedDown;
         public final boolean wantsRevive;
         public final int rescueProgress;
         public final BlockPos deathPos;
 
-        public ReviveStateData(int knockedDownTimer, boolean isKnockedDown, boolean wantsRevive, int rescueProgress, BlockPos deathPos) {
+        public ReviveStateData(int knockedDownTimer, int spectatorTimer, boolean isKnockedDown, boolean wantsRevive, int rescueProgress, BlockPos deathPos) {
             this.knockedDownTimer = knockedDownTimer;
+            this.spectatorTimer = spectatorTimer;
             this.isKnockedDown = isKnockedDown;
             this.wantsRevive = wantsRevive;
             this.rescueProgress = rescueProgress;
@@ -28,8 +30,8 @@ public class ClientReviveData {
         localPlayerId = id;
     }
 
-    public static void update(int entityId, int knockedDownTimer, boolean isKnockedDown, boolean wantsRevive, int rescueProgress, BlockPos deathPos) {
-        playerStates.put(entityId, new ReviveStateData(knockedDownTimer, isKnockedDown, wantsRevive, rescueProgress, deathPos));
+    public static void update(int entityId, int knockedDownTimer, int spectatorTimer, boolean isKnockedDown, boolean wantsRevive, int rescueProgress, BlockPos deathPos) {
+        playerStates.put(entityId, new ReviveStateData(knockedDownTimer, spectatorTimer, isKnockedDown, wantsRevive, rescueProgress, deathPos));
     }
 
     public static ReviveStateData get(int entityId) {
@@ -43,6 +45,11 @@ public class ClientReviveData {
     public static int getKnockedDownTimer() { 
         ReviveStateData data = getLocal();
         return data != null ? data.knockedDownTimer : 0; 
+    }
+
+    public static int getSpectatorTimer() { 
+        ReviveStateData data = getLocal();
+        return data != null ? data.spectatorTimer : 0; 
     }
     
     public static boolean isKnockedDown() { 

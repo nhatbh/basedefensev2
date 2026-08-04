@@ -42,11 +42,14 @@ public class MobElementService {
                         element = MobElementConfig.getElementFor(key.toString());
                     }
                 }
-                
-                if (element != null) {
-                    entity.getPersistentData().putString("ElementType", element.name());
-                    NetworkManager.sendToTracking(new com.nhatbh.basedefensev2.elemental.network.MobElementSyncPacket(entity.getId(), element.name()), entity);
+
+                // 3. Fallback to PHYSICAL if unmapped
+                if (element == null) {
+                    element = ElementType.PHYSICAL;
                 }
+                
+                entity.getPersistentData().putString("ElementType", element.name());
+                NetworkManager.sendToTracking(new com.nhatbh.basedefensev2.elemental.network.MobElementSyncPacket(entity.getId(), element.name()), entity);
             }
         }
     }

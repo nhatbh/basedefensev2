@@ -29,6 +29,8 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> SUNLESS = MOB_EFFECTS.register("sunless", SunforgedEffects.SunlessEffect::new);
 
     public static final RegistryObject<MobEffect> HEAVY_FOOTING = MOB_EFFECTS.register("heavy_footing", com.nhatbh.basedefensev2.effects.HeavyFootingEffect::new);
+    public static final RegistryObject<MobEffect> UNTARGETABLE = MOB_EFFECTS.register("untargetable", com.nhatbh.basedefensev2.effects.UntargetableEffect::new);
+    public static final RegistryObject<MobEffect> DOWNED = MOB_EFFECTS.register("downed", com.nhatbh.basedefensev2.effects.DownedEffect::new);
     public static final RegistryObject<MobEffect> SEISMIC_RUPTURE = MOB_EFFECTS.register("seismic_rupture", () -> new CustomEffect(MobEffectCategory.BENEFICIAL, 0x8B5A2B));
     public static final RegistryObject<MobEffect> SHATTERED_MANTLE = MOB_EFFECTS.register("shattered_mantle", () -> new CustomEffect(MobEffectCategory.HARMFUL, 0x553311));
 

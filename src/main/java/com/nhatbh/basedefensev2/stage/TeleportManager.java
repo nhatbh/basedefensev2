@@ -1,6 +1,5 @@
 package com.nhatbh.basedefensev2.stage;
 
-import com.nhatbh.basedefensev2.stage.ModDimensions;
 import com.nhatbh.basedefensev2.stage.config.StageConfig;
 import com.nhatbh.basedefensev2.stage.core.StageContext;
 import net.minecraft.network.chat.Component;
@@ -38,7 +37,8 @@ public class TeleportManager {
         if (arenaLevel == null || arenaLevel.getServer() == null)
             return;
         arenaLevel.getServer().getPlayerList().getPlayers().forEach(player -> {
-            if (!player.level().dimension().equals(ModDimensions.ARENA)) {
+            if (player.gameMode.getGameModeForPlayer() != net.minecraft.world.level.GameType.SPECTATOR
+                    && !player.level().dimension().equals(ModDimensions.ARENA)) {
                 teleportToArena(player, arenaLevel);
                 player.sendSystemMessage(
                         Component.literal("§6[The Rift] §eThe ancients summon you! Step forth and fight!"));

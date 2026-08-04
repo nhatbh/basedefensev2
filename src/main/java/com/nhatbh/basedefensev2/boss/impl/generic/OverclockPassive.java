@@ -24,6 +24,21 @@ import java.util.*;
 
 public class OverclockPassive implements PassiveSkill {
 
+    @Override
+    public String getName() {
+        return "Lôi Ảnh";
+    }
+
+    @Override
+    public String getTitlePrefix() {
+        return "Overclocked";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Bộ pháp kinh lôi, quyền phong nạp điện. Khi sấm chớp viên mãn, tàn ảnh hóa tử thần, thi triển sát cục truy hồn đoạt mệnh tới tận cửu tuyền.";
+    }
+
     private static final Map<LivingEntity, OverclockPassive> ACTIVE_INSTANCES = new WeakHashMap<>();
 
     private float charge = 0.0f; // 0 to 100
@@ -324,7 +339,7 @@ public class OverclockPassive implements PassiveSkill {
         ParticleUtils.renderCircle(level, ParticleTypes.ELECTRIC_SPARK, center, 6.0, 24, 0.05);
 
         List<Player> nearbyPlayers = HitboxUtils.getEntitiesInCircle(
-                level, Player.class, center, 6.0, Player::isAlive);
+                level, Player.class, center, 6.0, com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper::canBeHitBySkill);
 
         Vec3 bossBody = boss.position().add(0, 1.0, 0);
         for (Player p : nearbyPlayers) {
@@ -367,7 +382,7 @@ public class OverclockPassive implements PassiveSkill {
 
     private void spawnVoltaicTethers(ServerLevel level, LivingEntity boss) {
         List<Player> players = level.getEntitiesOfClass(Player.class,
-                boss.getBoundingBox().inflate(32), Player::isAlive);
+                boss.getBoundingBox().inflate(32), com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper::isValidTarget);
 
         if (players.size() < 2) return;
 
@@ -385,7 +400,7 @@ public class OverclockPassive implements PassiveSkill {
 
     private void spawnConductorNearPlayer(ServerLevel level, LivingEntity boss) {
         List<Player> players = level.getEntitiesOfClass(Player.class,
-                boss.getBoundingBox().inflate(32), Player::isAlive);
+                boss.getBoundingBox().inflate(32), com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper::isValidTarget);
 
         if (players.isEmpty()) return;
 
@@ -397,7 +412,7 @@ public class OverclockPassive implements PassiveSkill {
 
     private void spawnLightningStrikes(ServerLevel level, LivingEntity boss) {
         List<Player> players = level.getEntitiesOfClass(Player.class,
-                boss.getBoundingBox().inflate(32), Player::isAlive);
+                boss.getBoundingBox().inflate(32), com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper::isValidTarget);
 
         if (players.isEmpty()) return;
 
@@ -450,7 +465,7 @@ public class OverclockPassive implements PassiveSkill {
 
             if (ticksRemaining % 10 == 0) {
                 AABB box = new AABB(pos.x - 1, pos.y - 0.5, pos.z - 1, pos.x + 1, pos.y + 1.5, pos.z + 1);
-                List<Player> hitPlayers = level.getEntitiesOfClass(Player.class, box, Player::isAlive);
+                List<Player> hitPlayers = level.getEntitiesOfClass(Player.class, box, com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper::canBeHitBySkill);
                 for (Player p : hitPlayers) {
                     p.hurt(level.damageSources().lightningBolt(), p.getMaxHealth() * 0.01f + 0.5f);
                 }
@@ -489,7 +504,7 @@ public class OverclockPassive implements PassiveSkill {
                 level.sendParticles(ParticleTypes.EXPLOSION, pos.x, pos.y + 1.0, pos.z, 8, 1.0, 1.0, 1.0, 0.05);
 
                 List<Player> hitPlayers = HitboxUtils.getEntitiesInCircle(
-                        level, Player.class, pos, 5.0, Player::isAlive);
+                        level, Player.class, pos, 5.0, com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper::canBeHitBySkill);
 
                 for (Player p : hitPlayers) {
                     p.hurt(level.damageSources().lightningBolt(), p.getMaxHealth() * 0.20f + 4.0f);

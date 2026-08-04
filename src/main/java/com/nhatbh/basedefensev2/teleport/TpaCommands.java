@@ -154,10 +154,20 @@ public class TpaCommands {
             return 0;
         }
 
+        // Determine energy cost: standard = 30.0, knocked down player = 60.0
+        boolean isKnockedDown = false;
+        var reqCap = requester.getCapability(com.nhatbh.basedefensev2.sanctity.data.ReviveStateProvider.REVIVE_STATE).orElse(null);
+        var targetCap = target.getCapability(com.nhatbh.basedefensev2.sanctity.data.ReviveStateProvider.REVIVE_STATE).orElse(null);
+        if ((reqCap != null && reqCap.isKnockedDown()) || (targetCap != null && targetCap.isKnockedDown())) {
+            isKnockedDown = true;
+        }
+
+        double energyCost = isKnockedDown ? 60.0 : ENERGY_COST;
+
         // Check base energy (Grace)
         AltarSavedData altarData = AltarSavedData.get(level);
-        if (altarData.getGrace() < ENERGY_COST) {
-            Component lowEnergyMsg = Component.literal("Teleportation failed: Base Energy (Grace) is below " + (int) ENERGY_COST + "!")
+        if (altarData.getGrace() < energyCost) {
+            Component lowEnergyMsg = Component.literal("Teleportation failed: Base Energy (Grace) is below " + (int) energyCost + "!" + (isKnockedDown ? " (Knocked down player requires 60 Base Energy)" : ""))
                     .withStyle(ChatFormatting.RED);
             target.sendSystemMessage(lowEnergyMsg);
             requester.sendSystemMessage(lowEnergyMsg);
@@ -165,21 +175,21 @@ public class TpaCommands {
         }
 
         // Consume Base Energy
-        altarData.setGrace(altarData.getGrace() - ENERGY_COST);
+        altarData.setGrace(altarData.getGrace() - energyCost);
         syncSanctityToAll(level, altarData);
 
         // Perform Teleport
         if (req.type == TpaType.TPA) {
             // Requester teleports to Target
             requester.teleportTo(target.serverLevel(), target.getX(), target.getY(), target.getZ(), target.getYRot(), target.getXRot());
-            requester.sendSystemMessage(Component.literal("Teleported to " + target.getScoreboardName() + "! (Consumed " + (int) ENERGY_COST + " Base Energy)")
+            requester.sendSystemMessage(Component.literal("Teleported to " + target.getScoreboardName() + "! (Consumed " + (int) energyCost + " Base Energy)")
                     .withStyle(ChatFormatting.GREEN));
             target.sendSystemMessage(Component.literal(requester.getScoreboardName() + " has teleported to you.")
                     .withStyle(ChatFormatting.GREEN));
         } else {
             // Target teleports to Requester
             target.teleportTo(requester.serverLevel(), requester.getX(), requester.getY(), requester.getZ(), requester.getYRot(), requester.getXRot());
-            target.sendSystemMessage(Component.literal("Teleported to " + requester.getScoreboardName() + "! (Consumed " + (int) ENERGY_COST + " Base Energy)")
+            target.sendSystemMessage(Component.literal("Teleported to " + requester.getScoreboardName() + "! (Consumed " + (int) energyCost + " Base Energy)")
                     .withStyle(ChatFormatting.GREEN));
             requester.sendSystemMessage(Component.literal(target.getScoreboardName() + " has accepted your teleport request.")
                     .withStyle(ChatFormatting.GREEN));

@@ -36,10 +36,8 @@ public class EntityStrengthSyncPacket {
     public boolean handle(Supplier<NetworkEvent.Context> supplier) {
         NetworkEvent.Context context = supplier.get();
         context.enqueueWork(() -> {
-            boolean isClient = context.getDirection().getReceptionSide() == LogicalSide.CLIENT;
-            if (isClient) {
-                ClientStrengthHandler.handleSync(this);
-            }
+            net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
+                () -> () -> ClientStrengthHandler.handleSync(EntityStrengthSyncPacket.this));
         });
         context.setPacketHandled(true);
         return true;

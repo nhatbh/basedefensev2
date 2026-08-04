@@ -42,7 +42,6 @@ public class CleanupSubsystem {
         for (Entity entity : toRemove) {
             entity.discard();
         }
-        LOGGER.info("[CleanupSubsystem] Discarded {} entities.", toRemove.size());
 
         // 2. Teleport players to overworld spawn
         ServerLevel overworld = arena.getServer().overworld();
@@ -54,8 +53,6 @@ public class CleanupSubsystem {
         for (ServerPlayer player : toTeleport) {
             player.teleportTo(overworld, sx, sy, sz,
                     player.getYRot(), player.getXRot());
-            LOGGER.info("[CleanupSubsystem] Teleported player '{}'.",
-                    player.getName().getString());
         }
     }
 }

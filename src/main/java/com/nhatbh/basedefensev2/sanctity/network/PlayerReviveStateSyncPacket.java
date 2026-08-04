@@ -8,14 +8,16 @@ import java.util.function.Supplier;
 public class PlayerReviveStateSyncPacket {
     private final int entityId;
     private final int knockedDownTimer;
+    private final int spectatorTimer;
     private final boolean isKnockedDown;
     private final boolean wantsRevive;
     private final int rescueProgress;
     private final BlockPos deathPos;
 
-    public PlayerReviveStateSyncPacket(int entityId, int knockedDownTimer, boolean isKnockedDown, boolean wantsRevive, int rescueProgress, BlockPos deathPos) {
+    public PlayerReviveStateSyncPacket(int entityId, int knockedDownTimer, int spectatorTimer, boolean isKnockedDown, boolean wantsRevive, int rescueProgress, BlockPos deathPos) {
         this.entityId = entityId;
         this.knockedDownTimer = knockedDownTimer;
+        this.spectatorTimer = spectatorTimer;
         this.isKnockedDown = isKnockedDown;
         this.wantsRevive = wantsRevive;
         this.rescueProgress = rescueProgress;
@@ -25,6 +27,7 @@ public class PlayerReviveStateSyncPacket {
     public PlayerReviveStateSyncPacket(FriendlyByteBuf buf) {
         this.entityId = buf.readInt();
         this.knockedDownTimer = buf.readInt();
+        this.spectatorTimer = buf.readInt();
         this.isKnockedDown = buf.readBoolean();
         this.wantsRevive = buf.readBoolean();
         this.rescueProgress = buf.readInt();
@@ -34,6 +37,7 @@ public class PlayerReviveStateSyncPacket {
     public void toBytes(FriendlyByteBuf buf) {
         buf.writeInt(entityId);
         buf.writeInt(knockedDownTimer);
+        buf.writeInt(spectatorTimer);
         buf.writeBoolean(isKnockedDown);
         buf.writeBoolean(wantsRevive);
         buf.writeInt(rescueProgress);
@@ -44,7 +48,7 @@ public class PlayerReviveStateSyncPacket {
     public boolean handle(Supplier<NetworkEvent.Context> supplier) {
         NetworkEvent.Context context = supplier.get();
         context.enqueueWork(() -> {
-            ClientReviveData.update(entityId, knockedDownTimer, isKnockedDown, wantsRevive, rescueProgress, deathPos);
+            ClientReviveData.update(entityId, knockedDownTimer, spectatorTimer, isKnockedDown, wantsRevive, rescueProgress, deathPos);
         });
         return true;
     }

@@ -6,6 +6,7 @@ import com.nhatbh.basedefensev2.boss.core.BossComponent;
 import com.nhatbh.basedefensev2.boss.core.BossDefinition;
 import com.nhatbh.basedefensev2.boss.core.BossManager;
 import com.nhatbh.basedefensev2.registry.ModBosses;
+import com.nhatbh.basedefensev2.stage.config.StageConfig;
 import com.nhatbh.basedefensev2.stage.core.StageContext;
 import com.nhatbh.basedefensev2.stage.core.StageState;
 import net.minecraft.commands.CommandSourceStack;
@@ -68,22 +69,10 @@ public class ArenaCommands {
                             return 1;
                         }))
                 .then(Commands.literal("ready")
-                        .executes(context -> {
-                            ServerPlayer player = context.getSource().getPlayerOrException();
-                            if (player.getServer() == null) return 0;
-                            ServerLevel arenaLevel = player.getServer().getLevel(ModDimensions.ARENA);
-                            if (arenaLevel == null) return 0;
-
-                            StageContext ctx = StageContext.getOrCreate(arenaLevel);
-                            if (ctx.getStageState() != StageState.RETRY_INTERMISSION) {
-                                context.getSource().sendFailure(Component.literal("No retry intermission is currently active!"));
-                                return 0;
-                            }
-
-                            context.getSource().sendSuccess(() -> Component.literal("§a[Borrowed Time] Preparation cut short! Commencing stage retry immediately..."), true);
-                            ctx.startRetryStage(arenaLevel);
-                            return 1;
-                        }))
+                        .executes(context -> executeVoteCommand(context, true)))
+                .then(Commands.literal("vote")
+                        .then(Commands.literal("yes").executes(context -> executeVoteCommand(context, true)))
+                        .then(Commands.literal("no").executes(context -> executeVoteCommand(context, false))))
                 .then(Commands.literal("leave")
                         .executes(context -> {
                             ServerPlayer player = context.getSource().getPlayerOrException();
@@ -93,8 +82,8 @@ public class ArenaCommands {
 
                             StageContext ctx = StageContext.getOrCreate(arenaLevel);
 
-                            if (ctx.getStageState() != StageState.SCAVENGE && ctx.getStageState() != StageState.ENDED) {
-                                context.getSource().sendFailure(Component.literal("You can only leave during the scavenging phase!"));
+                            if (ctx.getStageState() != StageState.SCAVENGE && ctx.getStageState() != StageState.ENDED && ctx.getStageState() != StageState.RETRY_INTERMISSION) {
+                                context.getSource().sendFailure(Component.literal("You can only leave during the scavenging phase or intermission!"));
                                 return 0;
                             }
 
@@ -117,13 +106,13 @@ public class ArenaCommands {
                                 int totalWaves = config != null && config.waves != null ? config.waves.size() : 0;
                                 String stateName = ctx.getStageState() != null ? ctx.getStageState().name() : "NONE";
 
-                                String nextStageId = ctx.getNextStageId();
+                                String nextStageId = ctx.getNextStageId(arenaLevel);
                                 String nextStageStr = nextStageId != null ? nextStageId : "None";
                                 context.getSource().sendSuccess(() -> Component.literal("§6[The Rift Status] §eCurrent Stage: §c" + stageId 
                                         + " §7(Assault " + currentWave + "/" + totalWaves + " - " + stateName + ") | §eNext Stage: §c" + nextStageStr), false);
                             } else {
                                 int ticksRemaining = ctx.getTicksUntilNextStage(arenaLevel);
-                                String nextStageId = ctx.getNextStageId();
+                                String nextStageId = ctx.getNextStageId(arenaLevel);
                                 String nextStageStr = nextStageId != null ? nextStageId : "None";
                                 if (ticksRemaining < 0) {
                                     context.getSource().sendSuccess(() -> Component.literal("§6[The Rift Status] §eNo active stage. All trials have been completed!"), false);
@@ -182,7 +171,114 @@ public class ArenaCommands {
                         .executes(context -> {
                             return dumpHostileMobs(context.getSource());
                         }))
+                .then(Commands.literal("classify")
+                        .executes(context -> {
+                            if (context.getSource().getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) {
+                                com.nhatbh.basedefensev2.strength.network.NetworkManager.INSTANCE.send(
+                                        net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> sp),
+                                        new com.nhatbh.basedefensev2.stage.network.OpenGuiPacket(com.nhatbh.basedefensev2.stage.network.OpenGuiPacket.GuiType.CLASSIFY)
+                                );
+                            }
+                            return 1;
+                        }))
+                .then(Commands.literal("info")
+                        .executes(context -> {
+                            if (context.getSource().getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) {
+                                com.nhatbh.basedefensev2.strength.network.NetworkManager.INSTANCE.send(
+                                        net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> sp),
+                                        new com.nhatbh.basedefensev2.stage.network.OpenGuiPacket(com.nhatbh.basedefensev2.stage.network.OpenGuiPacket.GuiType.INFO)
+                                );
+                            }
+                            return 1;
+                        }))
+                .then(Commands.literal("reroll")
+                        .requires(s -> s.hasPermission(2))
+                        .executes(context -> executeRerollCommand(context.getSource())))
+                .then(Commands.literal("fastforward")
+                        .requires(s -> s.hasPermission(2))
+                        .then(Commands.argument("seconds", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
+                                .executes(context -> executeFastForwardCommand(context.getSource(), com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "seconds")))))
+                .then(Commands.literal("test_wave")
+                        .requires(s -> s.hasPermission(2))
+                        .executes(context -> executeTestWaveCommand(context.getSource())))
+                .then(Commands.literal("spawn_test_boss")
+                        .requires(s -> s.hasPermission(2))
+                        .executes(context -> executeSpawnTestBossCommand(context.getSource())))
+                .then(Commands.literal("gauntlet")
+                        .requires(s -> s.hasPermission(2))
+                        .executes(context -> executeGauntletCommand(context.getSource())))
         );
+    }
+
+    private static int executeTestWaveCommand(CommandSourceStack source) {
+        if (source.getServer() == null) return 0;
+        ServerLevel level = source.getServer().getLevel(ModDimensions.ARENA);
+        if (level == null) level = source.getLevel();
+
+        StageConfig customConfig = com.nhatbh.basedefensev2.stage.generator.RandomStageGenerator.generateTestZombieStage();
+        StageContext ctx = StageContext.getOrCreate(level);
+        ctx.forceStartStage(level, customConfig);
+
+        final String stageId = customConfig.id;
+        source.sendSuccess(() -> Component.literal(String.format("§6[The Rift OP] §aInitiated zombie test stage: %s!", stageId)), true);
+        return 1;
+    }
+
+    private static int executeSpawnTestBossCommand(CommandSourceStack source) {
+        try {
+            ServerPlayer player = source.getPlayerOrException();
+            // Ensure test zombie boss definition is generated & registered
+            com.nhatbh.basedefensev2.stage.generator.RandomStageGenerator.generateTestZombieStage();
+
+            BossDefinition def = ModBosses.get("test_zombie_boss");
+            if (def == null) {
+                source.sendFailure(Component.literal("Failed to load test_zombie_boss definition!"));
+                return 0;
+            }
+
+            ResourceLocation entityLoc = ResourceLocation.parse(def.getBaseEntity());
+            EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(entityLoc);
+            if (type == null) {
+                source.sendFailure(Component.literal("Unknown base entity: " + def.getBaseEntity()));
+                return 0;
+            }
+
+            Entity entity = type.create(player.level());
+            if (entity instanceof LivingEntity living) {
+                Vec3 pos = player.position();
+                living.setPos(pos.x, pos.y, pos.z);
+
+                BossComponent comp = new BossComponent(def);
+                BossManager.registerBoss(living, comp);
+
+                living.setCustomName(Component.literal("LIGHTNING LANCE ZOMBIE"));
+                living.setCustomNameVisible(true);
+
+                player.level().addFreshEntity(living);
+                source.sendSuccess(() -> Component.literal("§6[The Rift OP] §aSpawned test Lightning Lance boss directly!"), true);
+                return 1;
+            } else {
+                source.sendFailure(Component.literal("Base entity must be a LivingEntity!"));
+                return 0;
+            }
+        } catch (Exception e) {
+            source.sendFailure(Component.literal("Error spawning test boss: " + e.getMessage()));
+            return 0;
+        }
+    }
+
+    private static int executeGauntletCommand(CommandSourceStack source) {
+        if (source.getServer() == null) return 0;
+        ServerLevel level = source.getServer().getLevel(ModDimensions.ARENA);
+        if (level == null) level = source.getLevel();
+
+        StageConfig customConfig = com.nhatbh.basedefensev2.stage.generator.RandomStageGenerator.generateGauntletStage();
+        StageContext ctx = StageContext.getOrCreate(level);
+        ctx.forceStartStage(level, customConfig);
+
+        int totalBosses = customConfig.waves != null ? customConfig.waves.size() : 0;
+        source.sendSuccess(() -> Component.literal(String.format("§6[The Rift OP] §aBoss & Miniboss Gauntlet Stage initiated! Total waves: %d", totalBosses)), true);
+        return 1;
     }
 
     public static int dumpHostileMobs(CommandSourceStack source) {
@@ -226,26 +322,60 @@ public class ArenaCommands {
         }
     }
 
+    private static int executeVoteCommand(com.mojang.brigadier.context.CommandContext<CommandSourceStack> context, boolean voteYes) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        if (player.getServer() == null) return 0;
+        ServerLevel arenaLevel = player.getServer().getLevel(ModDimensions.ARENA);
+        if (arenaLevel == null) return 0;
+
+        StageContext ctx = StageContext.getOrCreate(arenaLevel);
+        StageState state = ctx.getStageState();
+        if (state != StageState.RETRY_INTERMISSION && state != StageState.WARMUP) {
+            context.getSource().sendFailure(Component.literal("§c[The Rift] No intermission or warmup active!"));
+            return 0;
+        }
+
+        ctx.processVote(player, arenaLevel, voteYes);
+        return 1;
+    }
+
+    private static int executeRerollCommand(CommandSourceStack source) {
+        if (source.getServer() == null) return 0;
+        ServerLevel arenaLevel = source.getServer().getLevel(ModDimensions.ARENA);
+        if (arenaLevel == null) return 0;
+
+        StageContext ctx = StageContext.getOrCreate(arenaLevel);
+        ctx.rerollStages(arenaLevel);
+        source.sendSuccess(() -> Component.literal("§6[The Rift OP] §aSuccessfully rerolled stage selection order!"), true);
+        return 1;
+    }
+
+    private static int executeFastForwardCommand(CommandSourceStack source, int seconds) {
+        if (source.getServer() == null) return 0;
+        ServerLevel arenaLevel = source.getServer().getLevel(ModDimensions.ARENA);
+        if (arenaLevel == null) return 0;
+
+        StageContext ctx = StageContext.getOrCreate(arenaLevel);
+        ctx.fastForwardTimer(arenaLevel, seconds);
+        source.sendSuccess(() -> Component.literal(String.format("§6[The Rift OP] §aFast-forwarded stage timer by %d seconds!", seconds)), true);
+        return 1;
+    }
+
     @SubscribeEvent
     public static void onRegisterStageCommand(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("stage")
                 .then(Commands.literal("ready")
-                        .executes(context -> {
-                            ServerPlayer player = context.getSource().getPlayerOrException();
-                            if (player.getServer() == null) return 0;
-                            ServerLevel arenaLevel = player.getServer().getLevel(ModDimensions.ARENA);
-                            if (arenaLevel == null) return 0;
-
-                            StageContext ctx = StageContext.getOrCreate(arenaLevel);
-                            if (ctx.getStageState() != StageState.RETRY_INTERMISSION) {
-                                context.getSource().sendFailure(Component.literal("No retry intermission is currently active!"));
-                                return 0;
-                            }
-
-                            context.getSource().sendSuccess(() -> Component.literal("§a[Borrowed Time] Preparation cut short! Commencing stage retry immediately..."), true);
-                            ctx.startRetryStage(arenaLevel);
-                            return 1;
-                        }))
+                        .executes(context -> executeVoteCommand(context, true)))
+                .then(Commands.literal("vote")
+                        .then(Commands.literal("yes").executes(context -> executeVoteCommand(context, true)))
+                        .then(Commands.literal("no").executes(context -> executeVoteCommand(context, false))))
+                .then(Commands.literal("reroll")
+                        .requires(s -> s.hasPermission(2))
+                        .executes(context -> executeRerollCommand(context.getSource())))
+                .then(Commands.literal("fastforward")
+                        .requires(s -> s.hasPermission(2))
+                        .then(Commands.argument("seconds", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
+                                .executes(context -> executeFastForwardCommand(context.getSource(), com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "seconds")))))
         );
     }
 }

@@ -69,16 +69,31 @@ public class AltarPowerHUD {
         renderHorizontalBar(graphics, mc, startX, sanctityBarY, lastSanctity, lastMaxSanctity, 0xFFFF3333, cachedSanctityText, cachedSanctityTextWidth); // Red
         renderHorizontalBar(graphics, mc, startX, graceBarY, (float)lastGrace, (float)lastMaxGrace, 0xFF3333FF, cachedGraceText, cachedGraceTextWidth);       // Blue
 
-        // Render Retry Tracker text above Sanctity bar
+        // Render Lives (Hearts) & Penalty Tracker text above Sanctity bar
         int retriesUsed = ClientSanctityData.getRetriesUsed();
         int maxRetries = ClientSanctityData.getMaxWorldRetries();
         if (maxRetries > 0) {
-            String retryText = "Retries: " + retriesUsed + "/" + maxRetries;
+            int livesRemaining = Math.max(0, maxRetries - retriesUsed);
+            double boost = Math.min(com.nhatbh.basedefensev2.config.SanctityConfig.data.maxRetryMobStatBoost, retriesUsed * com.nhatbh.basedefensev2.config.SanctityConfig.data.retryMobStatMultiplier);
+            int threatPct = (int) Math.round(boost * 100.0);
+
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < livesRemaining; i++) {
+                sb.append("❤");
+            }
+            if (livesRemaining == 0) {
+                sb.append("💔");
+            }
+            if (threatPct > 0) {
+                sb.append(" §c+").append(threatPct).append("%");
+            }
+
+            String retryText = sb.toString();
+
             graphics.pose().pushPose();
             graphics.pose().translate(startX, sanctityBarY - 9, 0);
             graphics.pose().scale(0.7f, 0.7f, 0.7f);
-            int retryColor = retriesUsed >= maxRetries ? 0xFFFF4444 : (retriesUsed > 0 ? 0xFFFFAA00 : 0xFF55FF55);
-            graphics.drawString(mc.font, retryText, 0, 0, retryColor, true);
+            graphics.drawString(mc.font, retryText, 0, 0, 0xFFFF4444, true);
             graphics.pose().popPose();
         }
     }

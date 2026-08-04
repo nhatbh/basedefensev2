@@ -70,13 +70,37 @@ public class DragonsFuryPassive implements PassiveSkill {
     }
 
     @Override
+    public String getName() {
+        return "Long Nộ";
+    }
+
+    @Override
+    public String getTitlePrefix() {
+        return "Draconic";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Kiếm phong chạm vảy, nộ khí hóa bích. Huyết mạch càng cạn kiệt, ác long càng thâm nhập ma đạo, trút cơn cuồng nộ diệt thế thuở mạt lộ.";
+    }
+
+    @Override
     public void onAdded(LivingEntity boss) {
         ACTIVE_INSTANCES.put(boss, this);
+        com.nhatbh.basedefensev2.boss.client.BossResourceBarRegistry.registerBar(
+            boss,
+            () -> isEnraged() ? "ENRAGED RAGE" : "Rage",
+            () -> this.rage,
+            () -> 200.0f,
+            () -> isEnraged() ? 0xFFFF0000 : (this.rage >= 100.0f ? 0xFFFF4500 : 0xFFFFAA00),
+            () -> isEnraged() ? 0xFF800000 : (this.rage >= 100.0f ? 0xFF8B0000 : 0xFF884400)
+        );
     }
 
     @Override
     public void onRemoved(LivingEntity boss) {
         ACTIVE_INSTANCES.remove(boss);
+        com.nhatbh.basedefensev2.boss.client.BossResourceBarRegistry.unregisterBar(boss);
         onEnrageEnd(boss);
         removeDesperationBuffs(boss);
     }
@@ -347,7 +371,7 @@ public class DragonsFuryPassive implements PassiveSkill {
             DamageSource burnSource = serverLevel.damageSources().inFire();
 
             for (Player player : players) {
-                if (!player.isAlive() || player.isCreative() || player.isSpectator())
+                if (!com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.canBeHitBySkill(player))
                     continue;
 
                 double distSq = player.distanceToSqr(boss);
@@ -381,7 +405,7 @@ public class DragonsFuryPassive implements PassiveSkill {
         AABB searchBox = new AABB(center.x - 32, center.y - 8, center.z - 32, center.x + 32, center.y + 8,
                 center.z + 32);
         List<Player> targets = serverLevel.getEntitiesOfClass(Player.class, searchBox,
-                p -> p.isAlive() && !p.isCreative() && p.distanceToSqr(boss) >= 16.0); // Exclude within 4m
+                p -> com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.isValidTarget(p) && p.distanceToSqr(boss) >= 16.0); // Exclude within 4m
 
         if (targets.isEmpty())
             return;
@@ -530,7 +554,7 @@ public class DragonsFuryPassive implements PassiveSkill {
             AABB hitBox = new AABB(currentPos.x - 1, currentPos.y - 1, currentPos.z - 1, currentPos.x + 1,
                     currentPos.y + 1, currentPos.z + 1);
             List<Player> players = level.getEntitiesOfClass(Player.class, hitBox,
-                    p -> !p.isCreative() && !p.isSpectator());
+                    com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper::canBeHitBySkill);
             if (!players.isEmpty()) {
                 Player hitPlayer = players.get(0);
                 hitPlayer.hurt(level.damageSources().inFire(), hitPlayer.getMaxHealth() * 0.20f);
@@ -598,7 +622,7 @@ public class DragonsFuryPassive implements PassiveSkill {
                 List<Player> players = level.getEntitiesOfClass(Player.class, box, p -> p.distanceToSqr(stand) <= 9.0);
 
                 for (Player player : players) {
-                    if (!player.isAlive() || player.isCreative() || player.isSpectator())
+                    if (!com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.canBeHitBySkill(player))
                         continue;
                     player.hurt(level.damageSources().inFire(), player.getMaxHealth() * 0.02f);
                     if (ModEffects.HEALING_BLOCK.isPresent()) {

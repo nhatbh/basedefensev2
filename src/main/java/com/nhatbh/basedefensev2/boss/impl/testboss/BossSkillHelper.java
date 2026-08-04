@@ -20,13 +20,30 @@ public class BossSkillHelper {
         return getClosestTarget(ctx, 32.0);
     }
 
+    /**
+     * Determines whether an entity can be selected as a target by boss AI, skills, or stage tracking.
+     * Untargetable players, spectators, creative players, and knocked down players cannot be targeted.
+     */
     public static boolean isValidTarget(LivingEntity entity) {
         if (entity == null || !entity.isAlive()) return false;
+        if (entity.hasEffect(com.nhatbh.basedefensev2.registry.ModEffects.UNTARGETABLE.get())) return false;
         if (entity instanceof net.minecraft.world.entity.player.Player player) {
             if (player.isCreative() || player.isSpectator()) return false;
             return player.getCapability(com.nhatbh.basedefensev2.sanctity.data.ReviveStateProvider.REVIVE_STATE)
                     .map(state -> !state.isKnockedDown())
                     .orElse(true);
+        }
+        return true;
+    }
+
+    /**
+     * Determines whether an entity can be hit by skill damage, AoEs, projectiles, or skill status effects.
+     * Untargetable players CAN be hit, but Spectators and Creative players cannot.
+     */
+    public static boolean canBeHitBySkill(LivingEntity entity) {
+        if (entity == null || !entity.isAlive()) return false;
+        if (entity instanceof net.minecraft.world.entity.player.Player player) {
+            return !player.isCreative() && !player.isSpectator();
         }
         return true;
     }
@@ -113,12 +130,8 @@ public class BossSkillHelper {
     }
 
     public static void depletePoise(SkillContext ctx, float percentage) {
-        com.nhatbh.basedefensev2.strength.EntityStrengthData strengthData = com.nhatbh.basedefensev2.strength.EntityStrengthData.get(ctx.boss());
-        if (strengthData != null) {
-            float depletion = strengthData.maxStrength * (percentage / 100.0f);
-            strengthData.currentStrength = Math.max(0, strengthData.currentStrength - depletion);
-            strengthData.save(ctx.boss());
-            com.nhatbh.basedefensev2.strength.EntityStrengthData.sync(ctx.boss(), strengthData);
+        if (ctx != null && ctx.boss() != null) {
+            com.nhatbh.basedefensev2.api.PoiseAPI.depletePoisePercent(ctx.boss(), percentage);
         }
     }
 

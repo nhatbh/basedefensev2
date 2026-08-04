@@ -7,8 +7,10 @@ import java.util.UUID;
 
 public class ReviveState {
     public static final int INITIAL_KNOCKDOWN_TICKS = 12000; // 10 minutes
+    public static final int MAX_SPECTATOR_TICKS = 2400; // 2 minutes (2400 ticks)
 
     private int knockedDownTimer = INITIAL_KNOCKDOWN_TICKS;
+    private int spectatorTimer = MAX_SPECTATOR_TICKS;
     private boolean isKnockedDown = false;
     private boolean wantsRevive = false;
     private int rescueProgress = 0;
@@ -18,6 +20,7 @@ public class ReviveState {
 
     public void copyFrom(ReviveState other) {
         this.knockedDownTimer = other.knockedDownTimer;
+        this.spectatorTimer = other.spectatorTimer;
         this.isKnockedDown = other.isKnockedDown;
         this.wantsRevive = other.wantsRevive;
         this.rescueProgress = other.rescueProgress;
@@ -28,6 +31,7 @@ public class ReviveState {
 
     public void saveNBTData(CompoundTag nbt) {
         nbt.putInt("knockedDownTimer", knockedDownTimer);
+        nbt.putInt("spectatorTimer", spectatorTimer);
         nbt.putBoolean("isKnockedDown", isKnockedDown);
         nbt.putBoolean("wantsRevive", wantsRevive);
         nbt.putInt("rescueProgress", rescueProgress);
@@ -37,6 +41,7 @@ public class ReviveState {
 
     public void loadNBTData(CompoundTag nbt) {
         knockedDownTimer = nbt.getInt("knockedDownTimer");
+        if (nbt.contains("spectatorTimer")) spectatorTimer = nbt.getInt("spectatorTimer");
         isKnockedDown = nbt.getBoolean("isKnockedDown");
         wantsRevive = nbt.getBoolean("wantsRevive");
         rescueProgress = nbt.getInt("rescueProgress");
@@ -47,6 +52,9 @@ public class ReviveState {
     // Getters and Setters
     public int getKnockedDownTimer() { return knockedDownTimer; }
     public void setKnockedDownTimer(int ticks) { this.knockedDownTimer = ticks; }
+
+    public int getSpectatorTimer() { return spectatorTimer; }
+    public void setSpectatorTimer(int ticks) { this.spectatorTimer = ticks; }
 
     public boolean isKnockedDown() { return isKnockedDown; }
     public void setKnockedDown(boolean knockedDown) { isKnockedDown = knockedDown; }

@@ -2,92 +2,118 @@ package com.nhatbh.basedefensev2.stage;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import com.mojang.logging.LogUtils;
 import com.nhatbh.basedefensev2.BaseDefenseMod;
+import com.nhatbh.basedefensev2.classification.ClassificationManager;
 import com.nhatbh.basedefensev2.stage.config.StageConfig;
+import com.nhatbh.basedefensev2.stage.generator.WorldStageSavedData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import org.slf4j.Logger;
 
 import java.io.InputStreamReader;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
- * Loads all stage JSON configs from data/basedefensev2/stages/ on server
- * resource reload.  Registered via AddReloadListenerEvent in BaseDefenseMod.
+ * Stage configuration access layer. All stage configs are generated procedurally
+ * per-world via {@link com.nhatbh.basedefensev2.stage.generator.RandomStageGenerator}
+ * and persisted in {@link WorldStageSavedData}.
+ *
+ * <p>On every resource reload this class also reloads {@code mobs.json} and
+ * pushes its contents into {@link ClassificationManager} so that stage generation
+ * always reflects the current classification data.  When classifications change
+ * the persisted world stage data is invalidated so the next world load triggers
+ * a fresh generation pass.</p>
  */
-public class StageLoader extends SimplePreparableReloadListener<Map<String, StageConfig>> {
+public class StageLoader extends SimplePreparableReloadListener<Map<String, ClassificationManager.MobData>> {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new GsonBuilder().create();
-    private static final String FOLDER = "stages";
+    private static final String MOBS_FILE = "stages/mobs.json";
+    private static final Type MOB_DATA_TYPE =
+            new TypeToken<Map<String, ClassificationManager.MobData>>() {}.getType();
+
+    /** Set to true by apply() when mobs.json changed; consumed by WorldStageSavedData on next world load. */
+    private static volatile boolean classificationsChanged = false;
 
     /** Singleton for event-bus registration */
     public static final StageLoader INSTANCE = new StageLoader();
 
-    /** Loaded configs keyed by stage id */
-    private static final Map<String, StageConfig> STAGES = new LinkedHashMap<>();
-
     private StageLoader() {}
 
-    // ── SimplePreparableReloadListener ──────────────────────────────────────
+    // ── SimplePreparableReloadListener ───────────────────────────────────────
 
     @Override
-    protected Map<String, StageConfig> prepare(ResourceManager manager, ProfilerFiller profiler) {
-        Map<String, StageConfig> loaded = new LinkedHashMap<>();
-
-        manager.listResources(FOLDER, loc -> loc.getPath().endsWith(".json"))
-                .forEach((location, resource) -> {
-                    if (!location.getNamespace().equals(BaseDefenseMod.MODID)) return;
-                    try (InputStreamReader reader = new InputStreamReader(
-                            resource.open(), StandardCharsets.UTF_8)) {
-                        StageConfig cfg = GSON.fromJson(reader, StageConfig.class);
-                        if (cfg == null || cfg.id == null) {
-                            LOGGER.warn("[StageLoader] Skipping {}: missing 'id' field", location);
-                            return;
-                        }
-                        loaded.put(cfg.id, cfg);
-                        LOGGER.info("[StageLoader] Loaded stage '{}' from {}", cfg.id, location);
-                    } catch (Exception e) {
-                        LOGGER.error("[StageLoader] Failed to load {}: {}", location, e.getMessage());
-                    }
-                });
-
-        return loaded;
+    protected Map<String, ClassificationManager.MobData> prepare(ResourceManager manager, ProfilerFiller profiler) {
+        var resourceOpt = manager.getResource(
+                new net.minecraft.resources.ResourceLocation(BaseDefenseMod.MODID, MOBS_FILE));
+        if (resourceOpt.isEmpty()) {
+            LOGGER.warn("[StageLoader] mobs.json not found at data/{}/{}", BaseDefenseMod.MODID, MOBS_FILE);
+            return Collections.emptyMap();
+        }
+        try (InputStreamReader reader = new InputStreamReader(
+                resourceOpt.get().open(), StandardCharsets.UTF_8)) {
+            Map<String, ClassificationManager.MobData> data = GSON.fromJson(reader, MOB_DATA_TYPE);
+            return data != null ? data : Collections.emptyMap();
+        } catch (Exception e) {
+            LOGGER.error("[StageLoader] Failed to load mobs.json", e);
+            return Collections.emptyMap();
+        }
     }
 
     @Override
-    protected void apply(Map<String, StageConfig> prepared, ResourceManager manager, ProfilerFiller profiler) {
-        STAGES.clear();
-        STAGES.putAll(prepared);
-        LOGGER.info("[StageLoader] Registered {} stage(s)", STAGES.size());
+    protected void apply(Map<String, ClassificationManager.MobData> prepared,
+                         ResourceManager manager, ProfilerFiller profiler) {
+        if (prepared.isEmpty()) {
+            LOGGER.warn("[StageLoader] mobs.json was empty or failed to parse; classifications unchanged.");
+            return;
+        }
+        ClassificationManager.loadFromMap(prepared);
+        classificationsChanged = true;
+        LOGGER.info("[StageLoader] Loaded {} mob classifications from mobs.json", prepared.size());
     }
 
-    // ── Public API ───────────────────────────────────────────────────────────
+    // ── Stage invalidation API (called by WorldStageSavedData on init) ───────
 
-    /** All loaded stage configs in insertion order (i.e. definition order). */
-    public static Collection<StageConfig> getAllStages() {
-        return Collections.unmodifiableCollection(STAGES.values());
+    /**
+     * Returns true if mobs.json was reloaded since the last call to this method.
+     * Calling this method resets the flag.
+     */
+    public static boolean consumeClassificationsChanged() {
+        boolean changed = classificationsChanged;
+        classificationsChanged = false;
+        return changed;
     }
 
-    public static Optional<StageConfig> getById(String id) {
-        return Optional.ofNullable(STAGES.get(id));
+    // ── Public API — all backed by WorldStageSavedData ───────────────────────
+
+    /** All stage configs for this world (randomized, persisted). */
+    public static Collection<StageConfig> getAllStages(ServerLevel level) {
+        return WorldStageSavedData.get(level).getAllStages();
     }
 
-    /** Returns all unique order values in ascending order. */
-    public static List<Integer> getSortedOrders() {
-        return STAGES.values().stream()
+    /** Look up a stage by id in this world's persisted stage map. */
+    public static Optional<StageConfig> getById(ServerLevel level, String id) {
+        return WorldStageSavedData.get(level).getById(id);
+    }
+
+    /** Returns all unique order values in ascending order for this world. */
+    public static List<Integer> getSortedOrders(ServerLevel level) {
+        return getAllStages(level).stream()
                 .map(s -> s.order)
                 .distinct()
                 .sorted()
                 .toList();
     }
 
-    /** Returns all stages that match a specific order. */
-    public static List<StageConfig> getStagesForOrder(int order) {
-        return STAGES.values().stream()
+    /** Returns all stages matching a specific order for this world. */
+    public static List<StageConfig> getStagesForOrder(ServerLevel level, int order) {
+        return getAllStages(level).stream()
                 .filter(s -> s.order == order)
                 .toList();
     }

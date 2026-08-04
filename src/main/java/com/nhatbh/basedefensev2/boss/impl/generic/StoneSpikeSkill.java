@@ -96,7 +96,7 @@ public class StoneSpikeSkill {
                                     groundCenter.x, groundCenter.y + 1.0, groundCenter.z, 50, 1.5, 2.0, 1.5, 0.2);
 
                             // Deal damage & fling players on eruption
-                            List<Player> hitPlayers = HitboxUtils.getEntitiesInCircle(level, Player.class, groundCenter, 3.0, Player::isAlive);
+                            List<Player> hitPlayers = HitboxUtils.getEntitiesInCircle(level, Player.class, groundCenter, 3.0, BossSkillHelper::canBeHitBySkill);
                             for (Player p : hitPlayers) {
                                 float damage = (p.getMaxHealth() * 0.15f) + 5.0f;
                                 p.hurt(level.damageSources().mobAttack(ctx.boss()), damage);

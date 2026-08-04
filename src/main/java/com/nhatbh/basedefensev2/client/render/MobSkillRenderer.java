@@ -142,7 +142,6 @@ public class MobSkillRenderer {
             case BLOOD -> new float[]{0.7f, 0.0f, 0.0f};
             case EVOCATION -> new float[]{1.0f, 0.2f, 0.8f};
             case ELDRITCH -> new float[]{0.4f, 0.0f, 0.0f};
-            case PHYSICAL -> new float[]{0.7f, 0.7f, 0.7f};
             default -> new float[]{1.0f, 1.0f, 1.0f};
         };
     }

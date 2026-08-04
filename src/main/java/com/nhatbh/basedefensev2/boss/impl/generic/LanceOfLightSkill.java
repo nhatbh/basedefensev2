@@ -42,7 +42,7 @@ public class LanceOfLightSkill {
 
                     // Lock onto a random player within 40 blocks
                     List<Player> nearbyPlayers = HitboxUtils.getEntitiesInCircle(
-                            ctx.boss().level(), Player.class, ctx.boss().position(), 40.0, Player::isAlive);
+                            ctx.boss().level(), Player.class, ctx.boss().position(), 40.0, BossSkillHelper::isValidTarget);
 
                     if (!nearbyPlayers.isEmpty()) {
                         Collections.shuffle(nearbyPlayers);
@@ -126,7 +126,7 @@ public class LanceOfLightSkill {
                             currentPos.x + 1.2, currentPos.y + 1.2, currentPos.z + 1.2);
 
                     level.getEntitiesOfClass(Player.class, hitBox).forEach(entity -> {
-                        if (entity.isAlive() && !entity.isCreative() && !entity.isSpectator()
+                        if (BossSkillHelper.canBeHitBySkill(entity)
                                 && !hitEntities.contains(entity.getUUID())) {
                             hitEntities.add(entity.getUUID()); // Pass through players while dealing 1 hit per lance
 

@@ -10,6 +10,7 @@ import com.nhatbh.basedefensev2.BaseDefenseMod;
 public class ModGameRules {
 
     public static GameRules.Key<GameRules.BooleanValue> RULE_STRICT_PVP_DISABLED;
+    public static GameRules.Key<GameRules.BooleanValue> RULE_REVEAL_ALL_STAGES;
 
     @SubscribeEvent
     public static void onCommonSetup(FMLCommonSetupEvent event) {
@@ -18,6 +19,11 @@ public class ModGameRules {
                 "strictPvPDisabled", 
                 GameRules.Category.PLAYER, 
                 GameRules.BooleanValue.create(true) 
+            );
+            RULE_REVEAL_ALL_STAGES = GameRules.register(
+                "revealAllStages",
+                GameRules.Category.MISC,
+                GameRules.BooleanValue.create(false)
             );
         });
     }

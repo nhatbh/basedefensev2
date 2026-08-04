@@ -53,7 +53,7 @@ public class SwordBarrageSkill {
                     // Fire a sword every 4 ticks
                     if (ctx.getTicks() % 4 == 0 && ctx.boss().level() instanceof ServerLevel level) {
                         List<Player> nearbyPlayers = HitboxUtils.getEntitiesInCircle(
-                                level, Player.class, ctx.boss().position(), 30.0, Player::isAlive);
+                                level, Player.class, ctx.boss().position(), 30.0, BossSkillHelper::isValidTarget);
 
                         net.minecraft.world.entity.Mob mob = ctx.boss() instanceof net.minecraft.world.entity.Mob m ? m
                                 : null;
@@ -88,6 +88,7 @@ public class SwordBarrageSkill {
                                 .setSmall(true)
                                 .setHitRadius(1.2f)
                                 .setMaxLifetime(80)
+                                .setTargetFilter(e -> e instanceof LivingEntity living && BossSkillHelper.canBeHitBySkill(living))
                                 .setTrailParticle(ParticleTypes.CRIT, 2)
                                 .setOnHitEntity((proj, entity) -> {
                                     level.playSound(null, proj.getPosition().x, proj.getPosition().y,

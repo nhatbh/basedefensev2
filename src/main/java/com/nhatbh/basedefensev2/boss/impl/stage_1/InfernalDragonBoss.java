@@ -16,7 +16,7 @@ public class InfernalDragonBoss {
             .elements(ElementType.FIRE)
             .poiseDamageReduction(0.95f)
             .addGlobalPassive(new DragonsFuryPassive())
-            
+
             // Phase 1: 100% - 75% HP (2 Actives, cooldowns > 30s / 600t)
             .phase(1, phase -> phase
                     .hpThreshold(1.0f)
@@ -30,7 +30,7 @@ public class InfernalDragonBoss {
                             .type(ActiveSkill.Type.TACTICAL)
                             .sequence(ExplosiveDropkickSkill.create())
                             .build(), boss -> 120))
-                            
+
             // Phase 2: 75% - 50% HP (Unlocks 3rd Active: Earthquake)
             .phase(2, phase -> phase
                     .hpThreshold(0.75f)
@@ -49,7 +49,7 @@ public class InfernalDragonBoss {
                             .type(ActiveSkill.Type.TACTICAL)
                             .sequence(EarthquakeSkill.create())
                             .build(), boss -> 140))
-                            
+
             // Phase 3: 50% - 25% HP (Unlocks 4th Active: Solar Cataclysm)
             .phase(3, phase -> phase
                     .hpThreshold(0.50f)
@@ -73,7 +73,7 @@ public class InfernalDragonBoss {
                             .type(ActiveSkill.Type.TACTICAL)
                             .sequence(SolarCataclysmSkill.create())
                             .build(), boss -> 150))
-                            
+
             // Phase 4: 25% - 0% HP (Unlocks 5th Active: Storm Lance)
             .phase(4, phase -> phase
                     .hpThreshold(0.25f)

@@ -13,6 +13,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -88,17 +90,12 @@ public class SanctityEventHandler {
 
     public static void enterSpectator(ServerPlayer player, ReviveState state) {
         state.setKnockedDown(false);
+        state.setSpectatorTimer(ReviveState.MAX_SPECTATOR_TICKS); // 2 minutes max
         player.setGlowingTag(false);
         state.setDeathPos(player.blockPosition());
         player.setGameMode(GameType.SPECTATOR);
 
-        Component message = Component.literal("You have died. Click ").withStyle(ChatFormatting.YELLOW)
-                .append(Component.literal("[REVIVE]").withStyle(Style.EMPTY
-                        .withColor(ChatFormatting.GREEN)
-                        .withBold(true)
-                        .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/revive confirm"))))
-                .append(Component.literal(" to enter the revival process.").withStyle(ChatFormatting.YELLOW));
-
+        Component message = Component.literal("You have died. Hold [I] to initiate revival.").withStyle(ChatFormatting.YELLOW);
         player.sendSystemMessage(message);
     }
 
@@ -206,6 +203,9 @@ public class SanctityEventHandler {
                 // Apply Jump Boost 128 to block jump
                 player.addEffect(new MobEffectInstance(MobEffects.JUMP, 20, 128, false, false, false));
 
+                // Apply DOWNED effect while knocked down so other mods can recognize & handle interaction
+                player.addEffect(new MobEffectInstance(com.nhatbh.basedefensev2.registry.ModEffects.DOWNED.get(), 20, 0, false, false, true));
+
                 // Apply complextalents:engaged effect while knocked down
                 net.minecraft.world.effect.MobEffect engagedEffect = net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS.getValue(net.minecraft.resources.ResourceLocation.parse("complextalents:engaged"));
                 if (engagedEffect != null) {
@@ -218,14 +218,26 @@ public class SanctityEventHandler {
             } else {
                 removeKnockedDownModifiers(player);
                 player.setGlowingTag(false);
+                if (player.hasEffect(com.nhatbh.basedefensev2.registry.ModEffects.DOWNED.get())) {
+                    player.removeEffect(com.nhatbh.basedefensev2.registry.ModEffects.DOWNED.get());
+                }
                 var jumpEffect = player.getEffect(MobEffects.JUMP);
                 if (jumpEffect != null && jumpEffect.getAmplifier() == 128) {
                     player.removeEffect(MobEffects.JUMP);
                 }
             }
 
-            // Handle Spectator Radius
+            // Handle Spectator Timer & Radius
             if (player.gameMode.getGameModeForPlayer() == GameType.SPECTATOR && state.getDeathPos() != null) {
+                // Tick down 2-minute spectator timer unless player already queued for revive
+                if (!state.wantsRevive()) {
+                    int remaining = Math.max(0, state.getSpectatorTimer() - 1);
+                    state.setSpectatorTimer(remaining);
+                    if (remaining <= 0) {
+                        state.setWantsRevive(true);
+                    }
+                }
+
                 if (player.position().distanceToSqr(Vec3.atCenterOf(state.getDeathPos())) > 10000) { // 100 blocks radius
                     player.teleportTo(state.getDeathPos().getX(), state.getDeathPos().getY(),
                             state.getDeathPos().getZ());
@@ -288,7 +300,7 @@ public class SanctityEventHandler {
                 }
             }
 
-            if (overworld.getGameTime() % 100 == 0) {
+            if (overworld.getGameTime() % 20 == 0) {
                 checkGameOver(overworld);
             }
         }
@@ -296,34 +308,57 @@ public class SanctityEventHandler {
 
     private static void checkGameOver(ServerLevel level) {
         AltarSavedData data = AltarSavedData.get(level);
+        if (data.isGameOver()) return;
+
         net.minecraft.server.MinecraftServer server = level.getServer();
         if (server == null) return;
 
         ServerLevel arenaLevel = server.getLevel(com.nhatbh.basedefensev2.stage.ModDimensions.ARENA);
         com.nhatbh.basedefensev2.stage.core.StageContext stageCtx = arenaLevel != null ? com.nhatbh.basedefensev2.stage.core.StageContext.getOrCreate(arenaLevel) : null;
 
+        // If currently in stage failure transition (3s dramatic delay before teleport & revival), skip Game Over check
+        if (stageCtx != null && stageCtx.getStageState() == com.nhatbh.basedefensev2.stage.core.StageState.RETRY_INTERMISSION && stageCtx.isFailureTransition()) {
+            return;
+        }
+
         boolean sanctityZero = data.getSanctity() <= 0;
 
         List<ServerPlayer> players = server.getPlayerList().getPlayers();
-        boolean anyAlive = false;
+        boolean noPlayerAlive = true;
         for (ServerPlayer player : players) {
             if (player.gameMode.getGameModeForPlayer() != GameType.SPECTATOR) {
-                anyAlive = true;
+                noPlayerAlive = false;
                 break;
             }
         }
 
-        if (sanctityZero || !anyAlive) {
-            if (stageCtx != null && stageCtx.isActive() && (stageCtx.getStageState() == com.nhatbh.basedefensev2.stage.core.StageState.ACTIVE || stageCtx.getStageState() == com.nhatbh.basedefensev2.stage.core.StageState.WARMUP)) {
+        if (sanctityZero && noPlayerAlive) {
+            boolean isStageTrialActive = stageCtx != null && stageCtx.isActive() && 
+                    (stageCtx.getStageState() == com.nhatbh.basedefensev2.stage.core.StageState.ACTIVE || 
+                     stageCtx.getStageState() == com.nhatbh.basedefensev2.stage.core.StageState.WARMUP);
+
+            if (isStageTrialActive) {
                 boolean retryTriggered = stageCtx.triggerStageFailure(arenaLevel != null ? arenaLevel : level);
                 if (retryTriggered) {
                     syncToAll(level, data);
                     return;
+                } else {
+                    // All retries are consumed! This is a standard STAGE GAME OVER.
+                    data.setGameOver(true);
+                    stageCtx.endStageOnGameOver(arenaLevel != null ? arenaLevel : level);
+                    triggerGameOver(level, "§c§lSTAGE FAILED", "§oAll retry relics consumed...");
+                    syncToAll(level, data);
+                    return;
                 }
-            }
-
-            if (!anyAlive || sanctityZero) {
-                triggerGameOver(level);
+            } else {
+                // Sanctity reached 0 outside active stage trial -> UNFORGIVEN Game Over
+                data.setGameOver(true);
+                server.getPlayerList().broadcastSystemMessage(
+                        Component.literal("§c[The Rift] §4Your combat incompetence has doomed this realm. Mercy is reserved only for the capable.")
+                                .withStyle(ChatFormatting.BOLD), false);
+                triggerGameOver(level, "§c§lUNFORGIVEN", "§oUnworthy of trial or triumph...");
+                syncToAll(level, data);
+                return;
             }
         }
     }
@@ -450,6 +485,7 @@ public class SanctityEventHandler {
                                     int amount = IntegerArgumentType.getInteger(context, "amount");
                                     AltarSavedData data = AltarSavedData.get(context.getSource().getLevel());
                                     data.setSanctity(amount);
+                                    if (amount > 0) data.setGameOver(false);
                                     syncToAll(context.getSource().getLevel(), data);
                                     context.getSource()
                                             .sendSuccess(() -> Component.literal("Sanctity set to " + amount), true);
@@ -461,6 +497,7 @@ public class SanctityEventHandler {
                                     int amount = IntegerArgumentType.getInteger(context, "amount");
                                     AltarSavedData data = AltarSavedData.get(context.getSource().getLevel());
                                     data.setSanctity(Math.max(0, data.getSanctity() + amount));
+                                    if (data.getSanctity() > 0) data.setGameOver(false);
                                     syncToAll(context.getSource().getLevel(), data);
                                     context.getSource()
                                             .sendSuccess(() -> Component.literal(
@@ -473,6 +510,8 @@ public class SanctityEventHandler {
                             AltarSavedData data = AltarSavedData.get(context.getSource().getLevel());
                             int maxSanctity = com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity;
                             data.setSanctity(maxSanctity);
+                            data.setRetriesUsed(0);
+                            data.setGameOver(false);
                             syncToAll(context.getSource().getLevel(), data);
                             context.getSource().sendSuccess(
                                     () -> Component.literal("Base health fully restored to " + maxSanctity + "!"), true);
@@ -501,7 +540,7 @@ public class SanctityEventHandler {
 
     private static void syncReviveState(ServerPlayer player, ReviveState state) {
         NetworkManager.INSTANCE.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player),
-                new PlayerReviveStateSyncPacket(player.getId(), state.getKnockedDownTimer(), state.isKnockedDown(), state.wantsRevive(),
+                new PlayerReviveStateSyncPacket(player.getId(), state.getKnockedDownTimer(), state.getSpectatorTimer(), state.isKnockedDown(), state.wantsRevive(),
                         state.getRescueProgress(), state.getDeathPos()));
     }
 
@@ -545,13 +584,22 @@ public class SanctityEventHandler {
                 Component.translatable("message.basedefensev2.revived").withStyle(ChatFormatting.GREEN));
     }
 
-    private static void triggerGameOver(ServerLevel level) {
+    private static void triggerGameOver(ServerLevel level, String titleText, String subtitleText) {
         net.minecraft.server.MinecraftServer server = level.getServer();
-        Component gameOverMessage = Component.literal("GAME OVER").withStyle(ChatFormatting.RED, ChatFormatting.BOLD);
+        Component gameOverTitle = Component.literal(titleText);
+        Component gameOverSubtitle = Component.literal(subtitleText);
         server.getPlayerList().getPlayers().forEach(player -> {
             player.setGameMode(GameType.SPECTATOR);
-            player.connection.send(new ClientboundSetTitleTextPacket(gameOverMessage));
+            player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 200, 0, false, false));
+            player.playNotifySound(net.minecraft.sounds.SoundEvents.WITHER_DEATH, net.minecraft.sounds.SoundSource.AMBIENT, 1.0f, 0.8f);
+            player.connection.send(new ClientboundSetTitlesAnimationPacket(10, 70, 20));
+            player.connection.send(new ClientboundSetTitleTextPacket(gameOverTitle));
+            player.connection.send(new ClientboundSetSubtitleTextPacket(gameOverSubtitle));
         });
+    }
+
+    private static void triggerGameOver(ServerLevel level) {
+        triggerGameOver(level, "§c§lUNFORGIVEN", "§oUnworthy of trial or triumph...");
     }
 
     private static void removeKnockedDownModifiers(ServerPlayer player) {

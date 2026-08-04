@@ -13,17 +13,21 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.network.PacketDistributor;
 
 /**
- * Drives the StageContext tick and HUD sync via {@link TickEvent.ServerTickEvent}.
+ * Drives the StageContext tick and HUD sync via
+ * {@link TickEvent.ServerTickEvent}.
  *
  * Using ServerTickEvent (rather than LevelTickEvent) is intentional:
- *  - The stage state machine must advance even when no players are inside the arena
- *    dimension. Minecraft may stop ticking a dimension when it has no players, which
- *    would freeze the state machine if we relied on LevelTickEvent.
- *  - The arena ServerLevel is always accessible via server.getLevel(ARENA) as long as
- *    the server is running, so we can drive StageContext.tick() from here safely.
+ * - The stage state machine must advance even when no players are inside the
+ * arena
+ * dimension. Minecraft may stop ticking a dimension when it has no players,
+ * which
+ * would freeze the state machine if we relied on LevelTickEvent.
+ * - The arena ServerLevel is always accessible via server.getLevel(ARENA) as
+ * long as
+ * the server is running, so we can drive StageContext.tick() from here safely.
  *
- * Every tick  → StageContext.tick()  (state machine)
- * Every 10 t  → StageHudSyncPacket  → ALL connected players
+ * Every tick → StageContext.tick() (state machine)
+ * Every 10 t → StageHudSyncPacket → ALL connected players
  */
 public class ArenaDimensionTickHandler {
 
@@ -33,13 +37,16 @@ public class ArenaDimensionTickHandler {
 
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+        if (event.phase != TickEvent.Phase.END)
+            return;
 
         MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
-        if (server == null) return;
+        if (server == null)
+            return;
 
         ServerLevel arenaLevel = server.getLevel(ModDimensions.ARENA);
-        if (arenaLevel == null) return;
+        if (arenaLevel == null)
+            return;
 
         StageContext ctx = StageContext.getOrCreate(arenaLevel);
 
@@ -66,8 +73,10 @@ public class ArenaDimensionTickHandler {
 
     @SubscribeEvent
     public void onLivingDeath(LivingDeathEvent event) {
-        if (!(event.getEntity().level() instanceof ServerLevel level)) return;
-        if (!level.dimension().equals(ModDimensions.ARENA)) return;
+        if (!(event.getEntity().level() instanceof ServerLevel level))
+            return;
+        if (!level.dimension().equals(ModDimensions.ARENA))
+            return;
 
         StageContext ctx = StageContext.getOrCreate(level);
         if (ctx.isActive()) {
@@ -76,19 +85,33 @@ public class ArenaDimensionTickHandler {
     }
 
     private void handlePlayerBoundaries(ServerLevel level) {
-        for (ServerPlayer player : level.players()) {
-            if (!com.nhatbh.basedefensev2.stage.utils.ArenaBarrierManager.isArenaBarrierActive(level)) {
-                continue;
-            }
+        if (!com.nhatbh.basedefensev2.stage.utils.ArenaBarrierManager.isArenaBarrierActive(level)) {
+            return;
+        }
 
-            double x = player.getX();
-            double y = player.getY();
-            double z = player.getZ();
+        // Enforce barrier on all living entities (mobs, bosses, pets, npcs, etc.) in the arena level
+        for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
+            if (entity instanceof net.minecraft.world.entity.LivingEntity living) {
+                if (living instanceof ServerPlayer sp && sp.isSpectator()) {
+                    continue; // Allow spectators to observe outside
+                }
 
-            if (!com.nhatbh.basedefensev2.stage.utils.ArenaBarrierManager.isPositionWithinBarrier(level, x, y, z)) {
-                net.minecraft.world.phys.Vec3 safePos = com.nhatbh.basedefensev2.stage.utils.ArenaBarrierManager.getClosestPointInside(level, player.position());
-                player.teleportTo(level, safePos.x, safePos.y, safePos.z, player.getYRot(), player.getXRot());
-                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§c[Arena] §eYou cannot leave the battle area!"));
+                double x = living.getX();
+                double y = living.getY();
+                double z = living.getZ();
+
+                if (!com.nhatbh.basedefensev2.stage.utils.ArenaBarrierManager.isPositionWithinBarrier(level, x, y, z)) {
+                    net.minecraft.world.phys.Vec3 safePos = com.nhatbh.basedefensev2.stage.utils.ArenaBarrierManager
+                            .getClosestPointInside(level, living.position());
+                    if (living instanceof ServerPlayer player) {
+                        player.teleportTo(level, safePos.x, safePos.y, safePos.z, player.getYRot(), player.getXRot());
+                        player.sendSystemMessage(
+                                net.minecraft.network.chat.Component.literal("§c[Arena] §eYou cannot leave the battle area!"));
+                    } else {
+                        living.teleportTo(safePos.x, safePos.y, safePos.z);
+                        living.setDeltaMovement(0, 0, 0);
+                    }
+                }
             }
         }
     }
@@ -101,7 +124,7 @@ public class ArenaDimensionTickHandler {
         }
 
         String stageState = ctx.getStageState() != null ? ctx.getStageState().name() : "";
-        String waveState  = ctx.getWaveState()  != null ? ctx.getWaveState().name()  : "";
+        String waveState = ctx.getWaveState() != null ? ctx.getWaveState().name() : "";
 
         float timerRatio = -1f;
         int waveRemTicks = 0;
@@ -111,6 +134,8 @@ public class ArenaDimensionTickHandler {
             stageRemTicks = Math.max(0, ctx.getActiveConfig().warmup_ticks - ctx.getStageTicks());
         } else if (ctx.getStageState() == com.nhatbh.basedefensev2.stage.core.StageState.SCAVENGE) {
             stageRemTicks = Math.max(0, ctx.getActiveConfig().scavenge_duration_ticks - ctx.getStageTicks());
+        } else if (ctx.getStageState() == com.nhatbh.basedefensev2.stage.core.StageState.RETRY_INTERMISSION) {
+            stageRemTicks = Math.max(0, ctx.getIntermissionTicksRemaining());
         }
 
         if (ctx.getActiveConfig() != null) {

@@ -62,7 +62,6 @@ public final class SchematicPaster {
                 Operations.complete(operation);
             }
 
-            LOGGER.info("Successfully pasted schematic into dimension {}", level.dimension().location());
             return true;
         } catch (Exception e) {
             LOGGER.error("Schematic paste error", e);

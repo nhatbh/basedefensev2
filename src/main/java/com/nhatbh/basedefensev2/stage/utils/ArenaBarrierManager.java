@@ -47,9 +47,6 @@ public class ArenaBarrierManager {
             List<BlockPos> barrierBlocks = placeBarrierBlocks(level, ARENA_ELLIPSE_CENTER, ARENA_ELLIPSE_RADIUS_X,
                     ARENA_ELLIPSE_RADIUS_Z);
             savedData.setBarrierBlockPositions(barrierBlocks);
-
-            LOGGER.info("Arena barrier ellipse created at {} with radii X={}, Z={}, placed {} barrier blocks",
-                    ARENA_ELLIPSE_CENTER, ARENA_ELLIPSE_RADIUS_X, ARENA_ELLIPSE_RADIUS_Z, barrierBlocks.size());
             return true;
         } catch (Exception e) {
             LOGGER.error("Exception creating arena barrier ellipse: {} - barrier creation failed",
@@ -65,7 +62,7 @@ public class ArenaBarrierManager {
         int buildHeight = level.getMaxBuildHeight();
         int minY = center.getY() - 10;
         int maxY = buildHeight - 1;
-        int wallThickness = 5;
+        int wallThickness = 20;
 
         int minX = center.getX() - (int) Math.ceil(radiusX + wallThickness);
         int maxX = center.getX() + (int) Math.ceil(radiusX + wallThickness);
@@ -92,9 +89,7 @@ public class ArenaBarrierManager {
                         BlockPos pos = new BlockPos(x, y, z);
 
                         BlockState currentState = level.getBlockState(pos);
-                        if (currentState.isAir() || currentState.getFluidState().getType() == Fluids.WATER.getSource()
-                                ||
-                                currentState.getFluidState().getType() == Fluids.LAVA.getSource()) {
+                        if (!currentState.isSolidRender(level, pos)) {
                             level.setBlock(pos, barrierState, 3);
                             placedBlocks.add(pos);
                         }
@@ -103,44 +98,49 @@ public class ArenaBarrierManager {
             }
         }
 
-        int topY = buildHeight - 1;
+        // 20-block thick ceiling downwards from top of build height
+        int ceilingThickness = 20;
+        int ceilingTopY = buildHeight - 1;
+        int ceilingBottomY = Math.max(minY, ceilingTopY - ceilingThickness + 1);
         int ceilingMinX = center.getX() - (int) Math.ceil(radiusX);
         int ceilingMaxX = center.getX() + (int) Math.ceil(radiusX);
         int ceilingMinZ = center.getZ() - (int) Math.ceil(radiusZ);
         int ceilingMaxZ = center.getZ() + (int) Math.ceil(radiusZ);
 
-        for (int x = ceilingMinX; x <= ceilingMaxX; x++) {
-            for (int z = ceilingMinZ; z <= ceilingMaxZ; z++) {
-                double dx = x - center.getX();
-                double dz = z - center.getZ();
-                double ellipseValue = (dx * dx) / (radiusX * radiusX) + (dz * dz) / (radiusZ * radiusZ);
+        for (int y = ceilingBottomY; y <= ceilingTopY; y++) {
+            for (int x = ceilingMinX; x <= ceilingMaxX; x++) {
+                for (int z = ceilingMinZ; z <= ceilingMaxZ; z++) {
+                    double dx = x - center.getX();
+                    double dz = z - center.getZ();
+                    double ellipseValue = (dx * dx) / (radiusX * radiusX) + (dz * dz) / (radiusZ * radiusZ);
 
-                if (ellipseValue <= 1.0) {
-                    BlockPos pos = new BlockPos(x, topY, z);
-                    BlockState currentState = level.getBlockState(pos);
-                    if (currentState.isAir() || currentState.getFluidState().getType() == Fluids.WATER.getSource() ||
-                            currentState.getFluidState().getType() == Fluids.LAVA.getSource()) {
-                        level.setBlock(pos, barrierState, 3);
-                        placedBlocks.add(pos);
+                    if (ellipseValue <= 1.0) {
+                        BlockPos pos = new BlockPos(x, y, z);
+                        BlockState currentState = level.getBlockState(pos);
+                        if (!currentState.isSolidRender(level, pos)) {
+                            level.setBlock(pos, barrierState, 3);
+                            placedBlocks.add(pos);
+                        }
                     }
                 }
             }
         }
 
         int floorTopY = 50;
-        int floorBottomY = 47;
+        int floorBottomY = 0;
         BlockState bedrockState = Blocks.BEDROCK.defaultBlockState();
-        int floorMinX = center.getX() - (int) Math.ceil(radiusX);
-        int floorMaxX = center.getX() + (int) Math.ceil(radiusX);
-        int floorMinZ = center.getZ() - (int) Math.ceil(radiusZ);
-        int floorMaxZ = center.getZ() + (int) Math.ceil(radiusZ);
+        int floorMinX = center.getX() - (int) Math.ceil(outerRadiusX);
+        int floorMaxX = center.getX() + (int) Math.ceil(outerRadiusX);
+        int floorMinZ = center.getZ() - (int) Math.ceil(outerRadiusZ);
+        int floorMaxZ = center.getZ() + (int) Math.ceil(outerRadiusZ);
 
         for (int y = floorBottomY; y <= floorTopY; y++) {
             for (int x = floorMinX; x <= floorMaxX; x++) {
                 for (int z = floorMinZ; z <= floorMaxZ; z++) {
                     double dx = x - center.getX();
                     double dz = z - center.getZ();
-                    double ellipseValue = (dx * dx) / (radiusX * radiusX) + (dz * dz) / (radiusZ * radiusZ);
+                    double ellipseValue = (dx * dx) / (outerRadiusX * outerRadiusX)
+                            + (dz * dz) / (outerRadiusZ * outerRadiusZ);
 
                     if (ellipseValue <= 1.0) {
                         BlockPos pos = new BlockPos(x, y, z);
@@ -168,7 +168,6 @@ public class ArenaBarrierManager {
         StageContext savedData = StageContext.getOrCreate(level);
 
         if (!savedData.isArenaBarrierActive()) {
-            LOGGER.debug("No arena barrier to remove");
             return false;
         }
 
@@ -186,12 +185,9 @@ public class ArenaBarrierManager {
                     removed++;
                 }
             }
-            LOGGER.info("Removed {} barrier blocks", removed);
         }
 
         savedData.clearArenaBarrier();
-        LOGGER.info("Arena barrier removed (was at {} with ellipse radii X={} Z={})", oldCenter, oldRadiusX,
-                oldRadiusZ);
         return true;
     }
 
@@ -238,7 +234,8 @@ public class ArenaBarrierManager {
     }
 
     public static boolean isPositionWithinBarrier(@Nullable ServerLevel level, @Nullable BlockPos pos) {
-        if (pos == null) return false;
+        if (pos == null)
+            return false;
         return isPositionWithinBarrier(level, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
     }
 
@@ -266,7 +263,7 @@ public class ArenaBarrierManager {
 
         // Vertical check
         // Floor is at 50, Ceiling is at buildHeight - 1
-        int minY = 51; 
+        int minY = 51;
         int maxY = level.getMaxBuildHeight() - 2;
         return y >= minY && y <= maxY;
     }
@@ -277,7 +274,8 @@ public class ArenaBarrierManager {
      * If it's outside the Y range, it clamps the Y.
      */
     public static Vec3 getClosestPointInside(@Nullable ServerLevel level, Vec3 pos) {
-        if (level == null) return pos;
+        if (level == null)
+            return pos;
 
         StageContext savedData = StageContext.getOrCreate(level);
         BlockPos centerPos = savedData.getArenaBarrierCenter();
@@ -300,7 +298,8 @@ public class ArenaBarrierManager {
         double ellipseValue = (dx * dx) / (radiusX * radiusX) + (dz * dz) / (radiusZ * radiusZ);
         if (ellipseValue > 1.0) {
             double k = 1.0 / Math.sqrt(ellipseValue);
-            // Push slightly inside to avoid floating point issues and immediate re-triggering
+            // Push slightly inside to avoid floating point issues and immediate
+            // re-triggering
             double margin = 0.98;
             x = centerX + dx * k * margin;
             z = centerZ + dz * k * margin;
@@ -338,12 +337,6 @@ public class ArenaBarrierManager {
         StageContext savedData = StageContext.getOrCreate(level);
         long spawnTime = bossEntityUuid != null ? level.getGameTime() : -1;
         savedData.setActiveBossUuid(bossEntityUuid, spawnTime);
-
-        if (bossEntityUuid != null) {
-            LOGGER.info("Set active boss entity UUID: {} at game time {}", bossEntityUuid, spawnTime);
-        } else {
-            LOGGER.info("Cleared active boss entity UUID");
-        }
     }
 
     @Nullable
@@ -353,9 +346,7 @@ public class ArenaBarrierManager {
             return null;
         }
         StageContext savedData = StageContext.getOrCreate(level);
-        UUID bossUuid = savedData.getActiveBossUuid();
-        LOGGER.info("Retrieved active boss UUID: {}", bossUuid != null ? bossUuid : "NULL");
-        return bossUuid;
+        return savedData.getActiveBossUuid();
     }
 
     @Nullable

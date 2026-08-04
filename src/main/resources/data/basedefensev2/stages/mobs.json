@@ -1,0 +1,2172 @@
+{
+    "cataclysm:maledictus": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:coral_golem": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm_spellbooks:summoned_prowler": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:crimson_ressurector": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:architect": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "irons_spellbooks:archevoker": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "irons_spellbooks:catacombs_zombie": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "irons_spellbooks:necromancer": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "minecraft:warden": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:petrified_skeleton_minion": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "block_factorys_bosses:ghost_tentacle": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:small_ant": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:doom_golem_3": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "bbv:the_ender_dragon": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:doom_golem_2": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "dungeonnowloading:garhold": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:doom_golem_1": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "iceandfire:dread_lich": {
+        "category": "Elites",
+        "isRanged": true,
+        "excluded": false
+    },
+    "alexscaves:underzealot": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:frost_exploder": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:ender_guardian": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "traveloptics:summoned_clawdian": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:broken_frost_exploder": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:burried_antlion": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:yeti": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:deepling_warlock": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:bloodwand_mage_minion": {
+        "category": "Excluded",
+        "isRanged": true,
+        "excluded": true
+    },
+    "minecraft:enderman": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "aquamirae:maw": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:ghosthead": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:corrodent": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:magnetron": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "dungeonnowloading:scuttle": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:cursed_sorcerer": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:rotating_spike_trap": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:ender_stinger_minion": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:ender_occultist": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:caramel_cube": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:giant_mummy_arm": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:illager_trapper": {
+        "category": "Elites",
+        "isRanged": true,
+        "excluded": false
+    },
+    "minecraft:creeper": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "block_factorys_bosses:pirate_captain": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:rotating_pentagram": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:illusioner": {
+        "category": "Elites",
+        "isRanged": true,
+        "excluded": false
+    },
+    "wrd:endervillager": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:pharao_wraith": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:ancient_fish_golem": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:broken_cursed_cultist": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:drowned": {
+        "category": "Monster",
+        "isRanged": true,
+        "excluded": false
+    },
+    "traveloptics:summoned_ender_golem": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:forsaken_cultist_exploder": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:hateful_spirit": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:strider_guard": {
+        "category": "Excluded",
+        "isRanged": true,
+        "excluded": true
+    },
+    "traveloptics:summoned_deepling": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:lesser_hateful_spirit": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:blackstone_blaze": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:enemy_currupted_spike": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "traveloptics:summoned_the_prowler": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:heart_of_ice_3": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:heart_of_ice_2": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:wither": {
+        "category": "Excluded",
+        "isRanged": true,
+        "excluded": true
+    },
+    "epicfight:wither_skeleton_minion": {
+        "category": "Monster",
+        "isRanged": true,
+        "excluded": false
+    },
+    "alexscaves:deep_one_mage": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:wither_skeleton": {
+        "category": "Monster",
+        "isRanged": true,
+        "excluded": false
+    },
+    "alexscaves:gumbeeper": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:armored_architect": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "block_factorys_bosses:pirate_rook": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "traveloptics:aquamancer": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:antlion": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "bosses_of_miracle:kenji_the_blade_master": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "block_factorys_bosses:kraken_tentacle": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "traveloptics:test_wizard": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:netherite_monstrosity": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "minecraft:elder_guardian": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:wadjet": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "alexscaves:boundroid": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:deep_one": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm_spellbooks:summoned_koboldiator": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:rotating_green_pentagram_undead": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:speared_petrified_skeleton_minion": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:burnt_pharao_comunicator": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:infected_ender_peasant": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "bbv:planet": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:ancient_guardian": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "block_factorys_bosses:underworld_knight": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm_spellbooks:summoned_counterspell_watcher": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:unconscious_crimson_piglin": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "irons_spellbooks:magehunter_vindicator": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:dirty_skeleton": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm_spellbooks:summoned_ignited_revenant": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:koboleton": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm_spellbooks:summoned_koboleton": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wom:evil_skeleton": {
+        "category": "Elites",
+        "isRanged": true,
+        "excluded": false
+    },
+    "minecraft:silverfish": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "minecraft:zombie": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "iceandfire:dread_knight": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:hanging_flower": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:corrupted_guardling": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:rotating_green_pentagram_minion": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:doom_bot_fire": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:the_giant_king": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:licowitch": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "bosses_of_miracle:kenshin_the_overlord_shogun": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:elite_draugr": {
+        "category": "Elites",
+        "isRanged": true,
+        "excluded": false
+    },
+    "block_factorys_bosses:cinematic_kraken": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:hoglin": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:rolling_bouler_x_minus": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:ferrouslime": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:deepling_angler": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:bloodwand_mage": {
+        "category": "Monster",
+        "isRanged": true,
+        "excluded": false
+    },
+    "cataclysm:draugr": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "traveloptics:summoned_elite_draugr": {
+        "category": "Excluded",
+        "isRanged": true,
+        "excluded": true
+    },
+    "woc_remastered:zertar": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "minecraft:phantom": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "minecraft:zombified_piglin": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm_spellbooks:summoned_royal_draugur": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:mutated_brute": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "minecraft:ender_dragon": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "quark:wraith": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wom:saulomonk": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:dead_bait_snapper": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:vex": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "block_factorys_bosses:crossbow_pirate": {
+        "category": "Monster",
+        "isRanged": true,
+        "excluded": false
+    },
+    "wrd:speared_petrified_skeleton_m": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:illager_occultist": {
+        "category": "Elites",
+        "isRanged": true,
+        "excluded": false
+    },
+    "bbv:playerplaced_crystal": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:hidden_undead_spider": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm_spellbooks:summoned_coral_golem": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:skeleton": {
+        "category": "Monster",
+        "isRanged": true,
+        "excluded": false
+    },
+    "efn:doppelganger": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:clawdian": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "minecraft:ravager": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:zombie_pharao": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:the_sad_king": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:forsaken_cultist_summoner": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "bbv:crystal": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:drowned_host": {
+        "category": "Monster",
+        "isRanged": true,
+        "excluded": false
+    },
+    "irons_spellbooks:dead_king": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:dead_wall_flower": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:cursed_cultist_healer": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:heart_of_ice_companion": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:ender_leach": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "alexscaves:nucleeper": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "minecraft:shulker": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "traveloptics:aqua_grandmaster": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:ender_golem": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:ancient_skeleton_skull": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:the_corpse": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:bloody_skeleton": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:natural_infinite_dungeon_spawns": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "dungeonnowloading:fairkeeper_boros_part": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "bbv:portal": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:hooded_architect_minion": {
+        "category": "Excluded",
+        "isRanged": true,
+        "excluded": true
+    },
+    "wrd:dead_baitsnapper_closed": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:crystal_spider": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "aquamirae:eel": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "iceandfire:troll": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm_spellbooks:phantom_ancient_remnant": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:rotating_blue_pentagram": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:coral_sword_drowned": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:strider_worker": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "traveloptics:summoned_the_watcher": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:rolling_boulder_zplus": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:super_ender_enforcer": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:buff_zombie": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:dead_hanging_flower": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "dungeonnowloading:fairkeeper_boros": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:king_snake": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:blaze": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:crawling_eye": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:undead_mage": {
+        "category": "Excluded",
+        "isRanged": true,
+        "excluded": true
+    },
+    "wrd:supreme_blackstone_blaze": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:the_beyond": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:bait_snapper_closed": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:dead_wall_flower_2": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:mini_demon": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "block_factorys_bosses:flaming_skeleton_guard_fireball": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:flesh_bomb": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wom:hollow": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:ghosthead_finalboss": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:magma_cube": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:deepling": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "minecraft:spider": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:frost_soldier": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:wesley": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:ancient_remnant": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:burnt_zombie_pharao_warrior": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "dungeonnowloading:ballista_golem": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:ancient_skeleton": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm_spellbooks:summoned_aptrgangr": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:heart_of_ender": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:the_prowler": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:rotating_pentagram_x": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:vesper": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:rotating_pentagram_z": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:urchinkin": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm_spellbooks:summoned_ignited_berserker": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "block_factorys_bosses:sandworm": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:zombie_villager": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "dungeonnowloading:chaos_spawner": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:giant": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:rotating_green_pentagram_random_architect": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "irons_spellbooks:ice_spider": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:blowdart_cultist": {
+        "category": "Monster",
+        "isRanged": true,
+        "excluded": false
+    },
+    "cataclysm_spellbooks:summoned_clawdian": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:crystal_spider_minion": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:broken_frost_guard": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "alexscaves:brainiac": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:amethyst_crab": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "aquamirae:tortured_soul": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:loosey": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:mummy_stage_1": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:mummy_stage_3": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:dungeon_locator": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:mummy_stage_2": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm_spellbooks:summoned_draugur": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:corrupted_enderman_ghost": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:crimson_piglin": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:doom_bot_charge": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:rotating_green_pentagram": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:infected_ender_peasant_minion": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:husk": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:dark_shop_keeper": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:rolling_boulder": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:cave_spider": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:monsterous_book": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "block_factorys_bosses:soul_skeleton": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "alexscaves:luxtructosaurus": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:undead_spider": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "block_factorys_bosses:yeti": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm_spellbooks:summoned_watcher": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:enemyspike": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:aqua_guard": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:skull_wielding_cultist": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:forsaken": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "dungeonnowloading:fairkeeper_ouros_part": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:mine_guardian": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "aquamirae:maze_mother": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:ghast": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:burnt_zombie_pharao": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:ignited_berserker": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:hooded_architect": {
+        "category": "Monster",
+        "isRanged": true,
+        "excluded": false
+    },
+    "wrd:king_wraith": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:the_leviathan": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:undead_architect": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "minecraft:piglin_brute": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:bamboo_mace_cultist": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:soul_bomb": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:miniseer": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:the_overseer": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:teletor": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "irons_spellbooks:cultist": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "fdbosses:fire_malkuth_warrior": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:forsaken_cultist_empowerer": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:deepling_brute": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "efn:guardian": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "traveloptics:summoned_wadjet": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:crowned_architect": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:corrupted_zombie": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:enemy_bloody_spike": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:stray": {
+        "category": "Monster",
+        "isRanged": true,
+        "excluded": false
+    },
+    "wrd:crimson_wither_skeleton": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:rotating_pentagram_xm": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:gum_worm": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "dungeonnowloading:spawner_carrier": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:rotating_green_pentagram_friendly": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:giant_mummy": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:puddle_spawn": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:guardian": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:scylla": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "irons_spellbooks:apothecarist": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:falling_block_entity": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:the_watcher": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:dungeon_explosive_drowned": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "block_factorys_bosses:pile_of_bones": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:gingerbread_man": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:shielded_blackstone_blaze": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "bbv:fireball": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "traveloptics:summoned_ignited_revenant": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:falling_chandilier_entity": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "dungeonnowloading:fairkeeper_ouros": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "traveloptics:summoned_aptrgangr": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:rotating_pentagram_zm": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:frost_golem": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:loosey_headless": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm_spellbooks:summoned_amethyst_crab": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:necromancer_stage_1": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "bielgg_spells:broken_script_phase_two": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:caniac": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:doompillar_mob": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:cindaria": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:dungeon_coral_drowned": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "aquamirae:pillagers_patrol": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:vindicator": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:the_host": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:ender_enforcer": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm_spellbooks:summoned_coralssus": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:evoker": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "minecraft:slime": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "block_factorys_bosses:flaming_skeleton_guard_sword": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "iceandfire:dread_ghoul": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "quark:forgotten": {
+        "category": "Elites",
+        "isRanged": true,
+        "excluded": false
+    },
+    "wrd:unconscious_wither_skeleton": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:endermaptera": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "irons_spellbooks:debug_wizard": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "block_factorys_bosses:soul_knight_wither_skeleton": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:lionfish": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:magic_trap": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:coralssus": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:necromancer_stage_3": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:poison_drop": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:necromancer_stage_2": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:endermite": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:kingsnake_trap": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "bielgg_spells:broken_script": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "traveloptics:enraged_dead_king": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:ancient_guardling_2": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "irons_spellbooks:fire_boss": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:hippocamtus": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:ranged_antlion": {
+        "category": "Excluded",
+        "isRanged": true,
+        "excluded": true
+    },
+    "bbv:fireballfall": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "bbv:the_ender_dragonoverworld": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:the_harbinger": {
+        "category": "Boss",
+        "isRanged": true,
+        "excluded": false
+    },
+    "wrd:ender_king": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:heart_of_ice": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "iceandfire:dread_horse": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:armored_undead_architect": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:spiked_basher_extended": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:ancient_skeleton_torso": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:the_angry_giant_king": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:impaled_mage": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "minecraft:witch": {
+        "category": "Monster",
+        "isRanged": true,
+        "excluded": false
+    },
+    "wrd:guardian_bomb": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:dirtyskeleton_3": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:dirtyskeleton_4": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:dirtyskeleton_2": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:impaled_mage_minion": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "woc_remastered:mechx_12": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm_spellbooks:summoned_elite_draugur": {
+        "category": "Excluded",
+        "isRanged": true,
+        "excluded": true
+    },
+    "wrd:the_overseer_stage_2": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:cursed_eye_demon": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:dungeon_coral_sword_drowned": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:the_overseer_stage_3": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "iceandfire:dread_beast": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:ancient_golem_stage_2": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:ancient_golem_stage_3": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:ancient_golem_stage_1": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:forge_golem": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:kingsnake_body_trap": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "dungeonnowloading:broken_garhold": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:mini_ancient_golem": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "bosses_of_miracle:azrath_the_berserk": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "bbv:eyeofenderentity": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "iceandfire:dread_scuttler": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:ignis": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:ender_miner": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:frost_guard": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "iceandfire:ghost": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "traveloptics:summoned_royal_draugr": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:explosive_drowned": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:icy_spirit": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wom:lycanth": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:rolling_boulder_z_minus": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "traveloptics:summoned_magnetron": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:cursed_demon": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:doom_bot_teleport": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:pillager": {
+        "category": "Monster",
+        "isRanged": true,
+        "excluded": false
+    },
+    "irons_spellbooks:pyromancer": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:broken_frost_golem": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:zoglin": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "traveloptics:summoned_kobolediator": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:ender_peasant": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:wall_flower": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:coral_drowned": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:zombie_pharao_comunicator": {
+        "category": "Excluded",
+        "isRanged": true,
+        "excluded": true
+    },
+    "wrd:cursed_cultist": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:falling_icicle_mob": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "iceandfire:dread_thrall": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:corrupted_iron_golem": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:ender_stinger": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:wall_flower_2": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "block_factorys_bosses:kraken": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "irons_spellbooks:cursed_armor_stand": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:ice_mage_stage_2": {
+        "category": "Excluded",
+        "isRanged": true,
+        "excluded": true
+    },
+    "irons_spellbooks:citadel_keeper": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:ice_mage_stage_1": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:kobolediator": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:ice_mage_stage_3": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "aquamirae:captain_cornelia": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:deepling_priest": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:bulky_ancient_skeleton_torso": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "irons_spellbooks:cryomancer": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:bait_snapper": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:faceof_the_maw": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "minecraft:piglin": {
+        "category": "Monster",
+        "isRanged": true,
+        "excluded": false
+    },
+    "wrd:corrupted_blaze": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:corrupted_enderman": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:the_fallen": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:ignited_revenant": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "epicfight:wither_ghost": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:boundroid_winch": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:deep_one_knight": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "traveloptics:the_nightwarden": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:corrupted_skeleton": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:ancient_guard_ling": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "block_factorys_bosses:infernal_dragon": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "dungeonnowloading:hollow": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "traveloptics:summoned_ignited_berserker": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "combat_evolution:shelmarow": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:king_snake_body": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:spiked_basher": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "bielgg_spells:corrupted_clone": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:bulky_ancient_skeleton": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:royal_draugr": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "traveloptics:summoned_koboleton": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "traveloptics:summoned_draugr": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:final_boss_phase_4": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:final_boss_phase_5": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "alexscaves:watcher": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:broken_frost_soldier": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:wraith": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:final_boss_phase_2": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:frost_mage": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:final_boss_phase_3": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:aptrgangr": {
+        "category": "Miniboss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:final_boss_phase_1": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "fdbosses:ice_malkuth_warrior": {
+        "category": "Elites",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:undead_mage_stage_2": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "block_factorys_bosses:dragon_guard_sword": {
+        "category": "Monster",
+        "isRanged": false,
+        "excluded": false
+    },
+    "wrd:undead_mage_stage_3": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:petrified_skeletonm": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "cataclysm:symbiocto": {
+        "category": "Excluded",
+        "isRanged": true,
+        "excluded": true
+    },
+    "wrd:crowned_architect_minion": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    },
+    "wrd:broken_crimson_ressurector": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
+    }
+}

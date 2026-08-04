@@ -39,6 +39,8 @@ public class BaseDefenseMod {
     public BaseDefenseMod(FMLJavaModLoadingContext context) {
         IEventBus modEventBus = context.getModEventBus();
 
+        com.nhatbh.basedefensev2.strength.network.NetworkManager.register();
+
         modEventBus.addListener(this::commonSetup);
 
         ModAttributes.ATTRIBUTES.register(modEventBus);
@@ -69,19 +71,26 @@ public class BaseDefenseMod {
         // Stage mob drops and XP
         MinecraftForge.EVENT_BUS.register(com.nhatbh.basedefensev2.stage.events.StageMobDropsHandler.class);
 
+        // Auto leveling system
+        MinecraftForge.EVENT_BUS.register(com.nhatbh.basedefensev2.level.MobLevelEventHandler.class);
+
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
-            NetworkManager.register();
+            com.nhatbh.basedefensev2.strength.network.NetworkManager.register();
         });
 
         com.nhatbh.basedefensev2.elemental.MobElementConfig.load();
         com.nhatbh.basedefensev2.config.SpellPenaltyConfig.load();
         com.nhatbh.basedefensev2.config.SanctityConfig.load();
+        com.nhatbh.basedefensev2.classification.ClassificationManager.load();
+
+        com.nhatbh.basedefensev2.boss.impl.spells.BossSpellCaster.init();
 
         com.nhatbh.basedefensev2.boss.impl.generic.ZombieTestBoss.register();
         com.nhatbh.basedefensev2.boss.impl.stage_1.InfernalDragonBoss.register();
+        com.nhatbh.basedefensev2.boss.impl.stage_1.WadjetMiniboss.register();
         com.nhatbh.basedefensev2.boss.impl.stage_2.YetiBoss.register();
         com.nhatbh.basedefensev2.boss.impl.stage_3.WadjetMiniboss.register();
         com.nhatbh.basedefensev2.boss.impl.stage_3.HarbingerBoss.register();
@@ -93,8 +102,6 @@ public class BaseDefenseMod {
         com.nhatbh.basedefensev2.boss.impl.stage_6.EnderGuardianBoss.register();
         com.nhatbh.basedefensev2.boss.impl.stage_7.NetheriteMonstrosityMiniboss.register();
         com.nhatbh.basedefensev2.boss.impl.stage_7.IgnisBoss.register();
-
-        LOGGER.info("Base Defense V2 initialized!");
     }
 
     private void onAttributeCreation(EntityAttributeCreationEvent event) {

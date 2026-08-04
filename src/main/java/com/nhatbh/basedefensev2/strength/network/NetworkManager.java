@@ -56,6 +56,11 @@ public class NetworkManager {
                   com.nhatbh.basedefensev2.sanctity.network.GiveUpPacket::new,
                   com.nhatbh.basedefensev2.sanctity.network.GiveUpPacket::handle);
 
+          INSTANCE.registerMessage(id++, com.nhatbh.basedefensev2.stage.network.OpenGuiPacket.class,
+                  com.nhatbh.basedefensev2.stage.network.OpenGuiPacket::toBytes,
+                  com.nhatbh.basedefensev2.stage.network.OpenGuiPacket::new,
+                  com.nhatbh.basedefensev2.stage.network.OpenGuiPacket::handle);
+
 
     }
 

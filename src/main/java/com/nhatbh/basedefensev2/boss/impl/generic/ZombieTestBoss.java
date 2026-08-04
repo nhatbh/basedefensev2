@@ -17,7 +17,7 @@ public class ZombieTestBoss {
             // Global Passives & Actives across ALL phases
             .addGlobalPassive(new OverclockPassive())
             .addGlobalActive(ActiveSkill.builder("stone_spike")
-                    .cooldown(240)
+                    .cooldown(800)
                     .type(ActiveSkill.Type.TACTICAL)
                     .sequence(StoneSpikeSkill.create())
                     .build(), boss -> 140)

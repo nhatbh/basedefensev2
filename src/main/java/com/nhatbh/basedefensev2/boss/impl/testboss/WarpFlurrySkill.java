@@ -16,14 +16,16 @@ public class WarpFlurrySkill {
                 .onStart(ctx -> {
                     ctx.boss().level().playSound(null, ctx.boss().getX(), ctx.boss().getY(), ctx.boss().getZ(),
                             SoundEvents.ENDERMAN_TELEPORT, SoundSource.HOSTILE, 1.5f, 1.0f);
-                    
+
                     LivingEntity target = BossSkillHelper.getClosestTarget(ctx);
                     if (target != null) {
                         // Position precisely behind the target
-                        Vec3 backPos = target.position().subtract(target.getLookAngle().multiply(1, 0, 1).normalize().scale(1.5));
+                        Vec3 backPos = target.position()
+                                .subtract(target.getLookAngle().multiply(1, 0, 1).normalize().scale(1.5));
                         ctx.boss().teleportTo(backPos.x, backPos.y, backPos.z);
-                        ctx.boss().lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES, target.getEyePosition());
-                        
+                        ctx.boss().lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES,
+                                target.getEyePosition());
+
                         if (ctx.boss().level() instanceof ServerLevel level) {
                             level.sendParticles(ParticleTypes.REVERSE_PORTAL, ctx.boss().getX(), ctx.boss().getY() + 1,
                                     ctx.boss().getZ(), 20, 0.2, 0.5, 0.2, 0.05);
@@ -42,13 +44,14 @@ public class WarpFlurrySkill {
                         if (count < 3) {
                             ctx.boss().level().playSound(null, ctx.boss().getX(), ctx.boss().getY(), ctx.boss().getZ(),
                                     SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.HOSTILE, 1.0f, 1.8f);
-                            
+
                             LivingEntity target = BossSkillHelper.getClosestTarget(ctx);
                             if (target != null && target.distanceTo(ctx.boss()) < 4.0) {
                                 float damage = BossSkillHelper.calculateMixedDamage(ctx, target, 5.0f, 10.0f);
                                 target.hurt(ctx.boss().damageSources().mobAttack(ctx.boss()), damage);
                                 if (ctx.boss().level() instanceof ServerLevel level) {
-                                    level.sendParticles(ParticleTypes.CRIT, target.getX(), target.getY() + 1, target.getZ(), 5, 0.1, 0.1, 0.1, 0.1);
+                                    level.sendParticles(ParticleTypes.CRIT, target.getX(), target.getY() + 1,
+                                            target.getZ(), 5, 0.1, 0.1, 0.1, 0.1);
                                 }
                             }
                             ctx.data().put("stab_count", count + 1);
@@ -61,17 +64,19 @@ public class WarpFlurrySkill {
                 .onStart(ctx -> {
                     ctx.boss().level().playSound(null, ctx.boss().getX(), ctx.boss().getY(), ctx.boss().getZ(),
                             SoundEvents.IRON_GOLEM_ATTACK, SoundSource.HOSTILE, 1.5f, 0.4f);
-                    
+
                     LivingEntity target = BossSkillHelper.getClosestTarget(ctx);
                     if (target != null && target.distanceTo(ctx.boss()) < 4.0) {
                         float damage = BossSkillHelper.calculateMixedDamage(ctx, target, 5.0f, 10.0f);
                         target.hurt(ctx.boss().damageSources().mobAttack(ctx.boss()), damage);
-                        Vec3 knockback = target.position().subtract(ctx.boss().position()).multiply(1, 0, 1).normalize().scale(1.8);
+                        Vec3 knockback = target.position().subtract(ctx.boss().position()).multiply(1, 0, 1).normalize()
+                                .scale(1.8);
                         target.setDeltaMovement(knockback.x, 0.6, knockback.z);
                         target.hurtMarked = true;
-                        
+
                         if (ctx.boss().level() instanceof ServerLevel level) {
-                            level.sendParticles(ParticleTypes.SWEEP_ATTACK, target.getX(), target.getY() + 1, target.getZ(), 1, 0, 0, 0, 0);
+                            level.sendParticles(ParticleTypes.SWEEP_ATTACK, target.getX(), target.getY() + 1,
+                                    target.getZ(), 1, 0, 0, 0, 0);
                         }
                     }
                 })

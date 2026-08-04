@@ -115,13 +115,26 @@ public class BossInfoHUD {
 
         currentY += (int) (mc.font.lineHeight * 0.65f) + 2;
 
-        // 3. Render Strength Bar
+        // 3. Render Strength Bar (with recovery state support)
         if (bossMaxStrength > 0 && strengthData != null) {
-            renderOrnateBar(graphics, startX, currentY, STR_BAR_WIDTH, STR_BAR_HEIGHT, bossStrength, bossMaxStrength, 0xFFFFAA00, 0xFF884400);
+            boolean isRecovering = strengthData.currentStrength <= 0 || strengthData.recoveryTicks > 0;
+            if (isRecovering) {
+                int fillVal = strengthData.recoveryTicks > 0 ? strengthData.recoveryTicks : 300;
+                int maxVal = 300;
+                renderOrnateBar(graphics, startX, currentY, STR_BAR_WIDTH, STR_BAR_HEIGHT, fillVal, maxVal, 0xFF9933FF, 0xFF4B0082);
+                
+                String recText = String.format("Exhausted (%.1fs)", strengthData.recoveryTicks / 20.0f);
+                graphics.pose().pushPose();
+                graphics.pose().scale(0.55f, 0.55f, 1.0f);
+                graphics.drawString(mc.font, recText, (int) ((startX + STR_BAR_WIDTH + 4) / 0.55f), (int) (currentY / 0.55f), 0xFFD8BFD8, true);
+                graphics.pose().popPose();
+            } else {
+                renderOrnateBar(graphics, startX, currentY, STR_BAR_WIDTH, STR_BAR_HEIGHT, bossStrength, bossMaxStrength, 0xFFFFAA00, 0xFF884400);
+            }
             currentY += STR_BAR_HEIGHT + 4;
         }
 
-        // 4. Render Passive Secondary Resource Bar (Larger Text Scale 0.6f)
+        // 4. Render Passive Secondary Resource Bar
         BossResourceBarRegistry.ResourceBarInfo barInfo = BossResourceBarRegistry.getBar(boss);
         if (barInfo != null) {
             float currentVal = barInfo.currentSupplier.get();

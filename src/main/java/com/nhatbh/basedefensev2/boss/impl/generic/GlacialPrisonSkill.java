@@ -120,7 +120,7 @@ public class GlacialPrisonSkill {
 
                             // Deal 30% HP damage to nearby players
                             List<Player> hitPlayers = HitboxUtils.getEntitiesInCircle(
-                                    level, Player.class, groundCenter, 2.5, Player::isAlive);
+                                    level, Player.class, groundCenter, 2.5, BossSkillHelper::canBeHitBySkill);
 
                             for (Player p : hitPlayers) {
                                 float damage = (p.getMaxHealth() * 0.15f) + 4.5f;
@@ -191,7 +191,7 @@ public class GlacialPrisonSkill {
                                                 groundCenter.z, 5, 0.8, 1.0, 0.8, 0.05);
 
                                         List<Player> trappedPlayers = HitboxUtils.getEntitiesInCircle(
-                                                level, Player.class, groundCenter, 2.5, Player::isAlive);
+                                                level, Player.class, groundCenter, 2.5, BossSkillHelper::canBeHitBySkill);
 
                                         for (Player p : trappedPlayers) {
                                             com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.clearBeneficialEffects(p);

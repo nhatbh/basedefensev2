@@ -26,6 +26,8 @@ public class MobSpawnEntry {
     public boolean is_boss = false;
     /** Boss definition ID (used only when is_boss = true) */
     public String boss_id;
+    /** Specific level override for this mob spawn entry (-1 for auto calculation) */
+    public int level = -1;
 
     // ── Stat Scaling ─────────────────────────────────────────────────────────
     /** Multiplier applied to mob max health (default 1.0) */

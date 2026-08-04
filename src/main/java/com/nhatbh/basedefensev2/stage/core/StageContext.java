@@ -9,11 +9,22 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.Style;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.common.MinecraftForge;
@@ -71,6 +82,16 @@ public class StageContext extends SavedData {
      * this stage
      */
     private transient boolean cleanupSuccessful = false;
+    /**
+     * Transient flag: true once dynamic boss definitions have been re-registered
+     * into ModBosses after a world reload. Reset each server session.
+     */
+    private transient boolean bossesReRegistered = false;
+    /**
+     * Transient: stage ID saved from NBT, resolved to activeConfig on first tick
+     * once WorldStageSavedData is accessible.
+     */
+    private transient String pendingActiveStageId = null;
 
     // ── Active stage state ───────────────────────────────────────────────────
     /** Null when no stage is currently active */
@@ -99,6 +120,11 @@ public class StageContext extends SavedData {
     private boolean scavengeRewardFired = false;
     /** Ticks remaining in RETRY_INTERMISSION phase */
     private int intermissionTicksRemaining = 0;
+    /** Ticks for dramatic failure sequence delay before teleporting home and reviving */
+    private int failureDelayTicks = -1;
+
+    /** Map of player UUIDs to their vote (true = YES, false = NO) */
+    private final Map<UUID, Boolean> readyVotes = new HashMap<>();
 
     // ── Arena Barrier State ──────────────────────────────────────────────────
     private net.minecraft.core.BlockPos arenaBarrierCenter = null;
@@ -123,12 +149,23 @@ public class StageContext extends SavedData {
      * Called every server tick while the level is the arena dimension.
      */
     public void tick(ServerLevel level) {
-        // Handle server recovery: if a stage is active, wait for first player to enter
-        // and restart it
+        // Resolve deferred activeConfig from NBT load (needs WorldStageSavedData)
+        if (pendingActiveStageId != null) {
+            StageLoader.getById(level, pendingActiveStageId).ifPresentOrElse(
+                cfg -> activeConfig = cfg,
+                () -> LOGGER.warn("[StageContext] Could not resolve saved active stage '{}' from world data", pendingActiveStageId)
+            );
+            pendingActiveStageId = null;
+        }
+
+        // Handle server recovery: if an active combat stage was interrupted, restart it on first player join.
+        // Intermission and Scavenge phases are explicitly excluded to preserve preparation/scavenging timers across saves.
         if (activeConfig != null && !sessionRestartChecked && !level.players().isEmpty()) {
             sessionRestartChecked = true;
-            restartActiveStage(level);
-            return;
+            if (stageState != StageState.RETRY_INTERMISSION && stageState != StageState.SCAVENGE) {
+                restartActiveStage(level);
+                return;
+            }
         } else if (!sessionRestartChecked && !level.players().isEmpty()) {
             sessionRestartChecked = true;
         }
@@ -153,32 +190,27 @@ public class StageContext extends SavedData {
     // ── Trigger check ────────────────────────────────────────────────────────
 
     private void tryTriggerNextStage(ServerLevel level) {
-        List<Integer> orders = StageLoader.getSortedOrders();
-        if (nextStageIndex >= orders.size())
-            return; // All stages done
-
-        int currentOrder = orders.get(nextStageIndex);
-
-        // Pick a stable candidate if we haven't already
-        if (pendingStageId == null) {
-            List<StageConfig> candidates = StageLoader.getStagesForOrder(currentOrder);
-            if (candidates.isEmpty()) {
-                nextStageIndex++;
-                setDirty();
-                return;
-            }
-            pendingStageId = candidates.get(level.random.nextInt(candidates.size())).id;
-            setDirty();
+        var worldData = com.nhatbh.basedefensev2.stage.generator.WorldStageSavedData.get(level);
+        if (worldData.getAllStages().isEmpty()) {
+            // First-ever generation for this world
+            worldData.initializeForWorld(level.getSeed());
+            bossesReRegistered = true; // generateWorldStages already registered bosses
+        } else if (!bossesReRegistered) {
+            // Stages loaded from NBT on world reload — re-register boss definitions
+            worldData.reRegisterBosses();
+            bossesReRegistered = true;
         }
 
-        Optional<StageConfig> opt = StageLoader.getById(pendingStageId);
-        if (opt.isEmpty()) {
-            pendingStageId = null; // Config disappeared?
-            setDirty();
-            return;
-        }
+        Collection<StageConfig> stages = StageLoader.getAllStages(level);
+        if (stages.isEmpty()) return;
 
-        StageConfig candidate = opt.get();
+        List<StageConfig> sortedStages = stages.stream()
+                .sorted(Comparator.comparingInt(s -> s.order))
+                .toList();
+
+        if (nextStageIndex >= sortedStages.size()) return; // All stages done
+
+        StageConfig candidate = sortedStages.get(nextStageIndex);
         long elapsed = level.getGameTime() - lastStageEndGameTime;
         long required = candidate.trigger_seconds * 20L;
 
@@ -186,8 +218,6 @@ public class StageContext extends SavedData {
             return;
 
         // Trigger!
-        LOGGER.info("[StageContext] Triggering stage '{}' from order {} (elapsed={} ticks)", candidate.id, currentOrder,
-                elapsed);
         activeConfig = candidate;
         pendingStageId = null; // Clear pending state
 
@@ -202,8 +232,11 @@ public class StageContext extends SavedData {
         livingEnemies.clear();
         scavengeRewardFired = false;
 
-        broadcastToArena(level, "§6[The Rift] §eA mystical trial begins! Steel your soul...");
+        prepareArenaAndPromptJoin(level);
+        setDirty();
+    }
 
+    private void prepareArenaAndPromptJoin(ServerLevel level) {
         broadcastToServer(level, "§c[The Rift] §4The earth trembles as the ritual grounds manifest! (Lag Warning)");
         try {
             // Load from assets folder in the mod jar
@@ -229,7 +262,7 @@ public class StageContext extends SavedData {
         com.nhatbh.basedefensev2.stage.utils.ArenaBarrierManager.createArenaBarrier(level);
         arenaEstablished = true;
 
-        // Interactive JOIN message - Moved after schematic paste
+        // Interactive JOIN message
         Component joinMsg = Component.literal("§6[The Rift] §eThe gates are open! ")
                 .append(Component.literal("§l[ENTER]")
                         .withStyle(style -> style
@@ -240,8 +273,6 @@ public class StageContext extends SavedData {
                                         net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
                                         Component.literal("Enter the trial!")))));
         level.getServer().getPlayerList().broadcastSystemMessage(joinMsg, false);
-
-        setDirty();
     }
 
     // ── WARMUP ───────────────────────────────────────────────────────────────
@@ -262,30 +293,27 @@ public class StageContext extends SavedData {
             broadcastToArena(level, "§e[The Rift] The trial commences in §c" + (remaining / 20) + "s§e...");
         }
 
+        // 30 seconds before warmup ends (600 ticks): Broadcast warning if no players inside
+        if (remaining == 600) {
+            boolean hasPlayerInArena = level.players().stream().anyMatch(p -> p.gameMode.getGameModeForPlayer() != net.minecraft.world.level.GameType.SPECTATOR);
+            if (!hasPlayerInArena) {
+                broadcastToServer(level, "§c[The Rift] §4The summoning ritual approaches! 30 seconds remain until forced entry!");
+            }
+        }
+
+        // 15 seconds before warmup ends (300 ticks): Force teleport if arena is empty
+        if (remaining == 300) {
+            boolean hasPlayerInArena = level.players().stream().anyMatch(p -> p.gameMode.getGameModeForPlayer() != net.minecraft.world.level.GameType.SPECTATOR);
+            if (!hasPlayerInArena) {
+                broadcastToServer(level, "§c[The Rift] §4No champions found in position! Commencing the grand summoning...");
+                com.nhatbh.basedefensev2.stage.TeleportManager.forceTeleportAll(level);
+            }
+        }
+
         if (stageTicks >= activeConfig.warmup_ticks) {
-            LOGGER.info("[StageContext] Stage '{}' WARMUP complete → ACTIVE", activeConfig.id);
             stageState = StageState.ACTIVE;
             stageTicks = 0;
             startNextWave(level);
-        }
-
-        // Forced teleport logic (if arena is empty)
-        if (level.players().isEmpty()) {
-            if (remaining == 4800) { // 4 mins rem (3 mins until force)
-                broadcastToServer(level,
-                        "§6[The Rift] §eThe ancients stir. All mortals shall be drawn into the fray in §c3 minutes§e!");
-            } else if (remaining == 3600) { // 3 mins rem (2 mins until force)
-                broadcastToServer(level,
-                        "§6[The Rift] §eThe ancients stir. All mortals shall be drawn into the fray in §c2 minutes§e!");
-            } else if (remaining == 2400) { // 2 mins rem (1 min until force)
-                broadcastToServer(level,
-                        "§6[The Rift] §eThe ancients stir. All mortals shall be drawn into the fray in §c1 minute§e!");
-            } else if (remaining == 1300) { // 5s before force
-                broadcastToServer(level, "§c[The Rift] §4The summoning ritual is nearly complete! 5 seconds remain!");
-            } else if (remaining == 1200) { // 1 min rem (ACTUAL FORCE)
-                broadcastToServer(level, "§c[The Rift] §4No champions found! Commencing the grand summoning...");
-                com.nhatbh.basedefensev2.stage.TeleportManager.forceTeleportAll(level);
-            }
         }
     }
 
@@ -334,16 +362,42 @@ public class StageContext extends SavedData {
     private void tickCombat(ServerLevel level) {
         waveTicks++;
 
-        // Prune dead / removed entities from the living set
+        // Fast prune: remove entities that are loaded but dead/removed
         WaveConfig wave = currentWave();
-        livingEnemies.removeIf(uuid -> level.getEntity(uuid) == null);
+        livingEnemies.removeIf(uuid -> {
+            Entity entity = level.getEntity(uuid);
+            if (entity == null) {
+                // Entity not loaded in this chunk — do not prune here;
+                // the periodic world scan below handles unloaded/missing entities.
+                return false;
+            }
+            return !entity.isAlive() || entity.isRemoved();
+        });
+
+        // Periodic world-scan every 20 ticks: verify every tracked UUID still
+        // has a living entity somewhere in the dimension. This catches mobs that
+        // were silently discarded, chunk-unloaded and deleted, or otherwise
+        // removed without triggering a death event.
+        if (waveTicks % 20 == 0 && !livingEnemies.isEmpty()) {
+            livingEnemies.removeIf(uuid -> {
+                Entity entity = level.getEntity(uuid);
+                return entity == null || !entity.isAlive() || entity.isRemoved();
+            });
+
+            if (livingEnemies.isEmpty()) {
+                LOGGER.info("[StageContext] Periodic scan found no living enemies; advancing wave.");
+                broadcastToArena(level, "§a[The Rift] The horde has been vanquished!");
+                waveState = WaveState.CLEARED;
+                tickWaveCleared(level);
+                return;
+            }
+        }
 
         // Periodically enforce targeting on living players
         enforceMobTargeting(level);
 
-        // Win condition
+        // Win condition (immediate, caught on same tick enemies die)
         if (livingEnemies.isEmpty()) {
-            LOGGER.info("[StageContext] Wave '{}' — all enemies defeated → CLEARED", wave.id);
             broadcastToArena(level, "§a[The Rift] The horde has been vanquished!");
             waveState = WaveState.CLEARED;
             tickWaveCleared(level);
@@ -352,7 +406,6 @@ public class StageContext extends SavedData {
 
         // Lose condition
         if (wave.time_limit_ticks > 0 && waveTicks >= wave.time_limit_ticks) {
-            LOGGER.info("[StageContext] Wave '{}' — time limit reached → TIMEOUT", wave.id);
             broadcastToArena(level, "§c[The Rift] §4The hourglass has emptied! The trial hardens...");
             waveState = WaveState.TIMEOUT;
             tickWaveTimeout(level);
@@ -362,14 +415,12 @@ public class StageContext extends SavedData {
     private void tickWaveCleared(ServerLevel level) {
         if (currentWaveIndex + 1 < activeConfig.waves.size()) {
             // More waves remain -> WAIT
-            LOGGER.info("[StageContext] Wave '{}' cleared -> WAITING_NEXT_WAVE", currentWave().id);
             currentWaveIndex++;
             waveState = WaveState.WAITING_NEXT_WAVE;
             waveTicks = 0;
         } else {
             // Final wave cleared → SCAVENGE
             currentWaveIndex++;
-            LOGGER.info("[StageContext] All waves cleared → SCAVENGE");
             stageState = StageState.SCAVENGE;
             stageTicks = 0;
             scavengeRewardFired = false;
@@ -378,7 +429,6 @@ public class StageContext extends SavedData {
 
     private void tickWaveTimeout(ServerLevel level) {
         if (currentWaveIndex + 1 < activeConfig.waves.size()) {
-            LOGGER.info("[StageContext] Wave '{}' timeout -> WAITING_NEXT_WAVE", currentWave().id);
             currentWaveIndex++;
             waveState = WaveState.WAITING_NEXT_WAVE;
             waveTicks = 0;
@@ -387,7 +437,6 @@ public class StageContext extends SavedData {
             livingEnemies.removeIf(uuid -> level.getEntity(uuid) == null);
 
             if (livingEnemies.isEmpty()) {
-                LOGGER.info("[StageContext] Final wave enemies cleared in TIMEOUT → SCAVENGE");
                 currentWaveIndex++;
                 stageState = StageState.SCAVENGE;
                 stageTicks = 0;
@@ -429,6 +478,11 @@ public class StageContext extends SavedData {
     }
 
     private void startNextWave(ServerLevel level) {
+        boolean hasPlayerInArena = level.players().stream().anyMatch(p -> p.gameMode.getGameModeForPlayer() != net.minecraft.world.level.GameType.SPECTATOR);
+        if (!hasPlayerInArena) {
+            com.nhatbh.basedefensev2.stage.TeleportManager.forceTeleportAll(level);
+        }
+
         WaveConfig wave = currentWave();
         waveState = WaveState.SPAWNING;
         waveTicks = 0;
@@ -439,7 +493,6 @@ public class StageContext extends SavedData {
         broadcastToArena(level, "§6[The Rift] §eAssault §c" + (currentWaveIndex + 1)
                 + "§e / §c" + activeConfig.waves.size() + " §eincoming!");
 
-        LOGGER.info("[StageContext] Firing SpawnRequested for wave '{}'", wave.id);
         MinecraftForge.EVENT_BUS.post(new WaveEvents.SpawnRequested(wave, this, level));
     }
 
@@ -482,7 +535,6 @@ public class StageContext extends SavedData {
         }
 
         if (stageTicks >= activeConfig.scavenge_duration_ticks) {
-            LOGGER.info("[StageContext] Scavenge phase over → ENDED");
             enterEnded(level);
         }
     }
@@ -506,29 +558,29 @@ public class StageContext extends SavedData {
         cleanupSuccessful = false;
         cleanupArenaMobs(level);
 
-        for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
-            if (player.gameMode.getGameModeForPlayer() == net.minecraft.world.level.GameType.SPECTATOR) {
-                player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
-                player.setGlowingTag(false);
-                player.setHealth(player.getMaxHealth() * 0.3f);
-            }
-            player.getCapability(com.nhatbh.basedefensev2.sanctity.data.ReviveStateProvider.REVIVE_STATE).ifPresent(state -> {
-                state.setKnockedDown(false);
-                state.setWantsRevive(false);
-                state.setDeathPos(null);
-                state.resetRescue();
-            });
-
-            if (player.level().dimension().equals(com.nhatbh.basedefensev2.stage.ModDimensions.ARENA)) {
-                com.nhatbh.basedefensev2.stage.TeleportManager.teleportToSpawnAnchor(player);
-            }
-        }
-
         stageState = StageState.RETRY_INTERMISSION;
         waveState = null;
         intermissionTicksRemaining = com.nhatbh.basedefensev2.config.SanctityConfig.data.intermissionDurationTicks;
+        failureDelayTicks = 60; // 3 seconds dramatic failure sequence delay
 
-        double bonusPct = (newRetriesUsed * com.nhatbh.basedefensev2.config.SanctityConfig.data.retryMobStatMultiplier) * 100.0;
+        String subtitleText = switch (newRetriesUsed) {
+            case 1 -> "§oThe shadows lengthen...";
+            case 2 -> "§oThe darkness grows relentless...";
+            default -> "§oNo more chances remain...";
+        };
+
+        // Dramatic Failure UI & FX to all players
+        for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
+            player.connection.send(new ClientboundSetTitlesAnimationPacket(10, 50, 20));
+            player.connection.send(new ClientboundSetTitleTextPacket(Component.literal("§c§lYOU HAVE FAILED")));
+            player.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal(subtitleText)));
+
+            player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 80, 0, false, false));
+            player.playNotifySound(SoundEvents.WITHER_DEATH, SoundSource.AMBIENT, 1.0f, 0.8f);
+        }
+
+        double bonusBoost = Math.min(com.nhatbh.basedefensev2.config.SanctityConfig.data.maxRetryMobStatBoost, newRetriesUsed * com.nhatbh.basedefensev2.config.SanctityConfig.data.retryMobStatMultiplier);
+        double bonusPct = bonusBoost * 100.0;
         broadcastToServer(level, String.format("§c[The Rift] Stage '%s' Failed! §eThe Altar consumes a Retry Relic (%d/%d).", activeConfig.id, newRetriesUsed, maxRetries));
         broadcastToServer(level, String.format("§6[Borrowed Time] §eYou have %d minutes to prepare! Mob Threat: +%.0f%% HP/Dmg. Type /stage ready when prepared.", intermissionTicksRemaining / 1200, bonusPct));
 
@@ -536,7 +588,54 @@ public class StageContext extends SavedData {
         return true;
     }
 
+    public boolean isFailureTransition() {
+        return failureDelayTicks > 0;
+    }
+
+    public void endStageOnGameOver(ServerLevel level) {
+        cleanupSuccessful = false;
+        cleanupArenaMobs(level);
+        stageState = StageState.ENDED;
+        waveState = null;
+        livingEnemies.clear();
+        readyVotes.clear();
+        setDirty();
+    }
+
     private void tickRetryIntermission(ServerLevel level) {
+        if (failureDelayTicks > 0) {
+            failureDelayTicks--;
+            if (failureDelayTicks == 0) {
+                // Teleport players home FIRST, THEN revive / heal them!
+                for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
+                    if (player.level().dimension().equals(com.nhatbh.basedefensev2.stage.ModDimensions.ARENA)) {
+                        com.nhatbh.basedefensev2.stage.TeleportManager.teleportToSpawnAnchor(player);
+                    }
+
+                    if (player.gameMode.getGameModeForPlayer() == net.minecraft.world.level.GameType.SPECTATOR) {
+                        player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+                        player.setGlowingTag(false);
+                    }
+                    player.setHealth(player.getMaxHealth());
+
+                    player.getCapability(com.nhatbh.basedefensev2.sanctity.data.ReviveStateProvider.REVIVE_STATE).ifPresent(state -> {
+                        state.setKnockedDown(false);
+                        state.setWantsRevive(false);
+                        state.setDeathPos(null);
+                        state.resetRescue();
+                    });
+                }
+
+                // Restore partial Sanctity immediately upon player teleport & revival
+                com.nhatbh.basedefensev2.sanctity.data.AltarSavedData altarData = com.nhatbh.basedefensev2.sanctity.data.AltarSavedData.get(level);
+                int partialSanctity = (int) (com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity * com.nhatbh.basedefensev2.config.SanctityConfig.data.retrySanctityPercent);
+                altarData.setSanctity(partialSanctity);
+
+                setDirty();
+            }
+            return;
+        }
+
         if (intermissionTicksRemaining > 0) {
             intermissionTicksRemaining--;
 
@@ -574,7 +673,98 @@ public class StageContext extends SavedData {
         scavengeRewardFired = false;
 
         broadcastToServer(level, String.format("§6[The Rift] §eCursed Retry commenced! Base Sanctity restored to %d/%d.", partialSanctity, com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity));
+        readyVotes.clear();
+        prepareArenaAndPromptJoin(level);
         setDirty();
+    }
+
+    public void skipWarmup(ServerLevel level) {
+        if (stageState != StageState.WARMUP || activeConfig == null) return;
+
+        com.nhatbh.basedefensev2.stage.TeleportManager.forceTeleportAll(level);
+        broadcastToServer(level, "§6[The Rift] §a100% YES! Starting trial in 5 seconds...");
+        
+        // Fast forward stageTicks so 5 seconds (100 ticks) remain in warmup
+        stageTicks = Math.max(stageTicks, activeConfig.warmup_ticks - 100);
+        readyVotes.clear();
+        setDirty();
+    }
+
+    public boolean processVote(ServerPlayer player, ServerLevel level, boolean voteYes) {
+        if (stageState != StageState.RETRY_INTERMISSION && stageState != StageState.WARMUP) {
+            return false;
+        }
+
+        if (stageState == StageState.WARMUP) {
+            boolean hasPlayerInArena = level.getServer().getPlayerList().getPlayers().stream()
+                    .anyMatch(p -> p.level().dimension().equals(com.nhatbh.basedefensev2.stage.ModDimensions.ARENA) && 
+                            p.gameMode.getGameModeForPlayer() != net.minecraft.world.level.GameType.SPECTATOR);
+            if (!hasPlayerInArena) {
+                player.sendSystemMessage(Component.literal("§c[The Rift] A champion must enter the arena before voting!"));
+                return false;
+            }
+        }
+
+        String phaseName = stageState == StageState.RETRY_INTERMISSION ? "Intermission" : "Warmup";
+
+        if (!voteYes) {
+            readyVotes.clear();
+            broadcastToServer(level, String.format("§c[The Rift] §a%s §cvoted §cNO§c! Vote to skip %s cancelled.",
+                    player.getScoreboardName(), phaseName));
+            setDirty();
+            return false;
+        }
+
+        Boolean previousVote = readyVotes.put(player.getUUID(), true);
+        if (previousVote != null && previousVote) {
+            List<ServerPlayer> eligiblePlayers = level.getServer().getPlayerList().getPlayers().stream()
+                    .filter(p -> p.gameMode.getGameModeForPlayer() != net.minecraft.world.level.GameType.SPECTATOR)
+                    .toList();
+            int totalRequired = Math.max(1, eligiblePlayers.size());
+            long yesCount = eligiblePlayers.stream().filter(p -> Boolean.TRUE.equals(readyVotes.get(p.getUUID()))).count();
+            player.sendSystemMessage(Component.literal(String.format("§c[The Rift] You already voted YES! (§a%d/%d§c)", yesCount, totalRequired)));
+            return false;
+        }
+
+        List<ServerPlayer> eligiblePlayers = level.getServer().getPlayerList().getPlayers().stream()
+                .filter(p -> p.gameMode.getGameModeForPlayer() != net.minecraft.world.level.GameType.SPECTATOR)
+                .toList();
+
+        int totalRequired = Math.max(1, eligiblePlayers.size());
+
+        long yesCount = eligiblePlayers.stream()
+                .filter(p -> Boolean.TRUE.equals(readyVotes.get(p.getUUID())))
+                .count();
+
+        Component voteMessage = Component.literal(String.format("§6[The Rift] §a%s §evoted §aYES §eto skip %s! §7(§a%d/%d§7)\n",
+                player.getScoreboardName(), phaseName, yesCount, totalRequired))
+                .append(Component.literal(" §7[ "))
+                .append(Component.literal("§a§l[YES]")
+                        .withStyle(Style.EMPTY
+                                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/stage vote yes"))
+                                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("§aVote YES to skip")))))
+                .append(Component.literal(" §7| "))
+                .append(Component.literal("§c§l[NO]")
+                        .withStyle(Style.EMPTY
+                                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/stage vote no"))
+                                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("§cVote NO to cancel")))))
+                .append(Component.literal(" §7]"));
+
+        level.getServer().getPlayerList().broadcastSystemMessage(voteMessage, false);
+
+        if (yesCount >= totalRequired) {
+            readyVotes.clear();
+            if (stageState == StageState.RETRY_INTERMISSION) {
+                broadcastToServer(level, "§6[The Rift] §a100% YES! Skipping Intermission...");
+                startRetryStage(level);
+            } else if (stageState == StageState.WARMUP) {
+                skipWarmup(level);
+            }
+            return true;
+        }
+
+        setDirty();
+        return false;
     }
 
     // ── ENDED ────────────────────────────────────────────────────────────────
@@ -594,6 +784,34 @@ public class StageContext extends SavedData {
         stageState = null;
         waveState = null;
         pendingStageId = null; // Reset for next order
+        setDirty();
+    }
+
+    /**
+     * Forces immediate start of a custom StageConfig (overriding current stage progression).
+     */
+    public void forceStartStage(ServerLevel level, StageConfig customConfig) {
+        if (!bossesReRegistered) {
+            com.nhatbh.basedefensev2.stage.generator.WorldStageSavedData worldData = com.nhatbh.basedefensev2.stage.generator.WorldStageSavedData.get(level);
+            worldData.reRegisterBosses();
+            bossesReRegistered = true;
+        }
+
+        cleanupSuccessful = false;
+        cleanupArenaMobs(level);
+
+        activeConfig = customConfig;
+        pendingStageId = null;
+
+        stageState = StageState.WARMUP;
+        waveState = null;
+        stageTicks = 0;
+        waveTicks = 0;
+        currentWaveIndex = 0;
+        livingEnemies.clear();
+        scavengeRewardFired = false;
+
+        prepareArenaAndPromptJoin(level);
         setDirty();
     }
 
@@ -654,7 +872,7 @@ public class StageContext extends SavedData {
         if (waveTicks % 200 != 0 || livingEnemies.isEmpty()) return;
 
         List<ServerPlayer> validPlayers = level.players().stream()
-                .filter(p -> p.isAlive() && !p.isCreative() && !p.isSpectator() && !p.isInvisible())
+                .filter(com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper::isValidTarget)
                 .toList();
 
         if (validPlayers.isEmpty()) return;
@@ -681,6 +899,37 @@ public class StageContext extends SavedData {
         }
     }
 
+    /**
+     * OP Command: Rerolls the world stage selection sequence and clears pending selection.
+     * Clears the existing saved stages so initializeForWorld can regenerate them.
+     */
+    public void rerollStages(ServerLevel level) {
+        var worldData = com.nhatbh.basedefensev2.stage.generator.WorldStageSavedData.get(level);
+        worldData.clearAndRegenerate(level.getSeed() ^ System.currentTimeMillis());
+        pendingStageId = null;
+        setDirty();
+    }
+
+    /**
+     * OP Command: Fast forwards the inter-stage / intermission / warmup timer by a specified number of seconds.
+     */
+    public void fastForwardTimer(ServerLevel level, int seconds) {
+        int ticksToAdvance = seconds * 20;
+
+        if (activeConfig != null) {
+            if (stageState == StageState.WARMUP) {
+                stageTicks += ticksToAdvance;
+            } else if (stageState == StageState.SCAVENGE) {
+                stageTicks += ticksToAdvance;
+            } else if (stageState == StageState.RETRY_INTERMISSION) {
+                intermissionTicksRemaining = Math.max(0, intermissionTicksRemaining - ticksToAdvance);
+            }
+        } else {
+            lastStageEndGameTime -= ticksToAdvance;
+        }
+        setDirty();
+    }
+
     // ── Public API for subsystems ────────────────────────────────────────────
 
     /**
@@ -692,8 +941,6 @@ public class StageContext extends SavedData {
         totalEnemiesInWave += uuids.size();
         if (waveState == WaveState.SPAWNING) {
             waveState = WaveState.COMBAT;
-            LOGGER.info("[StageContext] Registered {} enemies (total={}); moving to COMBAT", uuids.size(),
-                    totalEnemiesInWave);
         }
         setDirty();
     }
@@ -844,12 +1091,12 @@ public class StageContext extends SavedData {
         setDirty();
     }
 
-    public String getNextStageId() {
+    public String getNextStageId(ServerLevel level) {
         if (pendingStageId != null) return pendingStageId;
-        List<Integer> orders = StageLoader.getSortedOrders();
+        List<Integer> orders = StageLoader.getSortedOrders(level);
         if (nextStageIndex >= orders.size()) return null;
         int currentOrder = orders.get(nextStageIndex);
-        List<StageConfig> candidates = StageLoader.getStagesForOrder(currentOrder);
+        List<StageConfig> candidates = StageLoader.getStagesForOrder(level, currentOrder);
         if (candidates.isEmpty()) return null;
         return candidates.get(0).id;
     }
@@ -862,7 +1109,7 @@ public class StageContext extends SavedData {
         if (activeConfig != null)
             return 0;
 
-        List<Integer> orders = StageLoader.getSortedOrders();
+        List<Integer> orders = StageLoader.getSortedOrders(level);
         if (nextStageIndex >= orders.size())
             return -1;
 
@@ -870,11 +1117,11 @@ public class StageContext extends SavedData {
         StageConfig nextCandidate = null;
 
         if (pendingStageId != null) {
-            nextCandidate = StageLoader.getById(pendingStageId).orElse(null);
+            nextCandidate = StageLoader.getById(level, pendingStageId).orElse(null);
         }
 
         if (nextCandidate == null) {
-            List<StageConfig> candidates = StageLoader.getStagesForOrder(currentOrder);
+            List<StageConfig> candidates = StageLoader.getStagesForOrder(level, currentOrder);
             if (candidates.isEmpty())
                 return -1;
             nextCandidate = candidates.get(0); // Use first as fallback/preview
@@ -904,6 +1151,7 @@ public class StageContext extends SavedData {
             tag.putInt("StageTicks", stageTicks);
             tag.putInt("WaveTicks", waveTicks);
             tag.putInt("IntermissionTicksRemaining", intermissionTicksRemaining);
+            tag.putInt("FailureDelayTicks", failureDelayTicks);
             tag.putInt("CurrentWaveIndex", currentWaveIndex);
             tag.putBoolean("ScavengeRewardFired", scavengeRewardFired);
 
@@ -945,27 +1193,30 @@ public class StageContext extends SavedData {
 
         if (tag.contains("ActiveStageId")) {
             String stageId = tag.getString("ActiveStageId");
-            StageLoader.getById(stageId).ifPresent(cfg -> {
-                ctx.activeConfig = cfg;
-                ctx.stageState = StageState.valueOf(tag.getString("StageState"));
-                if (tag.contains("WaveState")) {
-                    ctx.waveState = WaveState.valueOf(tag.getString("WaveState"));
-                }
-                ctx.stageTicks = tag.getInt("StageTicks");
-                ctx.waveTicks = tag.getInt("WaveTicks");
-                ctx.intermissionTicksRemaining = tag.getInt("IntermissionTicksRemaining");
-                ctx.currentWaveIndex = tag.getInt("CurrentWaveIndex");
-                ctx.totalEnemiesInWave = tag.getInt("TotalEnemiesInWave");
-                ctx.scavengeRewardFired = tag.getBoolean("ScavengeRewardFired");
+            // Defer config lookup to first tick() when ServerLevel/WorldStageSavedData is available
+            ctx.pendingActiveStageId = stageId;
+            // Load all state that doesn't depend on the config object immediately
+            ctx.stageState = StageState.valueOf(tag.getString("StageState"));
+            if (tag.contains("WaveState")) {
+                ctx.waveState = WaveState.valueOf(tag.getString("WaveState"));
+            }
+            ctx.stageTicks = tag.getInt("StageTicks");
+            ctx.waveTicks = tag.getInt("WaveTicks");
+            ctx.intermissionTicksRemaining = tag.getInt("IntermissionTicksRemaining");
+            if (tag.contains("FailureDelayTicks")) {
+                ctx.failureDelayTicks = tag.getInt("FailureDelayTicks");
+            }
+            ctx.currentWaveIndex = tag.getInt("CurrentWaveIndex");
+            ctx.totalEnemiesInWave = tag.getInt("TotalEnemiesInWave");
+            ctx.scavengeRewardFired = tag.getBoolean("ScavengeRewardFired");
 
-                ListTag enemyList = tag.getList("LivingEnemies", Tag.TAG_STRING);
-                for (int i = 0; i < enemyList.size(); i++) {
-                    try {
-                        ctx.livingEnemies.add(UUID.fromString(enemyList.getString(i)));
-                    } catch (IllegalArgumentException ignored) {
-                    }
+            ListTag enemyList = tag.getList("LivingEnemies", Tag.TAG_STRING);
+            for (int i = 0; i < enemyList.size(); i++) {
+                try {
+                    ctx.livingEnemies.add(UUID.fromString(enemyList.getString(i)));
+                } catch (IllegalArgumentException ignored) {
                 }
-            });
+            }
         }
 
         if (tag.contains("ArenaBarrierCenter")) {

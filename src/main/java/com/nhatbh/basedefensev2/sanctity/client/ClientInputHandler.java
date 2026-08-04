@@ -76,10 +76,11 @@ public class ClientInputHandler {
             currentTargetId = foundTargetId;
         }
 
-        // Handle Give Up Key (Hold I key while knocked down)
+        // Handle Key Input (Hold I key while knocked down OR in spectator)
+        boolean isHoldingIKey = GLFW.glfwGetKey(mc.getWindow().getWindow(), GLFW.GLFW_KEY_I) == GLFW.GLFW_PRESS;
+
         if (ClientReviveData.isKnockedDown()) {
-            boolean isHoldingGiveUpKey = GLFW.glfwGetKey(mc.getWindow().getWindow(), GLFW.GLFW_KEY_I) == GLFW.GLFW_PRESS;
-            if (isHoldingGiveUpKey) {
+            if (isHoldingIKey) {
                 giveUpHoldTicks++;
                 if (giveUpHoldTicks >= GIVE_UP_REQUIRED_TICKS) {
                     NetworkManager.INSTANCE.sendToServer(new com.nhatbh.basedefensev2.sanctity.network.GiveUpPacket());
@@ -88,10 +89,26 @@ public class ClientInputHandler {
             } else {
                 giveUpHoldTicks = 0;
             }
+            reviveHoldTicks = 0;
+        } else if (localPlayer.isSpectator() && ClientReviveData.getDeathPos() != null && !ClientReviveData.wantsRevive()) {
+            if (isHoldingIKey) {
+                reviveHoldTicks++;
+                if (reviveHoldTicks >= REVIVE_REQUIRED_TICKS) {
+                    mc.player.connection.sendUnsignedCommand("revive confirm");
+                    reviveHoldTicks = 0;
+                }
+            } else {
+                reviveHoldTicks = 0;
+            }
+            giveUpHoldTicks = 0;
         } else {
             giveUpHoldTicks = 0;
+            reviveHoldTicks = 0;
         }
     }
+
+    private static int reviveHoldTicks = 0;
+    private static final int REVIVE_REQUIRED_TICKS = 40; // Hold for 2 seconds (40 ticks)
 
     public static int getGiveUpHoldTicks() {
         return giveUpHoldTicks;
@@ -99,5 +116,13 @@ public class ClientInputHandler {
 
     public static int getGiveUpRequiredTicks() {
         return GIVE_UP_REQUIRED_TICKS;
+    }
+
+    public static int getReviveHoldTicks() {
+        return reviveHoldTicks;
+    }
+
+    public static int getReviveRequiredTicks() {
+        return REVIVE_REQUIRED_TICKS;
     }
 }

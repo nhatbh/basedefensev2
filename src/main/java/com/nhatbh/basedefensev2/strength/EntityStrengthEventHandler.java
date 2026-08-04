@@ -1,20 +1,17 @@
 package com.nhatbh.basedefensev2.strength;
 
-import com.nhatbh.basedefensev2.boss.core.BossComponent;
-import com.nhatbh.basedefensev2.boss.core.BossManager;
+import com.nhatbh.basedefensev2.api.PoiseAPI;
 import com.nhatbh.basedefensev2.boss.core.BossDefinition;
-import com.nhatbh.basedefensev2.strength.network.EntityStrengthSyncPacket;
-import com.nhatbh.basedefensev2.strength.network.NetworkManager;
+import com.nhatbh.basedefensev2.boss.core.BossManager;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Monster;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.event.entity.living.LivingEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
+import net.minecraftforge.event.entity.living.LivingEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -23,34 +20,24 @@ public class EntityStrengthEventHandler {
 
     @SubscribeEvent
     public static void onEntityJoin(EntityJoinLevelEvent event) {
-        if (event.getLevel().isClientSide) return;
+        if (event.getLevel().isClientSide)
+            return;
         Entity entity = event.getEntity();
 
-        if (entity instanceof Monster monster) {
-            EntityStrengthData data = EntityStrengthData.get(monster);
-            if (data == null) {
-                if (BossManager.isBoss(monster)) {
-                    BossDefinition def = BossManager.get(monster).getDefinition();
-                    data = new EntityStrengthData(
-                        def.getMaxPoise(),
-                        def.getMaxPoise(),
-                        def.getPoiseDamageReduction(),
-                        true,
-                        0
-                    );
-                } else {
-                    float maxHp = monster.getMaxHealth();
-                    float maxStrength = maxHp * 1.0f; 
-                    float reductionValue = 4.0f + (maxHp * 0.05f);
-                    data = new EntityStrengthData(
-                        maxStrength,
-                        maxStrength,
-                        reductionValue,
-                        false,
-                        0
-                    );
+        if (entity instanceof LivingEntity living && !PoiseAPI.hasPoise(living)) {
+            if (BossManager.isBoss(living)) {
+                BossDefinition def = BossManager.get(living).getDefinition();
+                float poiseScale = 1.0f;
+                if (def.getBaseStats() != null && def.getBaseStats().health > 0) {
+                    poiseScale = living.getMaxHealth() / def.getBaseStats().health;
                 }
-                data.save(monster);
+                float scaledPoise = def.getMaxPoise() * poiseScale;
+                PoiseAPI.initializePoise(living, scaledPoise, def.getPoiseDamageReduction(), true);
+            } else if (living instanceof Monster monster) {
+                float maxHp = monster.getMaxHealth();
+                float maxStrength = maxHp * 1.0f;
+                float reductionValue = 4.0f + (maxHp * 0.05f);
+                PoiseAPI.initializePoise(monster, maxStrength, reductionValue, false);
             }
         }
     }
@@ -58,76 +45,40 @@ public class EntityStrengthEventHandler {
     @SubscribeEvent
     public static void onLivingHurt(LivingHurtEvent event) {
         LivingEntity entity = event.getEntity();
-        if (entity.level().isClientSide) return;
-
-        EntityStrengthData data = EntityStrengthData.get(entity);
-        if (data == null) return;
+        if (entity.level().isClientSide || !PoiseAPI.hasPoise(entity))
+            return;
 
         DamageSource source = event.getSource();
-        if ("SkipStrengthDamage".equals(source.getMsgId()) || entity.getPersistentData().getBoolean("SkipStrengthDamage")) {
+        if ("SkipStrengthDamage".equals(source.getMsgId())
+                || entity.getPersistentData().getBoolean("SkipStrengthDamage")) {
             entity.getPersistentData().remove("SkipStrengthDamage");
             return;
         }
 
-        boolean hadStrength = data.currentStrength > 0;
-        
-        if (hadStrength) {
+        if (!PoiseAPI.isExhausted(entity)) {
             float rawDamage = event.getAmount();
-            float strengthDamage = rawDamage;
+            float basePoiseDamage = source.isIndirect() ? rawDamage * 0.5f : rawDamage;
+            LivingEntity attacker = source.getEntity() instanceof LivingEntity livingAttacker ? livingAttacker : null;
 
-            if (source.isIndirect()) {
-                strengthDamage *= 0.5f;
-            }
+            PoiseAPI.damagePoise(entity, basePoiseDamage, attacker, source, true);
 
-            if (source.getEntity() instanceof LivingEntity attacker) {
-                if (attacker.getAttributes().hasAttribute(ModAttributes.STRENGTH_DAMAGE_MULTIPLIER.get())) {
-                    strengthDamage *= attacker.getAttributeValue(ModAttributes.STRENGTH_DAMAGE_MULTIPLIER.get());
-                }
-            }
-
-            if (entity.getAttributes().hasAttribute(ModAttributes.STRENGTH_DAMAGE_TAKEN_MULTIPLIER.get())) {
-                strengthDamage *= entity.getAttributeValue(ModAttributes.STRENGTH_DAMAGE_TAKEN_MULTIPLIER.get());
-            }
-
-            data.currentStrength -= strengthDamage;
-
-
-            if (data.currentStrength <= 0) {
-                data.currentStrength = 0;
-                data.recoveryTicks = 300; 
-                if (BossManager.isBoss(entity)) {
-                    // Let BossManager handle poise broken via EntityEvents.PoiseBroken
-                }
-                MinecraftForge.EVENT_BUS.post(new EntityEvents.PoiseBroken(entity));
-            }
-
-            if (data.isPercentageBased) {
-                event.setAmount(rawDamage * (1.0f - data.reductionValue));
-            } else {
-                event.setAmount(Math.max(0, rawDamage - data.reductionValue));
-            }
-            
-            data.save(entity);
-            EntityStrengthData.sync(entity, data);
+            event.setAmount(PoiseAPI.calculateMitigatedDamage(entity, rawDamage));
         }
     }
 
     @SubscribeEvent
     public static void onLivingTick(LivingEvent.LivingTickEvent event) {
         LivingEntity entity = event.getEntity();
-        
-        EntityStrengthData data = EntityStrengthData.get(entity);
+
+        EntityStrengthData data = PoiseAPI.getPoiseData(entity);
         if (data != null && data.currentStrength <= 0 && data.recoveryTicks > 0) {
             data.recoveryTicks -= 1;
-            
+
             if (data.recoveryTicks <= 0) {
-                data.recoveryTicks = 0;
-                data.currentStrength = data.maxStrength;
-                if (!entity.level().isClientSide) {
-                    EntityStrengthData.sync(entity, data);
-                }
+                PoiseAPI.resetPoise(entity);
+            } else {
+                data.save(entity);
             }
-            data.save(entity);
         }
     }
 
@@ -141,14 +92,8 @@ public class EntityStrengthEventHandler {
     @SubscribeEvent
     public static void onStartTracking(PlayerEvent.StartTracking event) {
         if (event.getTarget() instanceof LivingEntity living) {
-            EntityStrengthData data = EntityStrengthData.get(living);
-            if (data != null) {
-                NetworkManager.sendToTracking(
-                    new EntityStrengthSyncPacket(living.getId(), data.currentStrength, data.maxStrength, data.recoveryTicks),
-                    living
-                );
-            }
+            PoiseAPI.syncPoise(living);
         }
     }
-
 }
+

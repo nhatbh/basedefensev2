@@ -9,7 +9,6 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -22,6 +21,16 @@ public class VengeanceActive {
     private int ticksRemaining = 140; // 7 seconds wind-up (7s * 20 ticks)
     private static final int TOTAL_WINDUP_TICKS = 140;
     private boolean active = true;
+
+    public static com.nhatbh.basedefensev2.boss.skills.ActiveSequence create() {
+        return com.nhatbh.basedefensev2.boss.skills.ActiveSequence.builder("vengeance_active")
+                .step("charge", 140)
+                .onStart(ctx -> new VengeanceActive(ctx.boss()))
+                .onTick(ctx -> {
+                    // Visual/audio ticks handled in VengeanceActive instance if desired
+                })
+                .build();
+    }
 
     public VengeanceActive(LivingEntity boss) {
         this.boss = boss;
@@ -134,7 +143,7 @@ public class VengeanceActive {
         DamageSource damageSource = serverLevel.damageSources().mobAttack(boss);
 
         for (Player player : players) {
-            if (!player.isAlive() || player.isCreative() || player.isSpectator())
+            if (!com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.canBeHitBySkill(player))
                 continue;
 
             double dist = player.position().distanceTo(boss.position());

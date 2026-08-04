@@ -110,10 +110,10 @@ public class ArenaProtectionHandler {
         if (player.level().dimension().equals(ModDimensions.ARENA)) {
             StageContext ctx = StageContext.getOrCreate((net.minecraft.server.level.ServerLevel) player.level());
             
-            // Block leaving if stage is active and not in Scavenge/Ended state
+            // Block leaving if stage is active and not in Scavenge/Ended/RetryIntermission state
             if (ctx.isActive()) {
                 StageState state = ctx.getStageState();
-                if (state != StageState.SCAVENGE && state != StageState.ENDED) {
+                if (state != StageState.SCAVENGE && state != StageState.ENDED && state != StageState.RETRY_INTERMISSION) {
                     event.setCanceled(true);
                     player.sendSystemMessage(Component.literal("§cThe spatial rift is too unstable to exit right now!"));
                 }

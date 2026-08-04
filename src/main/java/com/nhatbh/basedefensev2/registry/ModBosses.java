@@ -16,4 +16,8 @@ public class ModBosses {
     public static BossDefinition get(String id) {
         return REGISTRY.get(id);
     }
+
+    public static Map<String, BossDefinition> getAll() {
+        return java.util.Collections.unmodifiableMap(REGISTRY);
+    }
 }

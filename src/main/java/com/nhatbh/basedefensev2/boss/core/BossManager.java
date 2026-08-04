@@ -27,6 +27,7 @@ public class BossManager {
 
     public static void registerBoss(LivingEntity entity, BossComponent component) {
         BOSS_REGISTRY.put(entity, component);
+        entity.getPersistentData().putString("bdv2_boss_id", component.getDefinition().getId());
         initializeBossAttributes(entity, component.getDefinition());
         applyScale(entity, component.getDefinition().getBaseScale());
         component.initialize(entity);
@@ -65,11 +66,29 @@ public class BossManager {
     }
 
     public static BossComponent get(LivingEntity entity) {
-        return BOSS_REGISTRY.get(entity);
+        BossComponent comp = BOSS_REGISTRY.get(entity);
+        if (comp == null && entity != null && entity.getPersistentData().contains("bdv2_boss_id")) {
+            String bossId = entity.getPersistentData().getString("bdv2_boss_id");
+            BossDefinition def = com.nhatbh.basedefensev2.registry.ModBosses.get(bossId);
+            if (def != null) {
+                comp = new BossComponent(def);
+                if (entity.getPersistentData().contains("BossPhaseIndex")) {
+                    int phaseIndex = entity.getPersistentData().getInt("BossPhaseIndex");
+                    comp.setCurrentPhaseIndex(phaseIndex);
+                    if (phaseIndex >= 0 && phaseIndex < def.getPhases().size()) {
+                        comp.setCurrentPhase(def.getPhases().get(phaseIndex));
+                    }
+                } else if (!def.getPhases().isEmpty()) {
+                    comp.setCurrentPhase(def.getPhases().get(0));
+                }
+            }
+        }
+        return comp;
     }
 
     public static boolean isBoss(LivingEntity entity) {
-        return BOSS_REGISTRY.containsKey(entity);
+        if (entity == null) return false;
+        return BOSS_REGISTRY.containsKey(entity) || entity.getPersistentData().contains("bdv2_boss_id");
     }
 
     @SubscribeEvent

@@ -36,6 +36,7 @@ public class WaveDefenseHUD {
     private static int    lastEnemies       = -1;
     private static int    lastTotalEnemies  = -1;
     private static int    lastWaveRemSec    = -1;
+    private static int    lastStageRemSec   = -1;
     private static int    lastIdleSeconds   = -1;
 
     // ── Registration ─────────────────────────────────────────────────────────
@@ -122,10 +123,12 @@ public class WaveDefenseHUD {
         int enemies       = ClientStageData.getEnemiesRemaining();
         int totalEnemies  = ClientStageData.getTotalEnemiesInWave();
         int waveRemSec    = ClientStageData.getWaveRemainingTicks() > 0 ? ClientStageData.getWaveRemainingSeconds() : -1;
+        int stageRemSec   = ClientStageData.getStageRemainingSeconds();
 
         if (!stageState.equals(lastStageState) || !waveState.equals(lastWaveState) 
                 || waveIndex != lastWaveIndex || maxWaves != lastMaxWaves 
-                || enemies != lastEnemies || totalEnemies != lastTotalEnemies || waveRemSec != lastWaveRemSec) {
+                || enemies != lastEnemies || totalEnemies != lastTotalEnemies 
+                || waveRemSec != lastWaveRemSec || stageRemSec != lastStageRemSec) {
 
             lastStageState   = stageState;
             lastWaveState    = waveState;
@@ -134,9 +137,9 @@ public class WaveDefenseHUD {
             lastEnemies      = enemies;
             lastTotalEnemies = totalEnemies;
             lastWaveRemSec   = waveRemSec;
+            lastStageRemSec  = stageRemSec;
 
             if (!stageState.equals("ACTIVE")) {
-                int stageRemSec = ClientStageData.getStageRemainingSeconds();
                 int m = stageRemSec / 60;
                 int s = stageRemSec % 60;
                 cachedHeaderLine = "STAGE " + stageState + " (" + m + ":" + (s < 10 ? "0" + s : s) + ")";

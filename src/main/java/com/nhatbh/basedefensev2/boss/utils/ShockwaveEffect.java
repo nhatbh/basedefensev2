@@ -209,7 +209,7 @@ public class ShockwaveEffect {
         }
 
         level.getEntitiesOfClass(Player.class, box).forEach(entity -> {
-            if (!entity.isAlive() || entity.isCreative() || entity.isSpectator())
+            if (!com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.canBeHitBySkill(entity))
                 return;
 
             // The shockwave can be avoided by jumping!
@@ -310,7 +310,7 @@ public class ShockwaveEffect {
     private static void dragAndDamageEntities(ServerLevel level, Vec3 travelDir, BlockPos pos, LivingEntity sourceBoss, boolean isFinalStep) {
         AABB box = new AABB(pos).inflate(1.5, 2.5, 1.5);
         level.getEntitiesOfClass(Player.class, box).forEach(entity -> {
-            if (!entity.isAlive() || entity.isCreative() || entity.isSpectator())
+            if (!com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.canBeHitBySkill(entity))
                 return;
 
             // Reset invulnerability ticks so players are continuously dragged step-by-step

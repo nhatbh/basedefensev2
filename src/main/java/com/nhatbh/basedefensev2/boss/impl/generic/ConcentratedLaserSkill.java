@@ -36,7 +36,7 @@ public class ConcentratedLaserSkill {
 
                     // Lock onto a random player within 100 blocks laser range
                     List<Player> nearbyPlayers = HitboxUtils.getEntitiesInCircle(
-                            ctx.boss().level(), Player.class, ctx.boss().position(), 100.0, Player::isAlive);
+                            ctx.boss().level(), Player.class, ctx.boss().position(), 100.0, BossSkillHelper::isValidTarget);
 
                     if (!nearbyPlayers.isEmpty()) {
                         Collections.shuffle(nearbyPlayers);
@@ -139,7 +139,7 @@ public class ConcentratedLaserSkill {
                                         beamPoint.x + 0.75, beamPoint.y + 0.75, beamPoint.z + 0.75);
 
                                 level.getEntitiesOfClass(Player.class, hurtBox).forEach(entity -> {
-                                    if (entity.isAlive() && !entity.isCreative() && !entity.isSpectator()) {
+                                    if (BossSkillHelper.canBeHitBySkill(entity)) {
                                         if (entity.invulnerableTime > 2) {
                                             entity.invulnerableTime = 0;
                                         }

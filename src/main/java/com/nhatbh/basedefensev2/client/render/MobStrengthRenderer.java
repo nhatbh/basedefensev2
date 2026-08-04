@@ -21,6 +21,7 @@ import net.minecraftforge.fml.common.Mod;
 public class MobStrengthRenderer {
 
     private static final Minecraft MC = Minecraft.getInstance();
+    private static final double MAX_RENDER_DISTANCE_SQ = 576.0D; // 24 blocks squared
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
@@ -28,12 +29,14 @@ public class MobStrengthRenderer {
             return;
         }
 
-        if (MC.level == null)
+        if (MC.level == null || MC.player == null)
             return;
 
         boolean hasAnyStrength = false;
         for (Entity e : MC.level.entitiesForRendering()) {
             if (!e.isAlive() || !(e instanceof net.minecraft.world.entity.LivingEntity living))
+                continue;
+            if (e.distanceToSqr(MC.player) > MAX_RENDER_DISTANCE_SQ)
                 continue;
             com.nhatbh.basedefensev2.strength.EntityStrengthData data = com.nhatbh.basedefensev2.strength.EntityStrengthData.get(living);
             if (data != null && (data.currentStrength > 0 || data.recoveryTicks > 0)) {
@@ -66,6 +69,8 @@ public class MobStrengthRenderer {
 
         for (Entity e : MC.level.entitiesForRendering()) {
             if (!e.isAlive() || !(e instanceof net.minecraft.world.entity.LivingEntity living))
+                continue;
+            if (e.distanceToSqr(MC.player) > MAX_RENDER_DISTANCE_SQ)
                 continue;
 
             com.nhatbh.basedefensev2.strength.EntityStrengthData data = com.nhatbh.basedefensev2.strength.EntityStrengthData.get(living);

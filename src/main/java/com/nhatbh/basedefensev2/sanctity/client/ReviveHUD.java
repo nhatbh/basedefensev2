@@ -33,6 +33,12 @@ public class ReviveHUD {
 
         if (ClientReviveData.isKnockedDown()) {
             renderKnockedDown(mc, graphics, width, height);
+            Integer targetId = ClientInputHandler.getCurrentTargetId();
+            if (targetId != null) {
+                renderRescuing(mc, graphics, width, height, targetId);
+            }
+        } else if (mc.player != null && mc.player.isSpectator() && ClientReviveData.getDeathPos() != null) {
+            renderSpectator(mc, graphics, width, height);
         } else {
             Integer targetId = ClientInputHandler.getCurrentTargetId();
             if (targetId != null) {
@@ -50,6 +56,9 @@ public class ReviveHUD {
 
         int barX = centerX - BAR_WIDTH / 2;
         int barY = centerY + 25;
+        if (ClientReviveData.isKnockedDown()) {
+            barY += 55; // Offset below knocked down UI
+        }
 
         RenderSystem.enableBlend();
         // Background
@@ -138,6 +147,54 @@ public class ReviveHUD {
             String promptText = "Hold [I] to Give Up";
             int promptWidth = mc.font.width(promptText);
             graphics.drawString(mc.font, promptText, centerX - promptWidth / 2, giveUpY, 0xAAAAAA, true);
+        }
+    }
+
+    private static void renderSpectator(Minecraft mc, GuiGraphics graphics, int width, int height) {
+        int centerX = width / 2;
+        int centerY = height / 2 + 50;
+
+        // "YOU DIED" text
+        String text = "SPECTATING";
+        int textWidth = mc.font.width(text);
+        graphics.drawString(mc.font, text, centerX - textWidth / 2, centerY, 0xFFFFAA00, true);
+
+        // Spectator Timer
+        int ticks = ClientReviveData.getSpectatorTimer();
+        int seconds = (ticks / 20) % 60;
+        int minutes = (ticks / 20) / 60;
+        String timeText = String.format("Auto-revive in: %02d:%02d", minutes, seconds);
+        int timeWidth = mc.font.width(timeText);
+        graphics.drawString(mc.font, timeText, centerX - timeWidth / 2, centerY + 12, 0xFFCCCCCC, true);
+
+        int barY = centerY + 28;
+
+        if (ClientReviveData.wantsRevive()) {
+            String statusText = "Revival Queued... (Waiting for 50 Sanctity)";
+            int statusWidth = mc.font.width(statusText);
+            graphics.drawString(mc.font, statusText, centerX - statusWidth / 2, barY, 0xFF00FF00, true);
+        } else {
+            int holdTicks = ClientInputHandler.getReviveHoldTicks();
+            int maxHold = ClientInputHandler.getReviveRequiredTicks();
+
+            if (holdTicks > 0) {
+                int barX = centerX - BAR_WIDTH / 2;
+                RenderSystem.enableBlend();
+                graphics.fill(barX, barY, barX + BAR_WIDTH, barY + BAR_HEIGHT, 0x99000000);
+
+                float ratio = (float) holdTicks / maxHold;
+                int filledWidth = (int) (BAR_WIDTH * ratio);
+                graphics.fill(barX, barY, barX + filledWidth, barY + BAR_HEIGHT, 0xFF00FF00);
+
+                String reviveText = "Requesting Revival...";
+                int reviveWidth = mc.font.width(reviveText);
+                graphics.drawString(mc.font, reviveText, centerX - reviveWidth / 2, barY - 10, 0xFF00FF00, true);
+                RenderSystem.disableBlend();
+            } else {
+                String promptText = "Hold [I] to Revive (Costs 50 Sanctity)";
+                int promptWidth = mc.font.width(promptText);
+                graphics.drawString(mc.font, promptText, centerX - promptWidth / 2, barY, 0xFF55FF55, true);
+            }
         }
     }
 }

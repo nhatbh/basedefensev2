@@ -76,7 +76,9 @@ public class SpawnerSubsystem {
         List<UUID> uuids = new ArrayList<>();
         List<Entity> entities = new ArrayList<>();
 
-        double retryMultiplier = 1.0 + (com.nhatbh.basedefensev2.sanctity.data.AltarSavedData.get(level).getRetriesUsed() * com.nhatbh.basedefensev2.config.SanctityConfig.data.retryMobStatMultiplier);
+        int retriesUsed = com.nhatbh.basedefensev2.sanctity.data.AltarSavedData.get(level).getRetriesUsed();
+        double bonusBoost = Math.min(com.nhatbh.basedefensev2.config.SanctityConfig.data.maxRetryMobStatBoost, retriesUsed * com.nhatbh.basedefensev2.config.SanctityConfig.data.retryMobStatMultiplier);
+        double retryMultiplier = 1.0 + bonusBoost;
 
         for (MobSpawnEntry entry : wave.mobs) {
             if (entry.is_boss) {
@@ -88,11 +90,6 @@ public class SpawnerSubsystem {
 
         // Assign all wave mobs to the no-friendly-fire team
         assignToWaveTeam(level, entities);
-
-        LOGGER.info("[SpawnerSubsystem] Wave '{}' spawned {} entities (dir={}° arc={}°)",
-                wave.id, uuids.size(),
-                (int) Math.toDegrees(waveAngle),
-                (int) wave.arc_angle);
 
         ctx.registerEnemies(uuids);
     }
@@ -124,9 +121,6 @@ public class SpawnerSubsystem {
         for (Entity entity : entities) {
             scoreboard.addPlayerToTeam(entity.getScoreboardName(), team);
         }
-
-        LOGGER.info("[SpawnerSubsystem] Assigned {} entities to team '{}' (friendlyFire=false)",
-                entities.size(), WAVE_TEAM);
     }
 
     // ── Position calculators ──────────────────────────────────────────────────
@@ -186,6 +180,11 @@ public class SpawnerSubsystem {
                 mob.finalizeSpawn(level,
                         level.getCurrentDifficultyAt(BlockPos.containing(pos[0], pos[1], pos[2])),
                         MobSpawnType.EVENT, null, null);
+
+                // Set level for stage mob
+                int mobLevel = com.nhatbh.basedefensev2.level.MobLevelCalculator.calculateLevel(mob, level, BlockPos.containing(pos[0], pos[1], pos[2]), entry.level);
+                com.nhatbh.basedefensev2.level.MobLevelData.setLevel(mob, mobLevel);
+                com.nhatbh.basedefensev2.level.MobLevelEventHandler.applyAttributeBonuses(mob, mobLevel);
 
                 // Set follow range to 300 blocks and target nearest player
                 var followAttr = mob.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE);
@@ -313,8 +312,6 @@ public class SpawnerSubsystem {
             }
             entity.getPersistentData().put("bdv2_custom_loot", lootList);
         }
-
-        LOGGER.info("[SpawnerSubsystem] Spawned boss '{}' at origin.", entry.boss_id);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
