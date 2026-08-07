@@ -1,6 +1,5 @@
 package com.nhatbh.basedefensev2.boss.core;
 
-import com.nhatbh.basedefensev2.elemental.ElementType;
 import com.nhatbh.basedefensev2.boss.events.BossEvents;
 import com.nhatbh.basedefensev2.boss.network.EntitySkillSyncPacket;
 import com.nhatbh.basedefensev2.boss.skills.ActiveSkill;
@@ -10,9 +9,11 @@ import com.nhatbh.basedefensev2.strength.EntityEvents;
 import com.nhatbh.basedefensev2.strength.network.NetworkManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -87,7 +88,8 @@ public class BossManager {
     }
 
     public static boolean isBoss(LivingEntity entity) {
-        if (entity == null) return false;
+        if (entity == null)
+            return false;
         return BOSS_REGISTRY.containsKey(entity) || entity.getPersistentData().contains("bdv2_boss_id");
     }
 
@@ -100,6 +102,60 @@ public class BossManager {
         BossComponent comp = get(boss);
         if (comp == null)
             return;
+
+        // ── Inactivity / Proximity / Distance Teleport Check ──
+        long currentTime = boss.level().getGameTime();
+        if (!boss.getPersistentData().contains("LastHurtGameTime")) {
+            boss.getPersistentData().putLong("LastHurtGameTime", currentTime);
+        }
+        long lastHurt = boss.getPersistentData().getLong("LastHurtGameTime");
+        long ticksSinceHurt = currentTime - lastHurt;
+
+        java.util.List<net.minecraft.server.level.ServerPlayer> validPlayers = new java.util.ArrayList<>();
+        if (boss.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            for (net.minecraft.world.entity.player.Player p : serverLevel.players()) {
+                if (p instanceof net.minecraft.server.level.ServerPlayer player) {
+                    if (com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.isValidTarget(player)) {
+                        validPlayers.add(player);
+                    }
+                }
+            }
+        }
+
+        // Teleport system ONLY activates when there is at least one valid player
+        // present
+        if (!validPlayers.isEmpty()) {
+            double nearestPlayerDistSq = Double.MAX_VALUE;
+            for (net.minecraft.server.level.ServerPlayer player : validPlayers) {
+                double dSq = boss.distanceToSqr(player);
+                if (dSq < nearestPlayerDistSq) {
+                    nearestPlayerDistSq = dSq;
+                }
+            }
+
+            boolean playerNearby = (nearestPlayerDistSq <= 30.0 * 30.0);
+
+            int ticksNotClose = boss.getPersistentData().getInt("TicksNotCloseToPlayer");
+            if (playerNearby) {
+                ticksNotClose = 0;
+            } else {
+                ticksNotClose++;
+            }
+            boss.getPersistentData().putInt("TicksNotCloseToPlayer", ticksNotClose);
+
+            // Immediate teleport if boss is too far (> 60 blocks) from all valid players
+            boolean tooFarAway = (nearestPlayerDistSq > 60.0 * 60.0);
+
+            if (ticksSinceHurt >= 1200 || ticksNotClose >= 1200 || tooFarAway) {
+                boss.getPersistentData().putLong("LastHurtGameTime", currentTime);
+                boss.getPersistentData().putInt("TicksNotCloseToPlayer", 0);
+                teleportBossToRandomPlayer(boss, validPlayers);
+            }
+        } else {
+            // Keep timers reset while no valid players are online/present
+            boss.getPersistentData().putLong("LastHurtGameTime", currentTime);
+            boss.getPersistentData().putInt("TicksNotCloseToPlayer", 0);
+        }
 
         if (comp.getExhaustionTicks() > 0) {
             comp.setExhaustionTicks(comp.getExhaustionTicks() - 1);
@@ -122,9 +178,11 @@ public class BossManager {
         }
 
         // Stun Immunity & Strength-based Skill Blocking
-        com.nhatbh.basedefensev2.strength.EntityStrengthData strengthData = com.nhatbh.basedefensev2.strength.EntityStrengthData.get(boss);
+        com.nhatbh.basedefensev2.strength.EntityStrengthData strengthData = com.nhatbh.basedefensev2.strength.EntityStrengthData
+                .get(boss);
         if (strengthData != null && strengthData.currentStrength > 0) {
-            net.minecraft.world.effect.MobEffect stunImmunity = net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS.getValue(net.minecraft.resources.ResourceLocation.parse("efn:sin_stun_immunity"));
+            net.minecraft.world.effect.MobEffect stunImmunity = net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS
+                    .getValue(net.minecraft.resources.ResourceLocation.parse("efn:sin_stun_immunity"));
             if (stunImmunity != null) {
                 boss.addEffect(new net.minecraft.world.effect.MobEffectInstance(stunImmunity, 3, 19, false, false));
             }
@@ -147,14 +205,16 @@ public class BossManager {
             selectRandomTarget(boss);
 
             // Trigger post-skill vulnerability window during Desperation Mode (Last Phase)
-            com.nhatbh.basedefensev2.boss.impl.generic.DragonsFuryPassive fury = com.nhatbh.basedefensev2.boss.impl.generic.DragonsFuryPassive.get(boss);
+            com.nhatbh.basedefensev2.boss.impl.generic.DragonsFuryPassive fury = com.nhatbh.basedefensev2.boss.impl.generic.DragonsFuryPassive
+                    .get(boss);
             if (fury != null) {
                 fury.triggerPostSkillVulnerability(boss);
             }
         }
 
         if (boss instanceof net.minecraft.world.entity.Mob mob) {
-            if (mob.getTarget() != null && !com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.isValidTarget(mob.getTarget())) {
+            if (mob.getTarget() != null
+                    && !com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.isValidTarget(mob.getTarget())) {
                 selectRandomTarget(boss);
             }
         }
@@ -187,10 +247,64 @@ public class BossManager {
                         comp.setTacticalSkillCooldown(nextSkill.getGlobalCooldown());
                     }
 
-
                     comp.setCurrentSequence(nextSkill.getSequence().start(boss, nextSkill.getType()));
                 }
             }
+        }
+    }
+
+    public static void teleportBossToRandomPlayer(LivingEntity boss) {
+        if (boss == null || boss.level().isClientSide())
+            return;
+        if (!(boss.level() instanceof net.minecraft.server.level.ServerLevel serverLevel))
+            return;
+
+        java.util.List<net.minecraft.server.level.ServerPlayer> validPlayers = new java.util.ArrayList<>();
+        for (net.minecraft.world.entity.player.Player p : serverLevel.players()) {
+            if (p instanceof net.minecraft.server.level.ServerPlayer player) {
+                if (com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.isValidTarget(player)) {
+                    validPlayers.add(player);
+                }
+            }
+        }
+
+        teleportBossToRandomPlayer(boss, validPlayers);
+    }
+
+    public static void teleportBossToRandomPlayer(LivingEntity boss,
+            java.util.List<net.minecraft.server.level.ServerPlayer> validPlayers) {
+        if (boss == null || boss.level().isClientSide())
+            return;
+        if (validPlayers == null || validPlayers.isEmpty())
+            return;
+        if (!(boss.level() instanceof net.minecraft.server.level.ServerLevel serverLevel))
+            return;
+
+        net.minecraft.server.level.ServerPlayer targetPlayer = validPlayers
+                .get(boss.getRandom().nextInt(validPlayers.size()));
+        double angle = boss.getRandom().nextDouble() * Math.PI * 2;
+        double distance = 2.0 + boss.getRandom().nextDouble() * 2.0;
+        double targetX = targetPlayer.getX() + Math.cos(angle) * distance;
+        double targetZ = targetPlayer.getZ() + Math.sin(angle) * distance;
+        double targetY = targetPlayer.getY();
+
+        // Spawn FX at old position
+        serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.PORTAL, boss.getX(), boss.getY() + 1.0,
+                boss.getZ(), 40, 0.5, 1.0, 0.5, 0.2);
+        serverLevel.playSound(null, boss.getX(), boss.getY(), boss.getZ(),
+                net.minecraft.sounds.SoundEvents.ENDERMAN_TELEPORT, net.minecraft.sounds.SoundSource.HOSTILE, 1.0f,
+                1.0f);
+
+        boss.teleportTo(targetX, targetY, targetZ);
+
+        // Spawn FX at new position
+        serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.PORTAL, targetX, targetY + 1.0, targetZ,
+                40, 0.5, 1.0, 0.5, 0.2);
+        serverLevel.playSound(null, targetX, targetY, targetZ, net.minecraft.sounds.SoundEvents.ENDERMAN_TELEPORT,
+                net.minecraft.sounds.SoundSource.HOSTILE, 1.0f, 1.0f);
+
+        if (boss instanceof Mob mob) {
+            mob.setTarget(targetPlayer);
         }
     }
 
@@ -224,6 +338,13 @@ public class BossManager {
 
         MinecraftForge.EVENT_BUS.post(new BossEvents.PhaseAdvance(boss, oldPhaseId, newPhase.getId()));
         comp.setCurrentSequence(null); // Interrupted by phase shift
+        comp.setExhaustionTicks(0);
+
+        if (boss instanceof Mob mob && mob.getPersistentData().getBoolean("ExhaustionDisabledAI")) {
+            mob.setNoAi(false);
+            mob.getPersistentData().remove("ExhaustionDisabledAI");
+        }
+
         selectRandomTarget(boss);
 
         newPhase.onEnter(boss);
@@ -364,8 +485,19 @@ public class BossManager {
     }
 
     @SubscribeEvent
+    public static void onLivingHurt(LivingHurtEvent event) {
+        if (isBoss(event.getEntity()) && !event.getEntity().level().isClientSide()) {
+            event.getEntity().getPersistentData().putLong("LastHurtGameTime", event.getEntity().level().getGameTime());
+        }
+    }
+
+    @SubscribeEvent
     public static void onLivingDamage(LivingDamageEvent event) {
         LivingEntity entity = event.getEntity();
+
+        if (isBoss(entity) && !entity.level().isClientSide()) {
+            entity.getPersistentData().putLong("LastHurtGameTime", entity.level().getGameTime());
+        }
 
         // Check if the entity is a mount for a boss
         if (entity.getFirstPassenger() instanceof LivingEntity rider && isBoss(rider)) {
@@ -377,7 +509,8 @@ public class BossManager {
         BossComponent comp = get(entity);
         if (comp != null && comp.getCurrentSequence() != null && comp.getCurrentSequence().isRunning()) {
             net.minecraft.world.damagesource.DamageSource source = event.getSource();
-            // Strict melee check: source has an attacker and the direct entity that hit is the attacker himself
+            // Strict melee check: source has an attacker and the direct entity that hit is
+            // the attacker himself
             boolean isMelee = source.getDirectEntity() != null && source.getDirectEntity() == source.getEntity();
 
             float rawDamage = event.getAmount();
@@ -390,11 +523,11 @@ public class BossManager {
         }
     }
 
-
     @SubscribeEvent
     public static void onGuard(com.complextalents.epicfight.event.EpicFightGuardEvent event) {
-        if (event.getAttacker() == null || event.getAttacker().level().isClientSide) return;
-        
+        if (event.getAttacker() == null || event.getAttacker().level().isClientSide)
+            return;
+
         BossComponent comp = get(event.getAttacker());
         if (comp != null && comp.getCurrentSequence() != null && comp.getCurrentSequence().isRunning()) {
             comp.getCurrentSequence().onGuard(event);
@@ -408,13 +541,27 @@ public class BossManager {
             if (comp.getCurrentSequence() != null) {
                 comp.setCurrentSequence(null); // Interrupt sequence
             }
-            comp.setExhaustionTicks(comp.getExhaustionTicks() + 100); // stunned
+            comp.setExhaustionTicks(300); // 15 seconds stunned during poise recovery
             selectRandomTarget(event.getEntity());
+        }
+        if (event.getEntity() instanceof Mob mob && isBoss(mob)) {
+            mob.getNavigation().stop();
+            if (!mob.onGround()) {
+                mob.setDeltaMovement(0, -0.6, 0);
+                mob.hasImpulse = true;
+            } else {
+                mob.setDeltaMovement(0, mob.getDeltaMovement().y, 0);
+            }
+            if (mob.isNoAi() && mob.getPersistentData().getBoolean("ExhaustionDisabledAI")) {
+                mob.setNoAi(false);
+                mob.getPersistentData().remove("ExhaustionDisabledAI");
+            }
         }
     }
 
     public static void selectRandomTarget(LivingEntity boss) {
-        if (boss == null || boss.level().isClientSide()) return;
+        if (boss == null || boss.level().isClientSide())
+            return;
 
         double range = 100.0;
         var followAttr = boss.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE);
@@ -426,7 +573,8 @@ public class BossManager {
         java.util.List<net.minecraft.server.level.ServerPlayer> validPlayers = new java.util.ArrayList<>();
         for (net.minecraft.world.entity.player.Player p : boss.level().players()) {
             if (p instanceof net.minecraft.server.level.ServerPlayer player) {
-                if (com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.isValidTarget(player) && boss.distanceToSqr(player) <= maxDistSqr) {
+                if (com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.isValidTarget(player)
+                        && boss.distanceToSqr(player) <= maxDistSqr) {
                     validPlayers.add(player);
                 }
             }
@@ -434,7 +582,8 @@ public class BossManager {
 
         if (boss instanceof net.minecraft.world.entity.Mob mob) {
             if (!validPlayers.isEmpty()) {
-                net.minecraft.server.level.ServerPlayer randomTarget = validPlayers.get(boss.getRandom().nextInt(validPlayers.size()));
+                net.minecraft.server.level.ServerPlayer randomTarget = validPlayers
+                        .get(boss.getRandom().nextInt(validPlayers.size()));
                 mob.setTarget(randomTarget);
             } else {
                 mob.setTarget(null);
@@ -444,9 +593,11 @@ public class BossManager {
 
     @SubscribeEvent
     public static void onLivingChangeTarget(net.minecraftforge.event.entity.living.LivingChangeTargetEvent event) {
-        if (event.getEntity().level().isClientSide()) return;
+        if (event.getEntity().level().isClientSide())
+            return;
         net.minecraft.world.entity.LivingEntity newTarget = event.getNewTarget();
-        if (newTarget != null && !com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.isValidTarget(newTarget)) {
+        if (newTarget != null
+                && !com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.isValidTarget(newTarget)) {
             event.setCanceled(true);
             event.setNewTarget(null);
         }
@@ -454,7 +605,8 @@ public class BossManager {
 
     @SubscribeEvent
     public static void onMobTick(LivingEvent.LivingTickEvent event) {
-        if (event.getEntity().level().isClientSide()) return;
+        if (event.getEntity().level().isClientSide())
+            return;
         if (event.getEntity() instanceof net.minecraft.world.entity.Mob mob && !isBoss(mob)) {
             net.minecraft.world.entity.LivingEntity target = mob.getTarget();
             if (target != null && !com.nhatbh.basedefensev2.boss.impl.testboss.BossSkillHelper.isValidTarget(target)) {

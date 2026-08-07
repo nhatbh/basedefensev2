@@ -524,6 +524,15 @@ public class StageContext extends SavedData {
             // Fully restore base Sanctity health upon completing the stage
             com.nhatbh.basedefensev2.sanctity.data.AltarSavedData altarData = com.nhatbh.basedefensev2.sanctity.data.AltarSavedData.get(level);
             altarData.setSanctity(com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity);
+
+            // Increment World Level and notify server
+            com.nhatbh.basedefensev2.level.WorldLevelSavedData worldLevelData = com.nhatbh.basedefensev2.level.WorldLevelSavedData.get(level);
+            int newWorldLevel = worldLevelData.incrementWorldLevel();
+            int newBaseLevel = com.nhatbh.basedefensev2.level.MobLevelConfig.getOverworldBaseLevel(newWorldLevel);
+            int newMaxCap = com.nhatbh.basedefensev2.level.MobLevelConfig.getMobLevelCap(newWorldLevel);
+
+            broadcastToServer(level, String.format("§6§l[World Level Up!] §eThe World Level has risen to §b§lLevel %d§e! Overworld mobs spawn at base §aLv. %d§e up to cap §cLv. %d§e!",
+                    newWorldLevel, newBaseLevel, newMaxCap));
         }
 
         stageTicks++;
@@ -563,26 +572,20 @@ public class StageContext extends SavedData {
         intermissionTicksRemaining = com.nhatbh.basedefensev2.config.SanctityConfig.data.intermissionDurationTicks;
         failureDelayTicks = 60; // 3 seconds dramatic failure sequence delay
 
-        String subtitleText = switch (newRetriesUsed) {
-            case 1 -> "§oThe shadows lengthen...";
-            case 2 -> "§oThe darkness grows relentless...";
-            default -> "§oNo more chances remain...";
-        };
+        String subtitleText = "§oPrepare for retry...";
 
         // Dramatic Failure UI & FX to all players
         for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
             player.connection.send(new ClientboundSetTitlesAnimationPacket(10, 50, 20));
-            player.connection.send(new ClientboundSetTitleTextPacket(Component.literal("§c§lYOU HAVE FAILED")));
+            player.connection.send(new ClientboundSetTitleTextPacket(Component.literal("§c§lSTAGE FAILED")));
             player.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal(subtitleText)));
 
             player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 80, 0, false, false));
             player.playNotifySound(SoundEvents.WITHER_DEATH, SoundSource.AMBIENT, 1.0f, 0.8f);
         }
 
-        double bonusBoost = Math.min(com.nhatbh.basedefensev2.config.SanctityConfig.data.maxRetryMobStatBoost, newRetriesUsed * com.nhatbh.basedefensev2.config.SanctityConfig.data.retryMobStatMultiplier);
-        double bonusPct = bonusBoost * 100.0;
-        broadcastToServer(level, String.format("§c[The Rift] Stage '%s' Failed! §eThe Altar consumes a Retry Relic (%d/%d).", activeConfig.id, newRetriesUsed, maxRetries));
-        broadcastToServer(level, String.format("§6[Borrowed Time] §eYou have %d minutes to prepare! Mob Threat: +%.0f%% HP/Dmg. Type /stage ready when prepared.", intermissionTicksRemaining / 1200, bonusPct));
+        broadcastToServer(level, String.format("§c[The Rift] Stage '%s' Failed! §eThe Altar initiates a Retry.", activeConfig.id));
+        broadcastToServer(level, String.format("§6[Borrowed Time] §eYou have %d minutes to prepare! Type /stage ready when prepared.", intermissionTicksRemaining / 1200));
 
         setDirty();
         return true;
@@ -626,10 +629,10 @@ public class StageContext extends SavedData {
                     });
                 }
 
-                // Restore partial Sanctity immediately upon player teleport & revival
+                // Fully restore Sanctity immediately upon player teleport & revival
                 com.nhatbh.basedefensev2.sanctity.data.AltarSavedData altarData = com.nhatbh.basedefensev2.sanctity.data.AltarSavedData.get(level);
-                int partialSanctity = (int) (com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity * com.nhatbh.basedefensev2.config.SanctityConfig.data.retrySanctityPercent);
-                altarData.setSanctity(partialSanctity);
+                int fullSanctity = (int) (com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity * com.nhatbh.basedefensev2.config.SanctityConfig.data.retrySanctityPercent);
+                altarData.setSanctity(fullSanctity);
 
                 setDirty();
             }
@@ -658,8 +661,8 @@ public class StageContext extends SavedData {
         if (activeConfig == null) return;
 
         com.nhatbh.basedefensev2.sanctity.data.AltarSavedData altarData = com.nhatbh.basedefensev2.sanctity.data.AltarSavedData.get(level);
-        int partialSanctity = (int) (com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity * com.nhatbh.basedefensev2.config.SanctityConfig.data.retrySanctityPercent);
-        altarData.setSanctity(partialSanctity);
+        int fullSanctity = (int) (com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity * com.nhatbh.basedefensev2.config.SanctityConfig.data.retrySanctityPercent);
+        altarData.setSanctity(fullSanctity);
 
         cleanupSuccessful = false;
         cleanupArenaMobs(level);
@@ -672,7 +675,7 @@ public class StageContext extends SavedData {
         livingEnemies.clear();
         scavengeRewardFired = false;
 
-        broadcastToServer(level, String.format("§6[The Rift] §eCursed Retry commenced! Base Sanctity restored to %d/%d.", partialSanctity, com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity));
+        broadcastToServer(level, String.format("§6[The Rift] §eRetry commenced! Base Sanctity fully restored to %d/%d.", fullSanctity, com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity));
         readyVotes.clear();
         prepareArenaAndPromptJoin(level);
         setDirty();
@@ -691,8 +694,21 @@ public class StageContext extends SavedData {
     }
 
     public boolean processVote(ServerPlayer player, ServerLevel level, boolean voteYes) {
-        if (stageState != StageState.RETRY_INTERMISSION && stageState != StageState.WARMUP) {
+        if (activeConfig != null && stageState != StageState.RETRY_INTERMISSION && stageState != StageState.WARMUP) {
+            player.sendSystemMessage(Component.literal("§c[The Rift] No vote is currently active!"));
             return false;
+        }
+
+        if (activeConfig == null) {
+            int ticksLeft = getTicksUntilNextStage(level);
+            if (ticksLeft <= 0) {
+                player.sendSystemMessage(Component.literal("§c[The Rift] No upcoming stage is pending or trial has begun!"));
+                return false;
+            }
+            if (ticksLeft <= 6000) {
+                player.sendSystemMessage(Component.literal("§c[The Rift] The next stage is already arriving in less than 5 minutes!"));
+                return false;
+            }
         }
 
         if (stageState == StageState.WARMUP) {
@@ -705,7 +721,14 @@ public class StageContext extends SavedData {
             }
         }
 
-        String phaseName = stageState == StageState.RETRY_INTERMISSION ? "Intermission" : "Warmup";
+        String phaseName;
+        if (activeConfig == null) {
+            phaseName = "Inter-stage Countdown";
+        } else if (stageState == StageState.RETRY_INTERMISSION) {
+            phaseName = "Intermission";
+        } else {
+            phaseName = "Warmup";
+        }
 
         if (!voteYes) {
             readyVotes.clear();
@@ -754,7 +777,9 @@ public class StageContext extends SavedData {
 
         if (yesCount >= totalRequired) {
             readyVotes.clear();
-            if (stageState == StageState.RETRY_INTERMISSION) {
+            if (activeConfig == null) {
+                fastForwardToFiveMinutes(level);
+            } else if (stageState == StageState.RETRY_INTERMISSION) {
                 broadcastToServer(level, "§6[The Rift] §a100% YES! Skipping Intermission...");
                 startRetryStage(level);
             } else if (stageState == StageState.WARMUP) {
@@ -765,6 +790,33 @@ public class StageContext extends SavedData {
 
         setDirty();
         return false;
+    }
+
+    public void fastForwardToFiveMinutes(ServerLevel level) {
+        if (activeConfig != null) return;
+        List<Integer> orders = StageLoader.getSortedOrders(level);
+        if (nextStageIndex >= orders.size()) return;
+
+        int currentOrder = orders.get(nextStageIndex);
+        StageConfig nextCandidate = null;
+        if (pendingStageId != null) {
+            nextCandidate = StageLoader.getById(level, pendingStageId).orElse(null);
+        }
+        if (nextCandidate == null) {
+            List<StageConfig> candidates = StageLoader.getStagesForOrder(level, currentOrder);
+            if (!candidates.isEmpty()) {
+                nextCandidate = candidates.get(0);
+            }
+        }
+        if (nextCandidate == null) return;
+
+        long requiredTicks = nextCandidate.trigger_seconds * 20L;
+        long targetElapsed = Math.max(0, requiredTicks - 6000L); // 5 minutes remaining = 6000 ticks
+
+        lastStageEndGameTime = level.getGameTime() - targetElapsed;
+        readyVotes.clear();
+        broadcastToServer(level, "§6[The Rift] §a100% YES! Early stage participation confirmed! Next stage arrives in 5 minutes!");
+        setDirty();
     }
 
     // ── ENDED ────────────────────────────────────────────────────────────────
@@ -949,8 +1001,34 @@ public class StageContext extends SavedData {
      * Called by LivingDeathEvent listener when an entity dies in the arena.
      * Pruning also happens passively in tickCombat().
      */
+    public boolean isLastWave() {
+        return activeConfig != null && currentWaveIndex >= activeConfig.waves.size() - 1;
+    }
+
     public void onEntityDied(UUID uuid) {
         livingEnemies.remove(uuid);
+        setDirty();
+    }
+
+    public void onEntityDied(UUID uuid, net.minecraft.world.entity.LivingEntity entity, ServerLevel level) {
+        livingEnemies.remove(uuid);
+
+        if (isLastWave() && entity != null && com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity)) {
+            LOGGER.info("[StageContext] Last wave boss defeated! Automatically winning stage.");
+            broadcastToArena(level, "§a[The Rift] The Stage Boss has fallen! Victory is yours!");
+
+            // Discard all remaining wave mobs
+            for (UUID mobUuid : new ArrayList<>(livingEnemies)) {
+                Entity mob = level.getEntity(mobUuid);
+                if (mob != null && mob.isAlive() && !(mob instanceof net.minecraft.world.entity.player.Player)) {
+                    mob.discard();
+                }
+            }
+            livingEnemies.clear();
+            waveState = WaveState.CLEARED;
+            tickWaveCleared(level);
+        }
+
         setDirty();
     }
 

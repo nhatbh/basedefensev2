@@ -22,7 +22,16 @@ public class MobLevelCalculator {
             return dimSetting.fixedLevel;
         }
 
+        boolean isOverworld = level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD);
+        int overworldMaxCap = 0;
         double baseLevel = MobLevelConfig.STARTING_LEVEL;
+
+        if (isOverworld) {
+            WorldLevelSavedData worldData = WorldLevelSavedData.get(level);
+            int worldLevel = worldData.getWorldLevel();
+            baseLevel = MobLevelConfig.getOverworldBaseLevel(worldLevel);
+            overworldMaxCap = MobLevelConfig.getMobLevelCap(worldLevel);
+        }
 
         // Distance from spawn calculation
         BlockPos spawnPos = level.getSharedSpawnPos();
@@ -66,6 +75,9 @@ public class MobLevelCalculator {
         }
 
         int finalLevel = (int) Math.round(baseLevel);
+        if (isOverworld && overworldMaxCap > 0) {
+            finalLevel = Math.min(finalLevel, overworldMaxCap);
+        }
         if (MobLevelConfig.MAXIMUM_LEVEL > 0) {
             finalLevel = Math.min(finalLevel, MobLevelConfig.MAXIMUM_LEVEL);
         }

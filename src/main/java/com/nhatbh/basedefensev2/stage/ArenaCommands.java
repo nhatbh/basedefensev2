@@ -127,6 +127,12 @@ public class ArenaCommands {
                             }
                             return 1;
                         }))
+                .then(Commands.literal("worldlevel")
+                        .executes(context -> executeWorldLevelCommand(context.getSource())))
+                .then(Commands.literal("setworldlevel")
+                        .requires(s -> s.hasPermission(2))
+                        .then(Commands.argument("level", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0))
+                                .executes(context -> executeSetWorldLevelCommand(context.getSource(), com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "level")))))
                 .then(Commands.literal("spawn_boss")
                         .requires(s -> s.hasPermission(2))
                         .then(Commands.argument("boss_id", StringArgumentType.string())
@@ -329,12 +335,6 @@ public class ArenaCommands {
         if (arenaLevel == null) return 0;
 
         StageContext ctx = StageContext.getOrCreate(arenaLevel);
-        StageState state = ctx.getStageState();
-        if (state != StageState.RETRY_INTERMISSION && state != StageState.WARMUP) {
-            context.getSource().sendFailure(Component.literal("§c[The Rift] No intermission or warmup active!"));
-            return 0;
-        }
-
         ctx.processVote(player, arenaLevel, voteYes);
         return 1;
     }
@@ -369,6 +369,12 @@ public class ArenaCommands {
                 .then(Commands.literal("vote")
                         .then(Commands.literal("yes").executes(context -> executeVoteCommand(context, true)))
                         .then(Commands.literal("no").executes(context -> executeVoteCommand(context, false))))
+                .then(Commands.literal("worldlevel")
+                        .executes(context -> executeWorldLevelCommand(context.getSource())))
+                .then(Commands.literal("setworldlevel")
+                        .requires(s -> s.hasPermission(2))
+                        .then(Commands.argument("level", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0))
+                                .executes(context -> executeSetWorldLevelCommand(context.getSource(), com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "level")))))
                 .then(Commands.literal("reroll")
                         .requires(s -> s.hasPermission(2))
                         .executes(context -> executeRerollCommand(context.getSource())))
@@ -377,5 +383,32 @@ public class ArenaCommands {
                         .then(Commands.argument("seconds", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
                                 .executes(context -> executeFastForwardCommand(context.getSource(), com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "seconds")))))
         );
+    }
+
+    private static int executeWorldLevelCommand(CommandSourceStack source) {
+        if (source.getServer() == null) return 0;
+        ServerLevel overworld = source.getServer().overworld();
+        com.nhatbh.basedefensev2.level.WorldLevelSavedData data = com.nhatbh.basedefensev2.level.WorldLevelSavedData.get(overworld);
+        int wl = data.getWorldLevel();
+        int baseLvl = com.nhatbh.basedefensev2.level.MobLevelConfig.getOverworldBaseLevel(wl);
+        int maxCap = com.nhatbh.basedefensev2.level.MobLevelConfig.getMobLevelCap(wl);
+
+        source.sendSuccess(() -> Component.literal(String.format("§6[World Level] §eCurrent World Level: §b§l%d§e | Overworld Base: §aLv. %d§e | Level Cap: §cLv. %d",
+                wl, baseLvl, maxCap)), false);
+        return 1;
+    }
+
+    private static int executeSetWorldLevelCommand(CommandSourceStack source, int newLevel) {
+        if (source.getServer() == null) return 0;
+        ServerLevel overworld = source.getServer().overworld();
+        com.nhatbh.basedefensev2.level.WorldLevelSavedData data = com.nhatbh.basedefensev2.level.WorldLevelSavedData.get(overworld);
+        data.setWorldLevel(newLevel);
+
+        int baseLvl = com.nhatbh.basedefensev2.level.MobLevelConfig.getOverworldBaseLevel(newLevel);
+        int maxCap = com.nhatbh.basedefensev2.level.MobLevelConfig.getMobLevelCap(newLevel);
+
+        source.sendSuccess(() -> Component.literal(String.format("§6[World Level OP] §aSet World Level to §b§l%d§a (Base: Lv. %d, Cap: Lv. %d)",
+                newLevel, baseLvl, maxCap)), true);
+        return 1;
     }
 }

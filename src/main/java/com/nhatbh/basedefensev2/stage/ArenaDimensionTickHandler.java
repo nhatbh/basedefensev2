@@ -80,7 +80,7 @@ public class ArenaDimensionTickHandler {
 
         StageContext ctx = StageContext.getOrCreate(level);
         if (ctx.isActive()) {
-            ctx.onEntityDied(event.getEntity().getUUID());
+            ctx.onEntityDied(event.getEntity().getUUID(), event.getEntity(), level);
         }
     }
 

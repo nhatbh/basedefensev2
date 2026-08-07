@@ -16,10 +16,8 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
@@ -28,7 +26,8 @@ import net.minecraftforge.fml.common.Mod;
 import org.joml.Matrix4f;
 
 /**
- * Boss overhead HUD rendered in world space.
+ * Boss overhead HUD rendered in world space without raycast requirement up to 40 blocks range.
+ * Dynamically scales with the boss's bounding box size.
  *
  * Layout:
  *   §c❤ 450/1000                                            §f🛡 200/200   ← Text row
@@ -41,7 +40,8 @@ import org.joml.Matrix4f;
 public class BossOverheadWorldRenderer {
 
     private static final Minecraft MC = Minecraft.getInstance();
-    private static final double MAX_RENDER_DISTANCE_SQ = 1024.0D;
+    private static final double MAX_RENDER_DISTANCE = 40.0D;
+    private static final double MAX_RENDER_DISTANCE_SQ = MAX_RENDER_DISTANCE * MAX_RENDER_DISTANCE;
 
     // ── Design dimensions (billboard-local units) ──
     private static final float HALF_W       = 1.0f;     // total bar width = 2.0
@@ -60,18 +60,15 @@ public class BossOverheadWorldRenderer {
             return;
         }
 
-        HitResult hitResult = MC.hitResult;
-        if (hitResult == null || hitResult.getType() != HitResult.Type.ENTITY) {
-            return;
+        AABB searchBox = MC.player.getBoundingBox().inflate(MAX_RENDER_DISTANCE);
+        for (LivingEntity boss : MC.level.getEntitiesOfClass(LivingEntity.class, searchBox, e -> e.isAlive() && BossManager.isBoss(e))) {
+            if (boss.distanceToSqr(MC.player) <= MAX_RENDER_DISTANCE_SQ) {
+                renderBossOverhead(event, boss);
+            }
         }
-        Entity targetEntity = ((EntityHitResult) hitResult).getEntity();
-        if (!(targetEntity instanceof LivingEntity boss) || !boss.isAlive() || !BossManager.isBoss(boss)) {
-            return;
-        }
-        if (boss.distanceToSqr(MC.player) > MAX_RENDER_DISTANCE_SQ) {
-            return;
-        }
+    }
 
+    private static void renderBossOverhead(RenderLevelStageEvent event, LivingEntity boss) {
         BossComponent comp = BossManager.get(boss);
         if (comp == null || comp.getDefinition() == null) {
             return;
@@ -97,6 +94,9 @@ public class BossOverheadWorldRenderer {
         int phaseIdx    = comp.getCurrentPhaseIndex();
         int totalPhases = comp.getDefinition().getPhases().size();
 
+        // Calculate size scale factor relative to standard mob width (0.6f)
+        float sizeScale = Mth.clamp(boss.getBbWidth() / 0.6f, 0.75f, 4.0f);
+
         // ── Billboard transform ──
         Camera camera = MC.gameRenderer.getMainCamera();
         Vec3 camPos   = camera.getPosition();
@@ -108,9 +108,9 @@ public class BossOverheadWorldRenderer {
         double ly = Mth.lerp(event.getPartialTick(), boss.yo, boss.getY()) - camPos.y;
         double lz = Mth.lerp(event.getPartialTick(), boss.zo, boss.getZ()) - camPos.z;
 
-        pose.translate(lx, ly + boss.getBbHeight() + 0.55, lz);
+        pose.translate(lx, ly + boss.getBbHeight() + (0.45f * sizeScale), lz);
         pose.mulPose(camera.rotation());
-        pose.scale(-1, -1, 1); // flip so +Y = screen up
+        pose.scale(-sizeScale, -sizeScale, sizeScale); // flip so +Y = screen up & scale with boss size
 
         Matrix4f mat = pose.last().pose();
 

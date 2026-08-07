@@ -128,14 +128,14 @@ public class RandomStageGenerator {
         StageConfig cfg = new StageConfig();
         cfg.id = "stage_" + stageNum;
         cfg.order = stageNum - 1;
-        cfg.trigger_seconds = 7200; // 2 hours
+        cfg.trigger_seconds = 18000; // 5 hours for all stages
         cfg.warmup_ticks = 1200;    // 1 minute warmup
         cfg.spawn_radius = 25;
         cfg.scavenge_duration_ticks = 6000; // 5 mins scavenge after wave clear
 
-        // Scaling Formulas
-        double hpMultiplier = Math.pow(1.65, stageNum - 1);
-        double dmgMultiplier = Math.pow(1.40, stageNum - 1);
+        // Scaling Formulas (Stage 1 uses 1.0x baseline HP/Damage multipliers)
+        double hpMultiplier = (stageNum == 1) ? 1.00 : Math.pow(1.65, stageNum - 1);
+        double dmgMultiplier = (stageNum == 1) ? 1.00 : Math.pow(1.40, stageNum - 1);
 
         // Classifications for the 2 stage elements
         Map<String, ClassificationManager.MobData> classifications = ClassificationManager.getClassifications();
@@ -184,8 +184,8 @@ public class RandomStageGenerator {
         float minibossHp = getMinibossHpForStage(stageNum, rng);
 
         if (stageNum <= 2) {
-            // Stages 1-2: 4-5 mob waves + 1 boss wave (No Miniboss)
-            int mobWaveCount = 3 + stageNum; // Stage 1: 4, Stage 2: 5
+            // Stage 1: 4 mob waves + 1 boss wave (5 waves total); Stage 2: 5 mob waves + 1 boss wave
+            int mobWaveCount = (stageNum == 1) ? 4 : 5;
             for (int w = 1; w <= mobWaveCount; w++) {
                 cfg.waves.add(generateMobWave("wave_" + w, w, stageNum, monsterList, eliteList, hpMultiplier, dmgMultiplier, rng));
             }
@@ -257,7 +257,12 @@ public class RandomStageGenerator {
         wave.arc_angle = 110 + Math.min(70, waveIdx * 10);
         wave.mobs = new ArrayList<>();
 
-        int totalCount = 8 + (stageNum * 3) + (waveIdx * 2);
+        int totalCount = (stageNum == 1) ? (4 + waveIdx * 2) : (8 + (stageNum * 3) + (waveIdx * 2));
+
+        // Mob level scaling: Stage 1 = Lv. 5 base, Stage 2+ = Lv. 10 base, scaling +5 per stage and +0.5 per wave
+        int stageBaseLevel = (stageNum == 1) ? 5 : (10 + (stageNum - 1) * 5);
+        int mobLevel = stageBaseLevel + (waveIdx / 2);
+        int eliteLevel = stageBaseLevel + (waveIdx / 2) + 2;
 
         // 1. Varied Regular Monster Entries (2 to 4 different monster types per wave)
         int monsterVariety = Math.min(monsters.size(), 2 + rng.nextInt(3));
@@ -271,6 +276,7 @@ public class RandomStageGenerator {
             MobSpawnEntry monsterEntry = new MobSpawnEntry();
             monsterEntry.type = selectedMonsters.get(i);
             monsterEntry.count = perMonsterCount;
+            monsterEntry.level = mobLevel;
             monsterEntry.formation = (i % 2 == 0) ? "arc" : "random";
             monsterEntry.distance_min = 6 + (i * 2);
             monsterEntry.distance_max = 14 + (i * 2);
@@ -292,6 +298,7 @@ public class RandomStageGenerator {
                 MobSpawnEntry eliteEntry = new MobSpawnEntry();
                 eliteEntry.type = selectedElites.get(i);
                 eliteEntry.count = perEliteCount;
+                eliteEntry.level = eliteLevel;
                 eliteEntry.formation = "arc";
                 eliteEntry.distance_min = 12;
                 eliteEntry.distance_max = 20;
@@ -329,7 +336,7 @@ public class RandomStageGenerator {
 
     private static float getBossHpForStage(int stage, Random rng) {
         float baseHp = switch (stage) {
-            case 1 -> 1500f;
+            case 1 -> 600f;
             case 2 -> 3000f;
             case 3 -> 6000f;
             case 4 -> 12000f;

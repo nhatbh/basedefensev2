@@ -18,6 +18,26 @@ public class MobLevelConfig {
     public static boolean ONLY_SHOW_LEVELS_ON_LOOK = true;
     public static float BONUS_XP_PER_LEVEL = 0.1f;
 
+    // World Level Overworld Scaling Arrays (Index = World Level 0..10)
+    public static final int[] OVERWORLD_BASE_LEVELS = new int[]{1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50};
+    public static final int[] MOB_LEVEL_CAPS = new int[]{15, 30, 50, 70, 95, 125, 160, 200, 245, 295, 350};
+
+    public static int getOverworldBaseLevel(int worldLevel) {
+        if (worldLevel < 0) return OVERWORLD_BASE_LEVELS[0];
+        if (worldLevel >= OVERWORLD_BASE_LEVELS.length) {
+            return OVERWORLD_BASE_LEVELS[OVERWORLD_BASE_LEVELS.length - 1] + (worldLevel - OVERWORLD_BASE_LEVELS.length + 1) * 5;
+        }
+        return OVERWORLD_BASE_LEVELS[worldLevel];
+    }
+
+    public static int getMobLevelCap(int worldLevel) {
+        if (worldLevel < 0) return MOB_LEVEL_CAPS[0];
+        if (worldLevel >= MOB_LEVEL_CAPS.length) {
+            return MOB_LEVEL_CAPS[MOB_LEVEL_CAPS.length - 1] + (worldLevel - MOB_LEVEL_CAPS.length + 1) * 60;
+        }
+        return MOB_LEVEL_CAPS[worldLevel];
+    }
+
     // ["Default levelling settings"]
     public static int STARTING_LEVEL = 1;
     public static int MAXIMUM_LEVEL = 0; // 0 = no max level
@@ -44,9 +64,10 @@ public class MobLevelConfig {
     public static final Map<String, DimensionSetting> DIMENSION_SETTINGS = new HashMap<>();
 
     static {
-        // Default dimension examples
-        DIMENSION_SETTINGS.put("minecraft:the_nether", new DimensionSetting(1.5, 5, -1));
-        DIMENSION_SETTINGS.put("minecraft:the_end", new DimensionSetting(2.0, 10, -1));
+        // Nether mobs start at level 50
+        DIMENSION_SETTINGS.put("minecraft:the_nether", new DimensionSetting(1.0, 49, -1));
+        // End mobs start at level 150
+        DIMENSION_SETTINGS.put("minecraft:the_end", new DimensionSetting(1.0, 149, -1));
     }
 
     // [Attributes] - pairs of attribute ID and bonus per level

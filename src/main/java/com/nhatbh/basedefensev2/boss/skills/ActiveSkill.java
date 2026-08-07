@@ -103,7 +103,7 @@ public class ActiveSkill {
             
             int finalGlobal = globalCooldown;
             if (finalGlobal < 0) {
-                finalGlobal = (type == Type.BASIC) ? 400 : 600; // 20s for BASIC, 30s for TACTICAL
+                finalGlobal = 300; // 15 seconds global cooldown for all skills
             }
             
             return new ActiveSkill(id, description, cooldown, finalGlobal, startingCooldown, type, sequence);

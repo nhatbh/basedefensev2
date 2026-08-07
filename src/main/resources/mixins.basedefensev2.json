@@ -9,7 +9,8 @@
     },
     "mixins": [
         "SpellPowerPenaltyMixin",
-        "FireBlockMixin"
+        "FireBlockMixin",
+        "LivingEntityExhaustionMixin"
     ],
     "client": [],
     "server": []

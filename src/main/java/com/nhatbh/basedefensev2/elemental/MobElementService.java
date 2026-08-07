@@ -13,13 +13,15 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid = "basedefensev2")
 public class MobElementService {
 
+    private static boolean isEligible(LivingEntity entity) {
+        return entity != null && (entity instanceof Enemy || BossManager.isBoss(entity));
+    }
+
     @SubscribeEvent
     public static void onEntityJoin(EntityJoinLevelEvent event) {
         if (event.getLevel().isClientSide) return;
 
-        if (event.getEntity() instanceof net.minecraft.world.entity.monster.Enemy || (event.getEntity() instanceof LivingEntity le && BossManager.isBoss(le))) {
-            LivingEntity entity = (LivingEntity) event.getEntity();
-            
+        if (event.getEntity() instanceof LivingEntity entity && isEligible(entity)) {
             // Check if element is already assigned
             if (!entity.getPersistentData().contains("ElementType")) {
                 ElementType element = null;
@@ -49,24 +51,25 @@ public class MobElementService {
                 }
                 
                 entity.getPersistentData().putString("ElementType", element.name());
-                NetworkManager.sendToTracking(new com.nhatbh.basedefensev2.elemental.network.MobElementSyncPacket(entity.getId(), element.name()), entity);
+                NetworkManager.sendToTracking(new MobElementSyncPacket(entity.getId(), element.name()), entity);
             }
         }
     }
 
     @SubscribeEvent
     public static void onStartTracking(PlayerEvent.StartTracking event) {
-        if (event.getTarget() instanceof LivingEntity living && !living.level().isClientSide) {
-            if (living instanceof Enemy || BossManager.isBoss(living)) {
-                if (living.getPersistentData().contains("ElementType")) {
-                    String elementStr = living.getPersistentData().getString("ElementType");
-                    NetworkManager.sendToTracking(new MobElementSyncPacket(living.getId(), elementStr), living);
-                }
+        if (event.getTarget() instanceof LivingEntity living && !living.level().isClientSide && isEligible(living)) {
+            if (living.getPersistentData().contains("ElementType")) {
+                String elementStr = living.getPersistentData().getString("ElementType");
+                NetworkManager.sendToTracking(new MobElementSyncPacket(living.getId(), elementStr), living);
             }
         }
     }
 
     public static ElementType getElement(LivingEntity entity) {
+        if (!isEligible(entity)) {
+            return null;
+        }
         String elementStr = entity.getPersistentData().getString("ElementType");
         ElementType type = ElementType.fromString(elementStr);
         return type != null ? type : ElementType.PHYSICAL;

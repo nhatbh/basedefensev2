@@ -8,6 +8,7 @@ import com.nhatbh.basedefensev2.strength.EntityStrengthData;
 import com.nhatbh.basedefensev2.strength.ModAttributes;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraftforge.common.MinecraftForge;
 import javax.annotation.Nullable;
 
@@ -44,8 +45,17 @@ public class PoiseAPI {
     }
 
     public static boolean isExhausted(LivingEntity entity) {
+        if (entity == null) return false;
         EntityStrengthData data = getPoiseData(entity);
-        return data != null && data.currentStrength <= 0;
+        boolean isPoiseExhausted = data != null && (data.currentStrength <= 0 || data.recoveryTicks > 0);
+        boolean isBossExhausted = false;
+        if (com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity)) {
+            com.nhatbh.basedefensev2.boss.core.BossComponent comp = com.nhatbh.basedefensev2.boss.core.BossManager.get(entity);
+            if (comp != null && comp.getExhaustionTicks() > 0) {
+                isBossExhausted = true;
+            }
+        }
+        return isPoiseExhausted || isBossExhausted;
     }
 
     public static boolean isPoiseBroken(LivingEntity entity) {
@@ -186,6 +196,11 @@ public class PoiseAPI {
         data.save(entity);
         EntityStrengthData.sync(entity, data);
 
+        if (entity instanceof Mob mob && mob.getPersistentData().getBoolean("ExhaustionDisabledAI")) {
+            mob.setNoAi(false);
+            mob.getPersistentData().remove("ExhaustionDisabledAI");
+        }
+
         MinecraftForge.EVENT_BUS.post(new PoiseRecoveryEvent(entity));
     }
 
@@ -210,6 +225,19 @@ public class PoiseAPI {
 
     public static void triggerPoiseBreak(LivingEntity entity) {
         if (entity == null) return;
+        if (entity instanceof Mob mob) {
+            mob.getNavigation().stop();
+            if (!mob.onGround()) {
+                mob.setDeltaMovement(0, -0.6, 0);
+                mob.hasImpulse = true;
+            } else {
+                mob.setDeltaMovement(0, mob.getDeltaMovement().y, 0);
+            }
+            if (mob.isNoAi() && mob.getPersistentData().getBoolean("ExhaustionDisabledAI")) {
+                mob.setNoAi(false);
+                mob.getPersistentData().remove("ExhaustionDisabledAI");
+            }
+        }
         MinecraftForge.EVENT_BUS.post(new EntityEvents.PoiseBroken(entity));
     }
 }

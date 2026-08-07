@@ -68,6 +68,9 @@ public class SpawnerSubsystem {
         ServerLevel level = event.getLevel();
         StageConfig.SpawnArea area = ctx.getSpawnArea();
 
+        // Clear dropped items at the start of each wave during a stage
+        com.nhatbh.basedefensev2.events.ItemClearHandler.performItemSweep(level.getServer());
+
         // One random direction shared by the entire wave
         double waveAngle = RANDOM.nextDouble() * 2.0 * Math.PI;
         double halfArc = Math.toRadians(wave.arc_angle / 2.0);

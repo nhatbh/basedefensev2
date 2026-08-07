@@ -69,32 +69,42 @@ public class AltarPowerHUD {
         renderHorizontalBar(graphics, mc, startX, sanctityBarY, lastSanctity, lastMaxSanctity, 0xFFFF3333, cachedSanctityText, cachedSanctityTextWidth); // Red
         renderHorizontalBar(graphics, mc, startX, graceBarY, (float)lastGrace, (float)lastMaxGrace, 0xFF3333FF, cachedGraceText, cachedGraceTextWidth);       // Blue
 
-        // Render Lives (Hearts) & Penalty Tracker text above Sanctity bar
+        // Render Retry Tracker text above Sanctity bar
         int retriesUsed = ClientSanctityData.getRetriesUsed();
         int maxRetries = ClientSanctityData.getMaxWorldRetries();
         if (maxRetries > 0) {
-            int livesRemaining = Math.max(0, maxRetries - retriesUsed);
             double boost = Math.min(com.nhatbh.basedefensev2.config.SanctityConfig.data.maxRetryMobStatBoost, retriesUsed * com.nhatbh.basedefensev2.config.SanctityConfig.data.retryMobStatMultiplier);
             int threatPct = (int) Math.round(boost * 100.0);
 
             StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < livesRemaining; i++) {
-                sb.append("❤");
+            if (maxRetries >= 100) {
+                // Unlimited retries mode
+                if (retriesUsed > 0) {
+                    sb.append("↺ Retries: ").append(retriesUsed);
+                }
+            } else {
+                int livesRemaining = Math.max(0, maxRetries - retriesUsed);
+                for (int i = 0; i < livesRemaining; i++) {
+                    sb.append("❤");
+                }
+                if (livesRemaining == 0) {
+                    sb.append("💔");
+                }
             }
-            if (livesRemaining == 0) {
-                sb.append("💔");
-            }
+
             if (threatPct > 0) {
                 sb.append(" §c+").append(threatPct).append("%");
             }
 
             String retryText = sb.toString();
 
-            graphics.pose().pushPose();
-            graphics.pose().translate(startX, sanctityBarY - 9, 0);
-            graphics.pose().scale(0.7f, 0.7f, 0.7f);
-            graphics.drawString(mc.font, retryText, 0, 0, 0xFFFF4444, true);
-            graphics.pose().popPose();
+            if (!retryText.isEmpty()) {
+                graphics.pose().pushPose();
+                graphics.pose().translate(startX, sanctityBarY - 9, 0);
+                graphics.pose().scale(0.7f, 0.7f, 0.7f);
+                graphics.drawString(mc.font, retryText, 0, 0, 0xFFFF4444, true);
+                graphics.pose().popPose();
+            }
         }
     }
 

@@ -29,24 +29,24 @@ public class GenericSkillRegistry {
         PASSIVES.add(new SunforgedBulwarkPassive());
         PASSIVES.add(new TitansMantlePassive());
 
-        // Basic & Tactical Actives (Minimum 800 ticks / 40s)
-        FLAMING_DASH = new SkillInfo("flaming_dash", ActiveSkill.Type.BASIC, 800, false, FlamingDashSkill::create);
+        // Basic & Tactical Actives (Minimum 400 ticks / 20s)
+        FLAMING_DASH = new SkillInfo("flaming_dash", ActiveSkill.Type.BASIC, 400, false, FlamingDashSkill::create);
         ACTIVES.add(FLAMING_DASH);
 
-        ACTIVES.add(new SkillInfo("concentrated_laser", ActiveSkill.Type.TACTICAL, 960, false,
+        ACTIVES.add(new SkillInfo("concentrated_laser", ActiveSkill.Type.TACTICAL, 480, false,
                 ConcentratedLaserSkill::create));
-        ACTIVES.add(new SkillInfo("earthquake", ActiveSkill.Type.TACTICAL, 1080, false, EarthquakeSkill::create));
-        ACTIVES.add(new SkillInfo("explosive_dropkick", ActiveSkill.Type.BASIC, 850, false,
+        ACTIVES.add(new SkillInfo("earthquake", ActiveSkill.Type.TACTICAL, 540, false, EarthquakeSkill::create));
+        ACTIVES.add(new SkillInfo("explosive_dropkick", ActiveSkill.Type.BASIC, 425, false,
                 ExplosiveDropkickSkill::create));
-        ACTIVES.add(new SkillInfo("glacial_prison", ActiveSkill.Type.TACTICAL, 1200, true, GlacialPrisonSkill::create));
-        ACTIVES.add(new SkillInfo("lance_of_light", ActiveSkill.Type.TACTICAL, 1100, false, LanceOfLightSkill::create));
+        ACTIVES.add(new SkillInfo("glacial_prison", ActiveSkill.Type.TACTICAL, 600, true, GlacialPrisonSkill::create));
+        ACTIVES.add(new SkillInfo("lance_of_light", ActiveSkill.Type.TACTICAL, 550, false, LanceOfLightSkill::create));
         ACTIVES.add(
-                new SkillInfo("solar_cataclysm", ActiveSkill.Type.TACTICAL, 1400, false, SolarCataclysmSkill::create));
-        ACTIVES.add(new SkillInfo("static_shock", ActiveSkill.Type.BASIC, 800, false, StaticShockSkill::create));
-        ACTIVES.add(new SkillInfo("stone_spike", ActiveSkill.Type.TACTICAL, 1000, true, StoneSpikeSkill::create));
-        ACTIVES.add(new SkillInfo("storm_lance", ActiveSkill.Type.TACTICAL, 1100, false, StormLanceSkill::create));
-        ACTIVES.add(new SkillInfo("sword_barrage", ActiveSkill.Type.TACTICAL, 900, false, SwordBarrageSkill::create));
-        ACTIVES.add(new SkillInfo("vengeance_active", ActiveSkill.Type.TACTICAL, 1600, false, VengeanceActive::create));
+                new SkillInfo("solar_cataclysm", ActiveSkill.Type.TACTICAL, 700, false, SolarCataclysmSkill::create));
+        ACTIVES.add(new SkillInfo("static_shock", ActiveSkill.Type.BASIC, 400, false, StaticShockSkill::create));
+        ACTIVES.add(new SkillInfo("stone_spike", ActiveSkill.Type.TACTICAL, 500, true, StoneSpikeSkill::create));
+        ACTIVES.add(new SkillInfo("storm_lance", ActiveSkill.Type.TACTICAL, 550, false, StormLanceSkill::create));
+        ACTIVES.add(new SkillInfo("sword_barrage", ActiveSkill.Type.TACTICAL, 450, false, SwordBarrageSkill::create));
+        ACTIVES.add(new SkillInfo("vengeance_active", ActiveSkill.Type.TACTICAL, 800, false, VengeanceActive::create));
     }
 
     public static PassiveSkill getRandomPassive(Random random) {
