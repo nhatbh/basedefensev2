@@ -10,7 +10,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -59,10 +58,10 @@ public class ArenaBarrierManager {
     private static List<BlockPos> placeBarrierBlocks(ServerLevel level, BlockPos center, float radiusX, float radiusZ) {
         List<BlockPos> placedBlocks = new ArrayList<>();
         BlockState barrierState = Blocks.BARRIER.defaultBlockState();
-        int buildHeight = level.getMaxBuildHeight();
-        int minY = center.getY() - 10;
-        int maxY = buildHeight - 1;
-        int wallThickness = 20;
+        int minY = 50;
+        int ceilingTopY = Math.min(level.getMaxBuildHeight() - 1, 130);
+        int maxY = ceilingTopY;
+        int wallThickness = 5; // Lightened wall thickness (5 blocks)
 
         int minX = center.getX() - (int) Math.ceil(radiusX + wallThickness);
         int maxX = center.getX() + (int) Math.ceil(radiusX + wallThickness);
@@ -98,9 +97,8 @@ public class ArenaBarrierManager {
             }
         }
 
-        // 20-block thick ceiling downwards from top of build height
-        int ceilingThickness = 20;
-        int ceilingTopY = buildHeight - 1;
+        // Lightened ceiling thickness (5 blocks)
+        int ceilingThickness = 5;
         int ceilingBottomY = Math.max(minY, ceilingTopY - ceilingThickness + 1);
         int ceilingMinX = center.getX() - (int) Math.ceil(radiusX);
         int ceilingMaxX = center.getX() + (int) Math.ceil(radiusX);
@@ -262,9 +260,9 @@ public class ArenaBarrierManager {
         }
 
         // Vertical check
-        // Floor is at 50, Ceiling is at buildHeight - 1
+        // Floor is at 50, Ceiling is at 130
         int minY = 51;
-        int maxY = level.getMaxBuildHeight() - 2;
+        int maxY = Math.min(level.getMaxBuildHeight() - 2, 128);
         return y >= minY && y <= maxY;
     }
 
@@ -307,7 +305,7 @@ public class ArenaBarrierManager {
 
         // Clamp Y
         int minY = 51;
-        int maxY = level.getMaxBuildHeight() - 2;
+        int maxY = Math.min(level.getMaxBuildHeight() - 2, 128);
         double y = Math.max(minY, Math.min(maxY, pos.y));
 
         return new Vec3(x, y, z);

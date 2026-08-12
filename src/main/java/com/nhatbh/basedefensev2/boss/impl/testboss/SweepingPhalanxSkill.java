@@ -38,7 +38,8 @@ public class SweepingPhalanxSkill {
                 .onTick(ctx -> {
                     BossSkillHelper.stopMovement(ctx);
                     Vec3 dir = (Vec3) ctx.data().get("vanguard_dir");
-                    BossSkillHelper.performDynamicSweep(ctx, dir, -60.0, 60.0, 6.0, 5.0f, 15.0f, 10, false, ParticleTypes.SWEEP_ATTACK);
+                    BossSkillHelper.performDynamicSweep(ctx, dir, -60.0, 60.0, 6.0, 5.0f, 15.0f, 10, false,
+                            ParticleTypes.SWEEP_ATTACK);
                 })
 
                 // Inter-sweep delay
@@ -56,7 +57,8 @@ public class SweepingPhalanxSkill {
                 .onTick(ctx -> {
                     BossSkillHelper.stopMovement(ctx);
                     Vec3 dir = (Vec3) ctx.data().get("vanguard_dir");
-                    BossSkillHelper.performDynamicSweep(ctx, dir, 60.0, -60.0, 6.0, 5.0f, 15.0f, 10, false, ParticleTypes.SWEEP_ATTACK);
+                    BossSkillHelper.performDynamicSweep(ctx, dir, 60.0, -60.0, 6.0, 5.0f, 15.0f, 10, false,
+                            ParticleTypes.SWEEP_ATTACK);
                 })
 
                 // Inter-sweep delay
@@ -96,7 +98,8 @@ public class SweepingPhalanxSkill {
                 .onTick(ctx -> {
                     BossSkillHelper.stopMovement(ctx);
                     Vec3 dir = ctx.boss().getLookAngle();
-                    BossSkillHelper.performDynamicSweep(ctx, dir, 0.0, 360.0, 5.0, 8.0f, 20.0f, 15, true, ParticleTypes.SWEEP_ATTACK);
+                    BossSkillHelper.performDynamicSweep(ctx, dir, 0.0, 360.0, 5.0, 8.0f, 20.0f, 15, true,
+                            ParticleTypes.SWEEP_ATTACK);
                 })
                 .build();
     }

@@ -1,7 +1,6 @@
 package com.nhatbh.basedefensev2.strength.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.fml.LogicalSide;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;

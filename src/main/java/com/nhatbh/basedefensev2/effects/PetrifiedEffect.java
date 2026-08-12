@@ -20,11 +20,8 @@ public class PetrifiedEffect extends MobEffect {
 
     @Override
     public void applyEffectTick(LivingEntity entity, int amplifier) {
-        // Enforce Slowness (movement lock)
+        // Enforce movement freeze (slowness & jump lock) - NO BLINDNESS
         entity.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 10, 255, false, false, false));
-
-        // Enforce Blindness (cannot see)
-        entity.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 20, 0, false, false, false));
 
         // Freeze horizontal movement & upward jump velocity
         Vec3 motion = entity.getDeltaMovement();

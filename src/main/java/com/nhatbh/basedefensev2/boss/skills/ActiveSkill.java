@@ -25,6 +25,32 @@ public class ActiveSkill {
         return id;
     }
 
+    public String getDisplayName() {
+        return formatSkillName(id);
+    }
+
+    public static String formatSkillName(String skillId) {
+        if (skillId == null || skillId.isEmpty()) return "";
+        String clean = skillId.replaceAll("_p[0-9]+", "").replaceAll("_mb[0-9]+", "").replace("_active", "").replace("_passive", "");
+        String formatted = capitalize(clean.replace("_", " "));
+        if (formatted.equals("Dragons Fury")) {
+            return "DragonsFury";
+        }
+        return formatted;
+    }
+
+    private static String capitalize(String str) {
+        if (str == null || str.isEmpty()) return str;
+        String[] words = str.split(" ");
+        StringBuilder sb = new StringBuilder();
+        for (String w : words) {
+            if (!w.isEmpty()) {
+                sb.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1)).append(" ");
+            }
+        }
+        return sb.toString().trim();
+    }
+
     public String getDescription() {
         return description != null && !description.isEmpty() ? description : getDefaultDescription(id);
     }

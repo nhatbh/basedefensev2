@@ -10,7 +10,6 @@ import com.nhatbh.basedefensev2.stage.ArenaCommands;
 // Boss entities use ModBosses registry now
 import com.nhatbh.basedefensev2.registry.ModEntities;
 import com.nhatbh.basedefensev2.strength.ModAttributes;
-import com.nhatbh.basedefensev2.strength.network.NetworkManager;
 import com.nhatbh.basedefensev2.sanctity.data.ReviveState;
 import com.nhatbh.basedefensev2.sanctity.data.ReviveStateProvider;
 import net.minecraft.resources.ResourceLocation;
@@ -29,6 +28,13 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Filter;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.filter.AbstractFilter;
 import org.slf4j.Logger;
 
 @Mod(BaseDefenseMod.MODID)
@@ -37,6 +43,8 @@ public class BaseDefenseMod {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public BaseDefenseMod(FMLJavaModLoadingContext context) {
+        initLogFilter();
+
         IEventBus modEventBus = context.getModEventBus();
 
         com.nhatbh.basedefensev2.strength.network.NetworkManager.register();
@@ -82,26 +90,12 @@ public class BaseDefenseMod {
         });
 
         com.nhatbh.basedefensev2.elemental.MobElementConfig.load();
-        com.nhatbh.basedefensev2.config.SpellPenaltyConfig.load();
         com.nhatbh.basedefensev2.config.SanctityConfig.load();
         com.nhatbh.basedefensev2.classification.ClassificationManager.load();
 
         com.nhatbh.basedefensev2.boss.impl.spells.BossSpellCaster.init();
 
         com.nhatbh.basedefensev2.boss.impl.generic.ZombieTestBoss.register();
-        com.nhatbh.basedefensev2.boss.impl.stage_1.InfernalDragonBoss.register();
-        com.nhatbh.basedefensev2.boss.impl.stage_1.WadjetMiniboss.register();
-        com.nhatbh.basedefensev2.boss.impl.stage_2.YetiBoss.register();
-        com.nhatbh.basedefensev2.boss.impl.stage_3.WadjetMiniboss.register();
-        com.nhatbh.basedefensev2.boss.impl.stage_3.HarbingerBoss.register();
-        com.nhatbh.basedefensev2.boss.impl.stage_4.ProwlerMiniboss.register();
-        com.nhatbh.basedefensev2.boss.impl.stage_4.AncientRemnantBoss.register();
-        com.nhatbh.basedefensev2.boss.impl.stage_5.CoralssusMiniboss.register();
-        com.nhatbh.basedefensev2.boss.impl.stage_5.LeviathanBoss.register();
-        com.nhatbh.basedefensev2.boss.impl.stage_6.EnderGolemMiniboss.register();
-        com.nhatbh.basedefensev2.boss.impl.stage_6.EnderGuardianBoss.register();
-        com.nhatbh.basedefensev2.boss.impl.stage_7.NetheriteMonstrosityMiniboss.register();
-        com.nhatbh.basedefensev2.boss.impl.stage_7.IgnisBoss.register();
     }
 
     private void onAttributeCreation(EntityAttributeCreationEvent event) {
@@ -148,6 +142,43 @@ public class BaseDefenseMod {
                     newCap.copyFrom(old);
                 });
             });
+        }
+    }
+
+    private static void initLogFilter() {
+        try {
+            LoggerContext context = (LoggerContext) LogManager.getContext(false);
+            Configuration config = context.getConfiguration();
+            LoggerConfig rootLogger = config.getRootLogger();
+
+            Filter customFilter = new AbstractFilter() {
+                @Override
+                public Result filter(LogEvent event) {
+                    if (event != null) {
+                        String message = event.getMessage() != null ? event.getMessage().getFormattedMessage() : "";
+                        Throwable thrown = event.getThrown();
+                        String thrownStr = thrown != null ? thrown.toString() : "";
+
+                        if (message.contains("basedefensev2:strength_sync")
+                                || message.contains("Missing element ResourceKey")
+                                || message.contains("Unknown custom packet identifier")
+                                || message.contains("Found a broken recipe")
+                                || message.contains("bielgg_spells")
+                                || message.contains("upgrade_orb_type")
+                                || thrownStr.contains("Missing element ResourceKey")
+                                || thrownStr.contains("bielgg_spells")
+                                || thrownStr.contains("upgrade_orb_type")) {
+                            return Result.DENY;
+                        }
+                    }
+                    return Result.NEUTRAL;
+                }
+            };
+
+            customFilter.start();
+            rootLogger.addFilter(customFilter);
+            context.updateLoggers();
+        } catch (Exception ignored) {
         }
     }
 }

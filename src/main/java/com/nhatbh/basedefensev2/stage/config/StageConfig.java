@@ -23,8 +23,39 @@ public class StageConfig {
     public double spawn_radius = 25;
     /** Ticks of the post-victory scavenge (loot collection) window */
     public int scavenge_duration_ticks = 6000;
+    /** Optional explicit elemental override for this stage (e.g., "FIRE", "ICE") */
+    public String element;
     /** Ordered list of waves */
     public List<WaveConfig> waves = Collections.emptyList();
+
+    /**
+     * Resolves the primary elemental affiliation of this stage.
+     * Uses explicit `element` string if set, otherwise infers from wave mobs,
+     * defaulting to FIRE if unspecified.
+     */
+    public com.nhatbh.basedefensev2.elemental.ElementType getElement() {
+        if (element != null && !element.isEmpty()) {
+            com.nhatbh.basedefensev2.elemental.ElementType parsed = com.nhatbh.basedefensev2.elemental.ElementType.fromString(element);
+            if (parsed != null) return parsed;
+        }
+
+        if (waves != null) {
+            for (WaveConfig w : waves) {
+                if (w.mobs != null) {
+                    for (MobSpawnEntry entry : w.mobs) {
+                        if (entry.type != null) {
+                            com.nhatbh.basedefensev2.elemental.ElementType elem = com.nhatbh.basedefensev2.elemental.MobElementConfig.getElementFor(entry.type);
+                            if (elem != null) {
+                                return elem;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return com.nhatbh.basedefensev2.elemental.ElementType.FIRE;
+    }
 
     public static class SpawnArea {
         public double x = 0;

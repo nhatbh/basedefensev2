@@ -1,5 +1,7 @@
 package com.nhatbh.basedefensev2.boss.impl.generic;
 
+import com.nhatbh.basedefensev2.boss.impl.generic.active.*;
+import com.nhatbh.basedefensev2.boss.impl.generic.passive.overclock.*;
 import com.nhatbh.basedefensev2.boss.core.BossDefinition;
 import com.nhatbh.basedefensev2.boss.skills.ActiveSkill;
 import com.nhatbh.basedefensev2.elemental.ElementType;

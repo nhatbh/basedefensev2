@@ -170,7 +170,7 @@ public class ReviveHUD {
         int barY = centerY + 28;
 
         if (ClientReviveData.wantsRevive()) {
-            String statusText = "Revival Queued... (Waiting for 50 Sanctity)";
+            String statusText = "Revival Queued... (Waiting for 1 Life)";
             int statusWidth = mc.font.width(statusText);
             graphics.drawString(mc.font, statusText, centerX - statusWidth / 2, barY, 0xFF00FF00, true);
         } else {
@@ -191,7 +191,7 @@ public class ReviveHUD {
                 graphics.drawString(mc.font, reviveText, centerX - reviveWidth / 2, barY - 10, 0xFF00FF00, true);
                 RenderSystem.disableBlend();
             } else {
-                String promptText = "Hold [I] to Revive (Costs 50 Sanctity)";
+                String promptText = "Hold [I] to Revive (Costs 1 Life)";
                 int promptWidth = mc.font.width(promptText);
                 graphics.drawString(mc.font, promptText, centerX - promptWidth / 2, barY, 0xFF55FF55, true);
             }

@@ -2,7 +2,6 @@ package com.nhatbh.basedefensev2.stage.subsystem;
 
 import com.mojang.logging.LogUtils;
 import com.nhatbh.basedefensev2.stage.events.WaveEvents;
-import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -43,16 +42,9 @@ public class CleanupSubsystem {
             entity.discard();
         }
 
-        // 2. Teleport players to overworld spawn
-        ServerLevel overworld = arena.getServer().overworld();
-        BlockPos worldSpawn = overworld.getSharedSpawnPos();
-        double sx = worldSpawn.getX() + 0.5;
-        double sy = worldSpawn.getY();
-        double sz = worldSpawn.getZ() + 0.5;
-
+        // 2. Teleport players back to pre-arena position
         for (ServerPlayer player : toTeleport) {
-            player.teleportTo(overworld, sx, sy, sz,
-                    player.getYRot(), player.getXRot());
+            com.nhatbh.basedefensev2.stage.TeleportManager.teleportBack(player);
         }
     }
 }

@@ -1,9 +1,7 @@
 package com.nhatbh.basedefensev2.boss.core;
 
-import com.nhatbh.basedefensev2.boss.skills.ActiveSequence;
 import com.nhatbh.basedefensev2.boss.skills.SequenceRunner;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.common.MinecraftForge;
 
 import java.util.HashMap;
 import java.util.Map;

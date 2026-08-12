@@ -113,7 +113,7 @@ public class ArenaProtectionHandler {
             // Block leaving if stage is active and not in Scavenge/Ended/RetryIntermission state
             if (ctx.isActive()) {
                 StageState state = ctx.getStageState();
-                if (state != StageState.SCAVENGE && state != StageState.ENDED && state != StageState.RETRY_INTERMISSION) {
+                if (state != StageState.SCAVENGE && state != StageState.ENDED) {
                     event.setCanceled(true);
                     player.sendSystemMessage(Component.literal("§cThe spatial rift is too unstable to exit right now!"));
                 }

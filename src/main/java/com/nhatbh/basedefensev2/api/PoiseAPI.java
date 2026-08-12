@@ -77,6 +77,25 @@ public class PoiseAPI {
         return data != null && data.isPercentageBased;
     }
 
+    /**
+     * Calculates maximum poise for a mob based on its max HP.
+     * Starts at 100% of max health for baseline mobs (20 HP) and smoothly curves down to 50% at 10,000 HP.
+     */
+    public static float calculateMobMaxPoise(float maxHp) {
+        if (maxHp <= 0) return 0.0f;
+        float baseHp = 20.0f;
+        if (maxHp <= baseHp) {
+            return maxHp;
+        }
+        float targetHp = 10000.0f;
+        if (maxHp >= targetHp) {
+            return maxHp * 0.5f;
+        }
+        float t = (maxHp - baseHp) / (targetHp - baseHp);
+        float ratio = 1.0f - 0.5f * (float) Math.pow(t, 0.6);
+        return maxHp * ratio;
+    }
+
     public static void initializePoise(LivingEntity entity, float maxPoise, float reductionValue, boolean isPercentageBased) {
         initializePoise(entity, maxPoise, maxPoise, reductionValue, isPercentageBased, 0);
     }
@@ -169,6 +188,16 @@ public class PoiseAPI {
         return damagePoise(entity, amount, null, null, false);
     }
 
+    /**
+     * Calculates range-based poise damage multiplier between target and attacker.
+     * Returns insideMultiplier if distance <= maxRange, or outsideMultiplier if distance > maxRange.
+     */
+    public static float getRangeBasedPoiseMultiplier(LivingEntity target, @Nullable LivingEntity attacker, float maxRange, float insideMultiplier, float outsideMultiplier) {
+        if (attacker == null) return insideMultiplier;
+        double distance = target.distanceTo(attacker);
+        return (distance <= maxRange) ? insideMultiplier : outsideMultiplier;
+    }
+
     public static float depletePoisePercent(LivingEntity entity, float percentage) {
         EntityStrengthData data = getPoiseData(entity);
         if (data == null || data.maxStrength <= 0) return 0.0f;
@@ -225,6 +254,12 @@ public class PoiseAPI {
 
     public static void triggerPoiseBreak(LivingEntity entity) {
         if (entity == null) return;
+        if (!entity.level().isClientSide) {
+            // Apply 5% max health true damage on poise break (exhaustion start)
+            entity.getPersistentData().putBoolean("SkipStrengthDamage", true);
+            entity.getPersistentData().putBoolean("BdV2TrueDamage", true);
+            entity.hurt(entity.damageSources().fellOutOfWorld(), entity.getMaxHealth() * 0.05f);
+        }
         if (entity instanceof Mob mob) {
             mob.getNavigation().stop();
             if (!mob.onGround()) {
@@ -239,5 +274,46 @@ public class PoiseAPI {
             }
         }
         MinecraftForge.EVENT_BUS.post(new EntityEvents.PoiseBroken(entity));
+    }
+
+    /**
+     * Extracts the weapon/attack Impact score on hit.
+     * Checks EpicFightDamageSource#calculateImpact() first, then attacker's IMPACT attribute, defaulting to 2.5f baseline.
+     */
+    public static float getImpactScore(@Nullable DamageSource source, @Nullable LivingEntity attacker) {
+        if (source instanceof yesman.epicfight.world.damagesource.EpicFightDamageSource epicSource) {
+            float calculatedImpact = epicSource.calculateImpact();
+            if (calculatedImpact > 0.0f) {
+                return calculatedImpact;
+            }
+        }
+
+        if (attacker != null && attacker.getAttributes() != null) {
+            var impactAttr = attacker.getAttribute(yesman.epicfight.world.entity.ai.attribute.EpicFightAttributes.IMPACT.get());
+            if (impactAttr != null) {
+                float val = (float) impactAttr.getValue();
+                if (val > 0.0f) {
+                    return val;
+                }
+            }
+        }
+
+        return 2.5f;
+    }
+
+    /**
+     * Calculates the poise damage multiplier based on weapon Impact score.
+     * Baseline impact of 2.5 corresponds to 1.0x strength poise damage multiplier.
+     */
+    public static float getImpactPoiseDamageMultiplier(float impactScore) {
+        return Math.max(0.1f, impactScore / 2.5f);
+    }
+
+    /**
+     * Calculates the damage multiplier on poise break based on weapon Impact score.
+     * Baseline impact of 2.5 corresponds to 1.0x strength damage multiplier.
+     */
+    public static float getPoiseBreakDamageMultiplier(float impactScore) {
+        return Math.max(0.2f, impactScore / 2.5f);
     }
 }

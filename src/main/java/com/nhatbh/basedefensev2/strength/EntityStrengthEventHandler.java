@@ -2,7 +2,6 @@ package com.nhatbh.basedefensev2.strength;
 
 import com.nhatbh.basedefensev2.api.PoiseAPI;
 import com.nhatbh.basedefensev2.boss.core.BossDefinition;
-import com.nhatbh.basedefensev2.boss.core.BossComponent;
 import com.nhatbh.basedefensev2.boss.core.BossManager;
 import com.nhatbh.basedefensev2.utils.UUIDHelper;
 import net.minecraft.world.damagesource.DamageSource;
@@ -12,10 +11,12 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -33,22 +34,20 @@ public class EntityStrengthEventHandler {
         if (entity instanceof LivingEntity living && !(living instanceof Player) && !(living instanceof ArmorStand) && !PoiseAPI.hasPoise(living)) {
             if (BossManager.isBoss(living)) {
                 BossDefinition def = BossManager.get(living).getDefinition();
-                float poiseScale = 1.0f;
-                if (def.getBaseStats() != null && def.getBaseStats().health > 0) {
-                    poiseScale = living.getMaxHealth() / def.getBaseStats().health;
-                }
-                float scaledPoise = def.getMaxPoise() * poiseScale;
-                PoiseAPI.initializePoise(living, scaledPoise, def.getPoiseDamageReduction(), true);
+                float maxHp = living.getMaxHealth();
+                float scaledPoise = PoiseAPI.calculateMobMaxPoise(maxHp);
+                float reduction = (def != null) ? def.getPoiseDamageReduction() : 0.95f;
+                PoiseAPI.initializePoise(living, scaledPoise, reduction, true);
             } else if (living instanceof Mob mob) {
                 float maxHp = mob.getMaxHealth();
-                float maxStrength = maxHp * 1.0f;
+                float maxStrength = PoiseAPI.calculateMobMaxPoise(maxHp);
                 float reductionValue = 4.0f + (maxHp * 0.05f);
                 PoiseAPI.initializePoise(mob, maxStrength, reductionValue, false);
             }
         }
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onLivingHurt(LivingHurtEvent event) {
         // Disable all damage attributed to an exhausted attacker (melee, projectile, magic, etc.)
         if (event.getSource().getEntity() instanceof LivingEntity attacker && PoiseAPI.isExhausted(attacker)) {
@@ -68,13 +67,42 @@ public class EntityStrengthEventHandler {
         }
 
         if (!PoiseAPI.isExhausted(entity)) {
-            float rawDamage = event.getAmount();
-            float basePoiseDamage = source.isIndirect() ? rawDamage * 0.5f : rawDamage;
+            // Post-mitigated attack damage captured from event.getAmount()
+            float postMitigatedDamage = event.getAmount();
             LivingEntity attacker = source.getEntity() instanceof LivingEntity livingAttacker ? livingAttacker : null;
 
-            PoiseAPI.damagePoise(entity, basePoiseDamage, attacker, source, true);
+            // Direct melee attacks receive full poise damage scaled by weapon Impact.
+            // Ranged / indirect / spell attacks receive 50% poise penalty and bypass weapon Impact scaling.
+            boolean isDirectMelee = !source.isIndirect() && !(source instanceof io.redspace.ironsspellbooks.damage.SpellDamageSource);
 
-            event.setAmount(PoiseAPI.calculateMitigatedDamage(entity, rawDamage));
+            float basePoiseDamage;
+            float impactScore = 2.5f;
+
+            if (isDirectMelee) {
+                basePoiseDamage = postMitigatedDamage;
+                impactScore = PoiseAPI.getImpactScore(source, attacker);
+                float impactMult = PoiseAPI.getImpactPoiseDamageMultiplier(impactScore);
+                basePoiseDamage *= impactMult;
+
+                if (attacker != null && BossManager.isBoss(entity)) {
+                    float riposteMult = com.nhatbh.basedefensev2.effects.RiposteEffect.getPoiseDamageMultiplier(attacker);
+                    basePoiseDamage *= riposteMult;
+                }
+            } else {
+                basePoiseDamage = postMitigatedDamage * 0.5f;
+            }
+
+            float actualPoiseDmg = PoiseAPI.damagePoise(entity, basePoiseDamage, attacker, source, true);
+            float mitigatedDmg = PoiseAPI.calculateMitigatedDamage(entity, postMitigatedDamage);
+
+            // Check if this exact hit broke poise (target is now exhausted)
+            if (PoiseAPI.isExhausted(entity)) {
+                float breakMult = isDirectMelee ? PoiseAPI.getPoiseBreakDamageMultiplier(impactScore) : 1.0f;
+                float finalDamage = postMitigatedDamage * breakMult;
+                event.setAmount(finalDamage);
+            } else {
+                event.setAmount(mitigatedDmg);
+            }
         }
     }
 
@@ -88,8 +116,8 @@ public class EntityStrengthEventHandler {
         }
     }
 
-    @SubscribeEvent
-    public static void onLivingAttack(net.minecraftforge.event.entity.living.LivingAttackEvent event) {
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onLivingAttack(LivingAttackEvent event) {
         if (event.getSource().getEntity() instanceof LivingEntity attacker && PoiseAPI.isExhausted(attacker)) {
             event.setCanceled(true);
         }
@@ -104,6 +132,7 @@ public class EntityStrengthEventHandler {
         if (!entity.level().isClientSide) {
             var speedAttr = entity.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED);
             var attackAttr = entity.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+            var armorAttr = entity.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR);
 
             if (isExhausted) {
                 // Reduce movement speed and attack damage to 0 via AttributeModifier
@@ -146,8 +175,13 @@ public class EntityStrengthEventHandler {
         // Decrement recoveryTicks on both server and client so UI timers count down smoothly
         EntityStrengthData data = PoiseAPI.getPoiseData(entity);
         if (data != null && data.currentStrength <= 0 && data.recoveryTicks > 0) {
-            data.recoveryTicks -= 1;
-            data.save(entity);
+            boolean isSuppressed = entity.hasEffect(com.nhatbh.basedefensev2.registry.ModEffects.SUPPRESSION.get());
+            boolean shouldDecrement = !isSuppressed || (entity.tickCount % 3 != 0);
+
+            if (shouldDecrement) {
+                data.recoveryTicks -= 1;
+                data.save(entity);
+            }
 
             if (!entity.level().isClientSide && data.recoveryTicks <= 0) {
                 PoiseAPI.resetPoise(entity);

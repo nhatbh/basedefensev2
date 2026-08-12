@@ -120,7 +120,7 @@ public class VanguardAdvanceSkill {
                 .onTick(ctx -> BossSkillHelper.stopMovement(ctx))
 
                 // Phase 3.5: Prepare for Jump (Counter Window)
-                 .parryStep("overhead_stab_prepare", 30)
+                .parryStep("overhead_stab_prepare", 30)
                 .counter(ActiveSequence.CounterType.NORMAL, 20, 30)
                 .onCountered((ctx, event) -> BossSkillHelper.depletePoise(ctx, 10f))
                 .onStart(ctx -> {

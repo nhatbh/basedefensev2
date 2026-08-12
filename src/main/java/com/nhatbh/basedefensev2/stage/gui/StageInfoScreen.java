@@ -2,7 +2,6 @@ package com.nhatbh.basedefensev2.stage.gui;
 
 import com.nhatbh.basedefensev2.boss.core.BossDefinition;
 import com.nhatbh.basedefensev2.elemental.ElementType;
-import com.nhatbh.basedefensev2.elemental.MobElementConfig;
 import com.nhatbh.basedefensev2.registry.ModBosses;
 import com.nhatbh.basedefensev2.stage.config.MobSpawnEntry;
 import com.nhatbh.basedefensev2.stage.config.StageConfig;
@@ -14,7 +13,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -96,7 +94,7 @@ public class StageInfoScreen extends Screen {
         }
 
         if (bossEntry != null) {
-            BossDefinition bossDef = ModBosses.get(bossEntry.boss_id);
+            BossDefinition bossDef = getBossDef(bossEntry.boss_id);
             if (bossDef != null && bossDef.getBaseEntity() != null) {
                 String baseEntity = bossDef.getBaseEntity();
                 if (!baseEntity.equals(currentBossEntityId)) {
@@ -114,6 +112,15 @@ public class StageInfoScreen extends Screen {
         }
         currentBossEntity = null;
         currentBossEntityId = "";
+    }
+
+    private BossDefinition getBossDef(String bossId) {
+        BossDefinition bossDef = ModBosses.get(bossId);
+        if (bossDef == null && (bossId.startsWith("gen_boss_stage_") || bossId.startsWith("gen_miniboss_stage_"))) {
+            com.nhatbh.basedefensev2.stage.generator.RandomStageGenerator.registerBossesOnly(100L);
+            bossDef = ModBosses.get(bossId);
+        }
+        return bossDef;
     }
 
     @Override
@@ -221,9 +228,9 @@ public class StageInfoScreen extends Screen {
             g.drawString(font, stageNumStr, orbX - (textW / 2), orbY - 4, textColor, true);
 
             // Subtitle under Orb: Element Affinity
-            ElementType elem = inferStageElement(stage);
+            ElementType elem = com.nhatbh.basedefensev2.api.StageAPI.getStageElement(stage);
             String elemName = elem != null ? elem.name() : "NONE";
-            int elemColor = getElementColor(elem);
+            int elemColor = com.nhatbh.basedefensev2.api.StageAPI.getElementColor(elem);
 
             g.pose().pushPose();
             g.pose().scale(0.7f, 0.7f, 1.0f);
@@ -255,7 +262,7 @@ public class StageInfoScreen extends Screen {
             return;
         }
 
-        BossDefinition bossDef = ModBosses.get(bossEntry.boss_id);
+        BossDefinition bossDef = getBossDef(bossEntry.boss_id);
         if (bossDef == null) {
             g.drawCenteredString(font, "§cUnknown Boss Definition: " + bossEntry.boss_id, x + width / 2, y + height / 2 - 4, 0xFF5555);
             return;
@@ -304,7 +311,7 @@ public class StageInfoScreen extends Screen {
 
         String rawEntity = bossDef.getBaseEntity();
         String mobName = rawEntity.contains(":") ? rawEntity.split(":")[1] : rawEntity;
-        mobName = capitalize(mobName.replace("_", " "));
+        mobName = com.nhatbh.basedefensev2.api.StageAPI.formatSkillName(mobName);
 
         String bossDisplayName = (!titlePrefix.isEmpty() ? titlePrefix + " " : "") + mobName;
 
@@ -375,7 +382,7 @@ public class StageInfoScreen extends Screen {
             int skX = infoX + col * (skillColW + 6);
             int skY = infoY + row * (cardH + 4);
 
-            String skName = formatSkillName(skill.getId());
+            String skName = skill.getDisplayName();
             float cdSec = skill.getCooldown() / 20.0f;
             String cdStr = String.format("%.1fs CD", cdSec);
 
@@ -390,71 +397,30 @@ public class StageInfoScreen extends Screen {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-    private ElementType inferStageElement(StageConfig stage) {
-        for (WaveConfig w : stage.waves) {
-            for (MobSpawnEntry entry : w.mobs) {
-                if (entry.type != null) {
-                    ElementType elem = MobElementConfig.getElementFor(entry.type);
-                    if (elem != null) {
-                        return elem;
-                    }
+
+
+    public static void openScreenWithData(List<StageConfig> stages, int currentStageNum) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+
+        if (stages == null || stages.isEmpty()) {
+            stages = new ArrayList<>();
+            if (mc.getSingleplayerServer() != null) {
+                net.minecraft.server.level.ServerLevel serverLevel = mc.getSingleplayerServer().overworld();
+                var worldData = com.nhatbh.basedefensev2.stage.generator.WorldStageSavedData.get(serverLevel);
+                stages.addAll(worldData.getAllStages());
+
+                var ctx = com.nhatbh.basedefensev2.stage.core.StageContext.getOrCreate(serverLevel);
+                if (ctx != null && ctx.getActiveConfig() != null) {
+                    currentStageNum = ctx.getActiveConfig().order + 1;
                 }
             }
         }
-        return ElementType.FIRE;
-    }
 
-    private int getElementColor(ElementType type) {
-        if (type == null) return 0x888888;
-        return switch (type) {
-            case FIRE -> 0xFFFF5555;
-            case AQUA -> 0xFF55FFFF;
-            case ICE -> 0xFFAADDFF;
-            case LIGHTNING -> 0xFFFFDD55;
-            case NATURE -> 0xFF55FF55;
-            case HOLY -> 0xFFFFEE88;
-            case EVOCATION -> 0xFFFF77FF;
-            case ENDER -> 0xFFAA55FF;
-            case ELDRITCH -> 0xFFAA2222;
-            case BLOOD -> 0xFFDD2222;
-            default -> 0xAAAAAA;
-        };
-    }
-
-    private String formatSkillName(String id) {
-        String clean = id.replaceAll("_p[0-9]+", "").replaceAll("_mb[0-9]+", "").replace("_active", "").replace("_passive", "");
-        String formatted = capitalize(clean.replace("_", " "));
-        if (formatted.equals("Dragons Fury")) {
-            return "DragonsFury";
-        }
-        return formatted;
-    }
-
-    private String capitalize(String str) {
-        if (str == null || str.isEmpty()) return str;
-        String[] words = str.split(" ");
-        StringBuilder sb = new StringBuilder();
-        for (String w : words) {
-            if (!w.isEmpty()) {
-                sb.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1)).append(" ");
-            }
-        }
-        return sb.toString().trim();
+        mc.setScreen(new StageInfoScreen(stages, currentStageNum, true));
     }
 
     public static void openScreen() {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || mc.getSingleplayerServer() == null) return;
-
-        net.minecraft.server.level.ServerLevel serverLevel = mc.getSingleplayerServer().overworld();
-        List<StageConfig> stages = new ArrayList<>(com.nhatbh.basedefensev2.stage.StageLoader.getAllStages(serverLevel));
-
-        int currentStageNum = 1;
-        var ctx = com.nhatbh.basedefensev2.stage.core.StageContext.getOrCreate(serverLevel);
-        if (ctx != null && ctx.getActiveConfig() != null) {
-            currentStageNum = ctx.getActiveConfig().order + 1;
-        }
-
-        mc.setScreen(new StageInfoScreen(stages, currentStageNum, true));
+        openScreenWithData(new ArrayList<>(), 1);
     }
 }

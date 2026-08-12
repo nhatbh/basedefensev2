@@ -13,6 +13,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
+import net.minecraftforge.event.entity.living.LivingHealEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -203,13 +204,6 @@ public class BossManager {
         if (sequenceJustEnded) {
             comp.setCurrentSequence(null);
             selectRandomTarget(boss);
-
-            // Trigger post-skill vulnerability window during Desperation Mode (Last Phase)
-            com.nhatbh.basedefensev2.boss.impl.generic.DragonsFuryPassive fury = com.nhatbh.basedefensev2.boss.impl.generic.DragonsFuryPassive
-                    .get(boss);
-            if (fury != null) {
-                fury.triggerPostSkillVulnerability(boss);
-            }
         }
 
         if (boss instanceof net.minecraft.world.entity.Mob mob) {
@@ -491,6 +485,48 @@ public class BossManager {
         }
     }
 
+    @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.LOWEST)
+    public static void onBossHeal(LivingHealEvent event) {
+        LivingEntity entity = event.getEntity();
+        if (entity == null || entity.level().isClientSide())
+            return;
+
+        if (!isBoss(entity))
+            return;
+
+        if (event.isCanceled() || event.getAmount() <= 0)
+            return;
+
+        float currentHp = entity.getHealth();
+        float maxHp = entity.getMaxHealth();
+
+        float missingHp = maxHp - currentHp;
+        if (missingHp <= 0) {
+            event.setCanceled(true);
+            return;
+        }
+
+        float maxAllowedTotalHeal = maxHp * 0.25f;
+        float currentTotalHealed = entity.getPersistentData().getFloat("bdv2_total_healed");
+        float remainingBudget = maxAllowedTotalHeal - currentTotalHealed;
+
+        if (remainingBudget <= 0) {
+            event.setCanceled(true);
+            return;
+        }
+
+        float requestedHeal = event.getAmount();
+        float effectiveHeal = Math.min(requestedHeal, missingHp);
+        float allowedHeal = Math.min(effectiveHeal, remainingBudget);
+
+        if (allowedHeal <= 0) {
+            event.setCanceled(true);
+        } else {
+            event.setAmount(allowedHeal);
+            entity.getPersistentData().putFloat("bdv2_total_healed", currentTotalHealed + allowedHeal);
+        }
+    }
+
     @SubscribeEvent
     public static void onLivingDamage(LivingDamageEvent event) {
         LivingEntity entity = event.getEntity();
@@ -527,6 +563,10 @@ public class BossManager {
     public static void onGuard(com.complextalents.epicfight.event.EpicFightGuardEvent event) {
         if (event.getAttacker() == null || event.getAttacker().level().isClientSide)
             return;
+
+        if (event.isParry() && isBoss(event.getAttacker()) && event.getPlayer() != null) {
+            com.nhatbh.basedefensev2.effects.RiposteEffect.applyTo(event.getPlayer());
+        }
 
         BossComponent comp = get(event.getAttacker());
         if (comp != null && comp.getCurrentSequence() != null && comp.getCurrentSequence().isRunning()) {

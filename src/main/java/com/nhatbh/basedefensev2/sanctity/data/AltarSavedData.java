@@ -11,7 +11,6 @@ public class AltarSavedData extends SavedData {
     private int sanctity = com.nhatbh.basedefensev2.config.SanctityConfig.data.maxSanctity;
     private double grace = 0;
     private int retriesUsed = 0;
-    private boolean gameOver = false;
 
     public AltarSavedData() {
     }
@@ -28,7 +27,6 @@ public class AltarSavedData extends SavedData {
         data.sanctity = tag.getInt("Sanctity");
         data.grace = tag.getDouble("Grace");
         data.retriesUsed = tag.getInt("RetriesUsed");
-        data.gameOver = tag.getBoolean("GameOver");
         return data;
     }
 
@@ -37,17 +35,7 @@ public class AltarSavedData extends SavedData {
         tag.putInt("Sanctity", sanctity);
         tag.putDouble("Grace", grace);
         tag.putInt("RetriesUsed", retriesUsed);
-        tag.putBoolean("GameOver", gameOver);
         return tag;
-    }
-
-    public boolean isGameOver() {
-        return gameOver;
-    }
-
-    public void setGameOver(boolean gameOver) {
-        this.gameOver = gameOver;
-        setDirty();
     }
 
     public int getSanctity() {
@@ -89,11 +77,15 @@ public class AltarSavedData extends SavedData {
         return this.retriesUsed;
     }
 
-    public void regenGrace() {
-        double rate = com.nhatbh.basedefensev2.config.SanctityConfig.data.graceRegenRate;
+    public void regenGrace(double multiplier) {
+        double rate = com.nhatbh.basedefensev2.config.SanctityConfig.data.graceRegenRate * multiplier;
         if (rate > 0 && grace < com.nhatbh.basedefensev2.config.SanctityConfig.data.maxGrace) {
             this.grace = Math.min(com.nhatbh.basedefensev2.config.SanctityConfig.data.maxGrace, grace + rate);
             setDirty();
         }
+    }
+
+    public void regenGrace() {
+        regenGrace(1.0);
     }
 }

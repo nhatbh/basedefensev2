@@ -22,15 +22,15 @@ public class RandomStageGenerator {
     private static final ElementType[] ALL_ELEMENTS = ElementType.values();
 
     /**
-     * Calculates Poise as 70% of max HP, rounded to the nearest 500.
+     * Calculates Boss Poise using the non-linear curve formula from PoiseAPI.
      */
     public static float calculatePoise(float maxHp) {
-        double rawPoise = maxHp * 0.70;
-        return (float) (Math.round(rawPoise / 500.0) * 500.0);
+        return com.nhatbh.basedefensev2.api.PoiseAPI.calculateMobMaxPoise(maxHp);
     }
 
     /**
-     * Re-registers all dynamic boss and miniboss definitions using the original seed.
+     * Re-registers all dynamic boss and miniboss definitions using the original
+     * seed.
      * Called on world reload so that ModBosses lookups (gen_boss_stage_N) succeed.
      * Does NOT regenerate StageConfig data — stage configs are loaded from NBT.
      */
@@ -59,14 +59,22 @@ public class RandomStageGenerator {
             List<String> minibossList = filterMobsForElements(classifications, stageElements, "Miniboss");
             List<String> bossList = filterMobsForElements(classifications, stageElements, "Boss");
 
-            if (monsterList.isEmpty()) monsterList = filterMobsForElements(classifications, null, "Monster");
-            if (eliteList.isEmpty()) eliteList = filterMobsForElements(classifications, null, "Elites");
-            if (eliteList.isEmpty()) eliteList = monsterList;
-            if (minibossList.isEmpty()) minibossList = filterMobsForElements(classifications, null, "Miniboss");
-            if (minibossList.isEmpty()) minibossList = eliteList;
-            if (bossList.isEmpty()) bossList = filterMobsForElements(classifications, null, "Boss");
-            if (bossList.isEmpty()) bossList = minibossList;
-            if (bossList.isEmpty()) bossList = List.of("minecraft:zombie");
+            if (monsterList.isEmpty())
+                monsterList = filterMobsForElements(classifications, null, "Monster");
+            if (eliteList.isEmpty())
+                eliteList = filterMobsForElements(classifications, null, "Elites");
+            if (eliteList.isEmpty())
+                eliteList = monsterList;
+            if (minibossList.isEmpty())
+                minibossList = filterMobsForElements(classifications, null, "Miniboss");
+            if (minibossList.isEmpty())
+                minibossList = eliteList;
+            if (bossList.isEmpty())
+                bossList = filterMobsForElements(classifications, null, "Boss");
+            if (bossList.isEmpty())
+                bossList = minibossList;
+            if (bossList.isEmpty())
+                bossList = List.of("minecraft:zombie");
 
             List<String> availableBosses = new ArrayList<>(bossList);
             availableBosses.removeAll(usedBosses);
@@ -78,7 +86,8 @@ public class RandomStageGenerator {
                 availableBosses = filterMobsForElements(classifications, null, "Miniboss");
                 availableBosses.removeAll(usedBosses);
             }
-            if (availableBosses.isEmpty()) availableBosses = bossList;
+            if (availableBosses.isEmpty())
+                availableBosses = bossList;
 
             String chosenBoss = availableBosses.get(rng.nextInt(availableBosses.size()));
             usedBosses.add(chosenBoss);
@@ -90,7 +99,8 @@ public class RandomStageGenerator {
             // Re-register miniboss for stages 3+
             if (stageNum >= 3 && !minibossList.isEmpty()) {
                 String mbId = "gen_miniboss_stage_" + stageNum;
-                createAndRegisterDynamicMiniboss(mbId, minibossList.get(rng.nextInt(minibossList.size())), minibossHp, stageNum, rng);
+                createAndRegisterDynamicMiniboss(mbId, minibossList.get(rng.nextInt(minibossList.size())), minibossHp,
+                        stageNum, rng);
             }
         }
 
@@ -123,13 +133,14 @@ public class RandomStageGenerator {
         return stages;
     }
 
-    private static StageConfig generateStage(long worldSeed, int stageNum, List<ElementType> elements, Set<String> usedBosses) {
+    private static StageConfig generateStage(long worldSeed, int stageNum, List<ElementType> elements,
+            Set<String> usedBosses) {
         Random rng = new Random(worldSeed + stageNum * 31L);
         StageConfig cfg = new StageConfig();
         cfg.id = "stage_" + stageNum;
         cfg.order = stageNum - 1;
-        cfg.trigger_seconds = 18000; // 5 hours for all stages
-        cfg.warmup_ticks = 1200;    // 1 minute warmup
+        cfg.trigger_seconds = (stageNum == 1) ? 3600 : 7200; // 1 hour for stage 1, 2 hours for stage 2+
+        cfg.warmup_ticks = 1200; // 1 minute warmup
         cfg.spawn_radius = 25;
         cfg.scavenge_duration_ticks = 6000; // 5 mins scavenge after wave clear
 
@@ -145,16 +156,24 @@ public class RandomStageGenerator {
         List<String> bossList = filterMobsForElements(classifications, elements, "Boss");
 
         // Fallbacks if specific element pools are empty
-        if (monsterList.isEmpty()) monsterList = filterMobsForElements(classifications, null, "Monster");
-        if (eliteList.isEmpty()) eliteList = filterMobsForElements(classifications, null, "Elites");
-        if (eliteList.isEmpty()) eliteList = monsterList;
+        if (monsterList.isEmpty())
+            monsterList = filterMobsForElements(classifications, null, "Monster");
+        if (eliteList.isEmpty())
+            eliteList = filterMobsForElements(classifications, null, "Elites");
+        if (eliteList.isEmpty())
+            eliteList = monsterList;
 
-        if (minibossList.isEmpty()) minibossList = filterMobsForElements(classifications, null, "Miniboss");
-        if (minibossList.isEmpty()) minibossList = eliteList;
+        if (minibossList.isEmpty())
+            minibossList = filterMobsForElements(classifications, null, "Miniboss");
+        if (minibossList.isEmpty())
+            minibossList = eliteList;
 
-        if (bossList.isEmpty()) bossList = filterMobsForElements(classifications, null, "Boss");
-        if (bossList.isEmpty()) bossList = minibossList;
-        if (bossList.isEmpty()) bossList = List.of("minecraft:zombie");
+        if (bossList.isEmpty())
+            bossList = filterMobsForElements(classifications, null, "Boss");
+        if (bossList.isEmpty())
+            bossList = minibossList;
+        if (bossList.isEmpty())
+            bossList = List.of("minecraft:zombie");
 
         // Select non-overlapping Boss
         List<String> availableBosses = new ArrayList<>(bossList);
@@ -183,66 +202,81 @@ public class RandomStageGenerator {
         float bossHp = getBossHpForStage(stageNum, rng);
         float minibossHp = getMinibossHpForStage(stageNum, rng);
 
+        int stageBaseLevel = (stageNum == 1) ? 5 : (10 + (stageNum - 1) * 5);
+
         if (stageNum <= 2) {
-            // Stage 1: 4 mob waves + 1 boss wave (5 waves total); Stage 2: 5 mob waves + 1 boss wave
+            // Stage 1: 4 mob waves + 1 boss wave (5 waves total); Stage 2: 5 mob waves + 1
+            // boss wave
             int mobWaveCount = (stageNum == 1) ? 4 : 5;
             for (int w = 1; w <= mobWaveCount; w++) {
-                cfg.waves.add(generateMobWave("wave_" + w, w, stageNum, monsterList, eliteList, hpMultiplier, dmgMultiplier, rng));
+                cfg.waves.add(generateMobWave("wave_" + w, w, stageNum, monsterList, eliteList, rng));
             }
 
-            // Boss Wave
+            // Boss Wave (Dramatic cosmetic level: Stage 1 = Lv 25, Stage 2 = Lv 40)
+            int bossWaveIdx = mobWaveCount + 1;
+            int bossLevel = stageBaseLevel + 15 + (stageNum * 5);
             String bossId = "gen_boss_stage_" + stageNum;
             createAndRegisterDynamicBoss(bossId, chosenBoss, bossHp, stageNum, rng);
-            cfg.waves.add(generateBossWave("wave_" + (mobWaveCount + 1) + "_boss", bossId, stageNum));
+            cfg.waves.add(generateBossWave("wave_" + bossWaveIdx + "_boss", bossId, stageNum, bossLevel));
 
         } else {
             // Stages 3-10: Mob waves -> Miniboss wave -> Mob waves -> Boss wave
             int preMinibossWaves = (stageNum >= 5) ? 3 : 2;
-            if (stageNum >= 7) preMinibossWaves = 4;
+            if (stageNum >= 7)
+                preMinibossWaves = 4;
 
             int postMinibossWaves = (stageNum >= 4) ? 3 : 2;
-            if (stageNum >= 6) postMinibossWaves = 4;
-            if (stageNum >= 9) postMinibossWaves = 5;
+            if (stageNum >= 6)
+                postMinibossWaves = 4;
+            if (stageNum >= 9)
+                postMinibossWaves = 5;
 
             int waveIdx = 1;
 
             // Pre-Miniboss Mob Waves
             for (int i = 0; i < preMinibossWaves; i++) {
-                cfg.waves.add(generateMobWave("wave_" + waveIdx, waveIdx, stageNum, monsterList, eliteList, hpMultiplier, dmgMultiplier, rng));
+                cfg.waves.add(generateMobWave("wave_" + waveIdx, waveIdx, stageNum, monsterList, eliteList, rng));
                 waveIdx++;
             }
 
-            // Miniboss Wave
+            // Miniboss Wave (Dramatic cosmetic level: +10 above stage base)
+            int mbLevel = stageBaseLevel + 10 + (stageNum * 2);
             String mbId = "gen_miniboss_stage_" + stageNum;
-            createAndRegisterDynamicMiniboss(mbId, minibossList.get(rng.nextInt(minibossList.size())), minibossHp, stageNum, rng);
-            cfg.waves.add(generateBossWave("wave_" + waveIdx + "_miniboss", mbId, stageNum));
+            createAndRegisterDynamicMiniboss(mbId, minibossList.get(rng.nextInt(minibossList.size())), minibossHp,
+                    stageNum, rng);
+            cfg.waves.add(generateBossWave("wave_" + waveIdx + "_miniboss", mbId, stageNum, mbLevel));
             waveIdx++;
 
             // Post-Miniboss Mob Waves
             for (int i = 0; i < postMinibossWaves; i++) {
-                cfg.waves.add(generateMobWave("wave_" + waveIdx, waveIdx, stageNum, monsterList, eliteList, hpMultiplier, dmgMultiplier, rng));
+                cfg.waves.add(generateMobWave("wave_" + waveIdx, waveIdx, stageNum, monsterList, eliteList, rng));
                 waveIdx++;
             }
 
-            // Boss Wave
+            // Boss Wave (Dramatic cosmetic level: e.g. Stage 5 = Lv 75, Stage 10 = Lv 150)
+            int bossLevel = stageBaseLevel + 15 + (stageNum * 8);
             String bossId = "gen_boss_stage_" + stageNum;
             createAndRegisterDynamicBoss(bossId, chosenBoss, bossHp, stageNum, rng);
-            cfg.waves.add(generateBossWave("wave_" + waveIdx + "_boss", bossId, stageNum));
+            cfg.waves.add(generateBossWave("wave_" + waveIdx + "_boss", bossId, stageNum, bossLevel));
         }
 
         return cfg;
     }
 
-    private static List<String> filterMobsForElements(Map<String, ClassificationManager.MobData> dataMap, List<ElementType> elements, String category) {
+    private static List<String> filterMobsForElements(Map<String, ClassificationManager.MobData> dataMap,
+            List<ElementType> elements, String category) {
         List<String> result = new ArrayList<>();
         for (Map.Entry<String, ClassificationManager.MobData> entry : dataMap.entrySet()) {
             ClassificationManager.MobData data = entry.getValue();
-            if (data.excluded) continue;
-            if (!category.equalsIgnoreCase(data.category)) continue;
+            if (data.excluded)
+                continue;
+            if (!category.equalsIgnoreCase(data.category))
+                continue;
 
             if (elements != null && !elements.isEmpty()) {
                 ElementType mobElem = MobElementConfig.getElementFor(entry.getKey());
-                if (mobElem == null || !elements.contains(mobElem)) continue;
+                if (mobElem == null || !elements.contains(mobElem))
+                    continue;
             }
 
             result.add(entry.getKey());
@@ -250,7 +284,8 @@ public class RandomStageGenerator {
         return result;
     }
 
-    private static WaveConfig generateMobWave(String id, int waveIdx, int stageNum, List<String> monsters, List<String> elites, double hpMult, double dmgMult, Random rng) {
+    private static WaveConfig generateMobWave(String id, int waveIdx, int stageNum, List<String> monsters,
+            List<String> elites, Random rng) {
         WaveConfig wave = new WaveConfig();
         wave.id = id;
         wave.time_limit_ticks = 2400 + (waveIdx * 300);
@@ -259,17 +294,20 @@ public class RandomStageGenerator {
 
         int totalCount = (stageNum == 1) ? (4 + waveIdx * 2) : (8 + (stageNum * 3) + (waveIdx * 2));
 
-        // Mob level scaling: Stage 1 = Lv. 5 base, Stage 2+ = Lv. 10 base, scaling +5 per stage and +0.5 per wave
+        // Mob level scaling: Stage 1 = Lv. 5 base, Stage 2+ = Lv. 10 base, scaling +5
+        // per stage and +0.5 per wave
         int stageBaseLevel = (stageNum == 1) ? 5 : (10 + (stageNum - 1) * 5);
         int mobLevel = stageBaseLevel + (waveIdx / 2);
-        int eliteLevel = stageBaseLevel + (waveIdx / 2) + 2;
+
+        // Elite count: 15% rounded up (minimum 1 if elites available)
+        int eliteTotalCount = !elites.isEmpty() ? Math.max(1, (int) Math.ceil(totalCount * 0.15)) : 0;
+        int monsterTotalCount = totalCount - eliteTotalCount;
 
         // 1. Varied Regular Monster Entries (2 to 4 different monster types per wave)
         int monsterVariety = Math.min(monsters.size(), 2 + rng.nextInt(3));
         List<String> selectedMonsters = new ArrayList<>(monsters);
         Collections.shuffle(selectedMonsters, rng);
 
-        int monsterTotalCount = (int) (totalCount * 0.70); // 70% of total wave count
         int perMonsterCount = Math.max(1, monsterTotalCount / monsterVariety);
 
         for (int i = 0; i < monsterVariety; i++) {
@@ -280,30 +318,30 @@ public class RandomStageGenerator {
             monsterEntry.formation = (i % 2 == 0) ? "arc" : "random";
             monsterEntry.distance_min = 6 + (i * 2);
             monsterEntry.distance_max = 14 + (i * 2);
-            monsterEntry.hp_multiplier = hpMult;
-            monsterEntry.damage_multiplier = dmgMult;
+            monsterEntry.hp_multiplier = 1.0;
+            monsterEntry.damage_multiplier = 1.0;
             wave.mobs.add(monsterEntry);
         }
 
-        // 2. Varied Elite Entries (1 to 2 different elite types per wave if elites available)
-        if (!elites.isEmpty()) {
+        // 2. Varied Elite Entries (1 to 2 different elite types per wave if elites
+        // available)
+        if (!elites.isEmpty() && eliteTotalCount > 0) {
             int eliteVariety = Math.min(elites.size(), 1 + rng.nextInt(2));
             List<String> selectedElites = new ArrayList<>(elites);
             Collections.shuffle(selectedElites, rng);
 
-            int eliteTotalCount = Math.max(1, (int) (totalCount * 0.30)); // 30% of total wave count
             int perEliteCount = Math.max(1, eliteTotalCount / eliteVariety);
 
             for (int i = 0; i < eliteVariety; i++) {
                 MobSpawnEntry eliteEntry = new MobSpawnEntry();
                 eliteEntry.type = selectedElites.get(i);
                 eliteEntry.count = perEliteCount;
-                eliteEntry.level = eliteLevel;
+                eliteEntry.level = mobLevel; // Elites use same level as normal mobs
                 eliteEntry.formation = "arc";
                 eliteEntry.distance_min = 12;
                 eliteEntry.distance_max = 20;
-                eliteEntry.hp_multiplier = hpMult * 1.5;
-                eliteEntry.damage_multiplier = dmgMult * 1.2;
+                eliteEntry.hp_multiplier = 1.0;
+                eliteEntry.damage_multiplier = 1.0;
                 wave.mobs.add(eliteEntry);
             }
         }
@@ -311,7 +349,7 @@ public class RandomStageGenerator {
         return wave;
     }
 
-    private static WaveConfig generateBossWave(String id, String bossId, int stageNum) {
+    private static WaveConfig generateBossWave(String id, String bossId, int stageNum, int level) {
         WaveConfig wave = new WaveConfig();
         wave.id = id;
         wave.time_limit_ticks = 54000; // 45 minutes for boss
@@ -321,14 +359,14 @@ public class RandomStageGenerator {
         MobSpawnEntry bossEntry = new MobSpawnEntry();
         bossEntry.is_boss = true;
         bossEntry.boss_id = bossId;
+        bossEntry.level = level;
         wave.mobs.add(bossEntry);
 
         wave.rewards = new WaveRewardConfig();
         wave.rewards.xp = (int) (500 * Math.pow(stageNum, 1.4));
         wave.rewards.commands = List.of(
                 "givecrate @a random all rare 1",
-                "givecrate @a random all uncommon " + Math.min(5, stageNum)
-        );
+                "givecrate @a random all uncommon " + Math.min(5, stageNum));
         wave.rewards.items = new ArrayList<>();
 
         return wave;
@@ -369,14 +407,19 @@ public class RandomStageGenerator {
     }
 
     private static int getActiveSkillCountForStage(int stage) {
-        if (stage <= 2) return 2;
-        if (stage <= 4) return 3;
-        if (stage <= 6) return 4;
-        if (stage <= 8) return 5;
+        if (stage <= 2)
+            return 2;
+        if (stage <= 4)
+            return 3;
+        if (stage <= 6)
+            return 4;
+        if (stage <= 8)
+            return 5;
         return 6;
     }
 
-    private static void createAndRegisterDynamicBoss(String bossId, String baseEntity, float hp, int stageNum, Random rng) {
+    private static void createAndRegisterDynamicBoss(String bossId, String baseEntity, float hp, int stageNum,
+            Random rng) {
         float poise = calculatePoise(hp);
         int skillCount = getActiveSkillCountForStage(stageNum);
         List<GenericSkillRegistry.SkillInfo> skills = GenericSkillRegistry.getRandomActives(rng, skillCount);
@@ -412,7 +455,8 @@ public class RandomStageGenerator {
         ModBosses.register(builder.build());
     }
 
-    private static void createAndRegisterDynamicMiniboss(String mbId, String baseEntity, float hp, int stageNum, Random rng) {
+    private static void createAndRegisterDynamicMiniboss(String mbId, String baseEntity, float hp, int stageNum,
+            Random rng) {
         float poise = calculatePoise(hp);
         int skillCount = Math.max(1, getActiveSkillCountForStage(stageNum) - 2);
         List<GenericSkillRegistry.SkillInfo> skills = GenericSkillRegistry.getRandomActives(rng, skillCount);
@@ -453,7 +497,8 @@ public class RandomStageGenerator {
     }
 
     /**
-     * Generates a test StageConfig with a single Zombie Boss using Lightning Lance on a 10s cooldown.
+     * Generates a test StageConfig with a single Zombie Boss using Lightning Lance
+     * on a 10s cooldown.
      */
     public static StageConfig generateTestZombieStage() {
         StageConfig cfg = new StageConfig();
@@ -470,7 +515,7 @@ public class RandomStageGenerator {
                 .baseEntity("minecraft:zombie")
                 .baseStats(stats -> stats.health(2000.0f).speed(0.25f).damage(10.0f))
                 .maxPoise(300.0f)
-                .addGlobalPassive(new com.nhatbh.basedefensev2.boss.impl.generic.OverclockPassive());
+                .addGlobalPassive(new com.nhatbh.basedefensev2.boss.impl.generic.passive.overclock.OverclockPassive());
 
         // Phase 1: 100% HP
         builder.phase(1, phase -> {
@@ -527,7 +572,8 @@ public class RandomStageGenerator {
     }
 
     /**
-     * Generates a test StageConfig where each wave spawns one registered Boss/Miniboss from ModBosses.
+     * Generates a test StageConfig where each wave spawns one registered
+     * Boss/Miniboss from ModBosses.
      */
     public static StageConfig generateGauntletStage() {
         StageConfig cfg = new StageConfig();

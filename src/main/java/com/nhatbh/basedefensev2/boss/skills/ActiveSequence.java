@@ -2,7 +2,6 @@ package com.nhatbh.basedefensev2.boss.skills;
 import com.nhatbh.basedefensev2.elemental.ElementType;
 import net.minecraft.world.phys.Vec3;
 
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
 
 import java.util.ArrayList;
 import java.util.List;

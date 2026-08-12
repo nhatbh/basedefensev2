@@ -25,7 +25,8 @@ public class GravitonSingularitySkill {
                     ctx.boss().level().playSound(null, ctx.boss().getX(), ctx.boss().getY(), ctx.boss().getZ(),
                             SoundEvents.GENERIC_EXPLODE, SoundSource.HOSTILE, 3.0f, 1.2f);
                     if (ctx.boss().level() instanceof ServerLevel level) {
-                        level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, ctx.boss().getX(), ctx.boss().getY() + 1, ctx.boss().getZ(), 10, 0.5, 0.5, 0.5, 0);
+                        level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, ctx.boss().getX(), ctx.boss().getY() + 1,
+                                ctx.boss().getZ(), 10, 0.5, 0.5, 0.5, 0);
                     }
                     ctx.applyExhaustion(200); // Heavy stun
                     ctx.stopSequence();
@@ -53,7 +54,7 @@ public class GravitonSingularitySkill {
                         for (Player player : players) {
                             Vec3 pullDir = center.subtract(player.position()).normalize();
                             double dist = player.distanceTo(ctx.boss());
-                            if (dist > 3.0) { 
+                            if (dist > 3.0) {
                                 double pullStrength = 0.2;
                                 player.setDeltaMovement(player.getDeltaMovement().add(pullDir.scale(pullStrength)));
                                 player.hurtMarked = true;
@@ -70,7 +71,8 @@ public class GravitonSingularitySkill {
                     ctx.boss().level().playSound(null, ctx.boss().getX(), ctx.boss().getY(), ctx.boss().getZ(),
                             SoundEvents.GENERIC_EXPLODE, SoundSource.HOSTILE, 3.0f, 1.2f);
                     if (ctx.boss().level() instanceof ServerLevel level) {
-                        level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, ctx.boss().getX(), ctx.boss().getY() + 1, ctx.boss().getZ(), 10, 0.5, 0.5, 0.5, 0);
+                        level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, ctx.boss().getX(), ctx.boss().getY() + 1,
+                                ctx.boss().getZ(), 10, 0.5, 0.5, 0.5, 0);
                     }
                     ctx.applyExhaustion(200);
                     ctx.stopSequence();
@@ -86,7 +88,8 @@ public class GravitonSingularitySkill {
                         Vec3 center = ctx.boss().position().add(0, 1, 0);
                         // Intense condensing visuals
                         level.sendParticles(ParticleTypes.PORTAL, center.x, center.y, center.z, 40, 0.2, 0.2, 0.2, 0.5);
-                        level.sendParticles(ParticleTypes.REVERSE_PORTAL, center.x, center.y, center.z, 20, 1.0, 1.0, 1.0, 1.0);
+                        level.sendParticles(ParticleTypes.REVERSE_PORTAL, center.x, center.y, center.z, 20, 1.0, 1.0,
+                                1.0, 1.0);
                     }
                 })
 
@@ -105,7 +108,8 @@ public class GravitonSingularitySkill {
                         ParticleUtils.renderCircle(level, ParticleTypes.SWEEP_ATTACK, pos, radius, 32, 0);
                         ParticleUtils.renderCircle(level, ParticleTypes.EXPLOSION, pos, radius * 0.5, 16, 0);
 
-                        List<net.minecraft.world.entity.player.Player> targets = HitboxUtils.getEntitiesInCircle(level, net.minecraft.world.entity.player.Player.class, pos,
+                        List<net.minecraft.world.entity.player.Player> targets = HitboxUtils.getEntitiesInCircle(level,
+                                net.minecraft.world.entity.player.Player.class, pos,
                                 radius,
                                 e -> e.isAlive());
 

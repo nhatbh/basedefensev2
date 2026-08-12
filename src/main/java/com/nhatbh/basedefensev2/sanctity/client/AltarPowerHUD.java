@@ -13,7 +13,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 /**
- * Renders the Altar's Sanctity and Grace at the right-middle of the screen.
+ * Renders the Altar's Sanctity (Hearts / Lives) and Grace (Energy Bar) at the bottom-left of the screen.
  * Data is supplied by {@link ClientSanctityData}, which is updated by
  * {@link com.nhatbh.basedefensev2.sanctity.network.SanctitySyncPacket}.
  */
@@ -24,15 +24,11 @@ public class AltarPowerHUD {
     private static final int BAR_HEIGHT   = 6;
     private static final int MARGIN_LEFT   = 10;
     private static final int MARGIN_BOTTOM = 10;
-    private static final int BAR_SPACING  = 2; // Space between the two bars
 
     // ── Text cache ───────────────────────────────────────────────────────────
 
-    private static String cachedSanctityText = "";
-    private static String cachedGraceText    = "";
-
-    private static int cachedSanctityTextWidth = 0;
-    private static int cachedGraceTextWidth    = 0;
+    private static String cachedGraceText = "";
+    private static int cachedGraceTextWidth = 0;
 
     // ── State trackers ───────────────────────────────────────────────────────
 
@@ -63,49 +59,13 @@ public class AltarPowerHUD {
         // Calculate positions for bottom-left screen alignment
         int startX = MARGIN_LEFT;
         int graceBarY = height - MARGIN_BOTTOM - BAR_HEIGHT;
-        int sanctityBarY = graceBarY - BAR_HEIGHT - BAR_SPACING;
+        int heartsY = graceBarY - 14;
 
-        // Render Bars
-        renderHorizontalBar(graphics, mc, startX, sanctityBarY, lastSanctity, lastMaxSanctity, 0xFFFF3333, cachedSanctityText, cachedSanctityTextWidth); // Red
-        renderHorizontalBar(graphics, mc, startX, graceBarY, (float)lastGrace, (float)lastMaxGrace, 0xFF3333FF, cachedGraceText, cachedGraceTextWidth);       // Blue
+        // Render Hearts for Sanctity Lives
+        renderSanctityHearts(graphics, mc, startX, heartsY, lastSanctity, lastMaxSanctity);
 
-        // Render Retry Tracker text above Sanctity bar
-        int retriesUsed = ClientSanctityData.getRetriesUsed();
-        int maxRetries = ClientSanctityData.getMaxWorldRetries();
-        if (maxRetries > 0) {
-            double boost = Math.min(com.nhatbh.basedefensev2.config.SanctityConfig.data.maxRetryMobStatBoost, retriesUsed * com.nhatbh.basedefensev2.config.SanctityConfig.data.retryMobStatMultiplier);
-            int threatPct = (int) Math.round(boost * 100.0);
-
-            StringBuilder sb = new StringBuilder();
-            if (maxRetries >= 100) {
-                // Unlimited retries mode
-                if (retriesUsed > 0) {
-                    sb.append("↺ Retries: ").append(retriesUsed);
-                }
-            } else {
-                int livesRemaining = Math.max(0, maxRetries - retriesUsed);
-                for (int i = 0; i < livesRemaining; i++) {
-                    sb.append("❤");
-                }
-                if (livesRemaining == 0) {
-                    sb.append("💔");
-                }
-            }
-
-            if (threatPct > 0) {
-                sb.append(" §c+").append(threatPct).append("%");
-            }
-
-            String retryText = sb.toString();
-
-            if (!retryText.isEmpty()) {
-                graphics.pose().pushPose();
-                graphics.pose().translate(startX, sanctityBarY - 9, 0);
-                graphics.pose().scale(0.7f, 0.7f, 0.7f);
-                graphics.drawString(mc.font, retryText, 0, 0, 0xFFFF4444, true);
-                graphics.pose().popPose();
-            }
-        }
+        // Render Grace Bar (Blue)
+        renderHorizontalBar(graphics, mc, startX, graceBarY, (float) lastGrace, (float) lastMaxGrace, 0xFF3333FF, cachedGraceText, cachedGraceTextWidth);
     }
 
     // ── Cache update ─────────────────────────────────────────────────────────
@@ -116,26 +76,48 @@ public class AltarPowerHUD {
         double grace    = ClientSanctityData.getGrace();
         int maxGrace    = ClientSanctityData.getMaxGrace();
 
-        if (sanctity != lastSanctity || maxSanctity != lastMaxSanctity) {
-            lastSanctity    = sanctity;
-            lastMaxSanctity = maxSanctity;
-            cachedSanctityText = sanctity + "/" + maxSanctity;
-            cachedSanctityTextWidth = mc.font.width(cachedSanctityText);
-        }
+        lastSanctity    = sanctity;
+        lastMaxSanctity = maxSanctity;
 
         if (Math.abs(grace - lastGrace) > 0.01 || maxGrace != lastMaxGrace) {
             lastGrace    = grace;
             lastMaxGrace = maxGrace;
-            cachedGraceText = (int)grace + "/" + maxGrace;
+            cachedGraceText = (int) grace + "/" + maxGrace;
             cachedGraceTextWidth = mc.font.width(cachedGraceText);
         }
     }
 
-    // ── Vertical Progress Bar ────────────────────────────────────────────────
+    // ── Hearts Rendering ─────────────────────────────────────────────────────
 
     /**
-     * Renders a horizontal bar that fills from LEFT to RIGHT.
+     * Renders Sanctity as a row of Heart icons with current/max life counter.
      */
+    private static void renderSanctityHearts(GuiGraphics graphics, Minecraft mc, int x, int y, int currentLives, int maxLives) {
+        if (maxLives <= 0) return;
+
+        RenderSystem.enableBlend();
+
+        // Label header (e.g. "SANCTITY 10/10")
+        String label = "§f§lSANCTITY §c" + currentLives + "§7/" + maxLives;
+        graphics.drawString(mc.font, label, x, y - 9, 0xFFFFFF, true);
+
+        // Build heart row string (e.g. §c❤ §c❤ §c❤ §8❤ §8❤)
+        StringBuilder heartsStr = new StringBuilder();
+        for (int i = 0; i < maxLives; i++) {
+            if (i < currentLives) {
+                heartsStr.append("§c❤ ");
+            } else {
+                heartsStr.append("§8❤ ");
+            }
+        }
+
+        graphics.drawString(mc.font, heartsStr.toString().trim(), x, y + 1, 0xFFFFFF, true);
+
+        RenderSystem.disableBlend();
+    }
+
+    // ── Horizontal Progress Bar (For Grace) ──────────────────────────────────
+
     private static void renderHorizontalBar(GuiGraphics graphics, Minecraft mc, int x, int y, float current, float max, int color, String text, int textWidth) {
         if (max <= 0) return;
 
@@ -145,26 +127,26 @@ public class AltarPowerHUD {
 
         RenderSystem.enableBlend();
 
-        // Background (semi-transparent black)
+        // Background
         graphics.fill(x, y, x + BAR_WIDTH, y + BAR_HEIGHT, 0x99000000);
 
-        // Fill - Anchored to the LEFT
+        // Fill
         if (filledWidth > 0) {
             graphics.fill(x, y, x + filledWidth, y + BAR_HEIGHT, color);
         }
 
-        // Draw text inside (centered horizontally and vertically, scaled down)
+        // Text
         graphics.pose().pushPose();
         graphics.pose().translate(x + BAR_WIDTH / 2f, y + BAR_HEIGHT / 2f, 0);
         graphics.pose().scale(0.45f, 0.45f, 0.45f);
-        graphics.drawString(mc.font, text, (int)(-textWidth / 2f), -4, 0xFFFFFF, true);
+        graphics.drawString(mc.font, text, (int) (-textWidth / 2f), -4, 0xFFFFFF, true);
         graphics.pose().popPose();
 
-        // Border (subtle grey/white outline)
-        graphics.fill(x,               y,                  x + BAR_WIDTH, y + 1,              0x44FFFFFF); // Top
-        graphics.fill(x,               y + BAR_HEIGHT - 1, x + BAR_WIDTH, y + BAR_HEIGHT,     0x44FFFFFF); // Bottom
-        graphics.fill(x,               y,                  x + 1,         y + BAR_HEIGHT,     0x44FFFFFF); // Left
-        graphics.fill(x + BAR_WIDTH-1, y,                  x + BAR_WIDTH, y + BAR_HEIGHT,     0x44FFFFFF); // Right
+        // Border
+        graphics.fill(x,               y,                  x + BAR_WIDTH, y + 1,              0x44FFFFFF);
+        graphics.fill(x,               y + BAR_HEIGHT - 1, x + BAR_WIDTH, y + BAR_HEIGHT,     0x44FFFFFF);
+        graphics.fill(x,               y,                  x + 1,         y + BAR_HEIGHT,     0x44FFFFFF);
+        graphics.fill(x + BAR_WIDTH-1, y,                  x + BAR_WIDTH, y + BAR_HEIGHT,     0x44FFFFFF);
 
         RenderSystem.disableBlend();
     }

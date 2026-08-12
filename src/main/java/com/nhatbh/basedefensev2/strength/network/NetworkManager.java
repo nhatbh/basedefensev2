@@ -14,7 +14,11 @@ public class NetworkManager {
             PROTOCOL_VERSION::equals
     );
 
-    public static void register() {
+    private static boolean REGISTERED = false;
+
+    public static synchronized void register() {
+         if (REGISTERED) return;
+         REGISTERED = true;
          int id = 0;
          INSTANCE.registerMessage(id++, EntityStrengthSyncPacket.class,
                  EntityStrengthSyncPacket::toBytes,

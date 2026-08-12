@@ -7,13 +7,9 @@ import io.redspace.ironsspellbooks.api.spells.CastSource;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
-
-import java.util.Map;
-import java.util.WeakHashMap;
 
 /**
  * Direct Iron's Spells API wrapper for boss spell casting.

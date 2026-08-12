@@ -255,8 +255,9 @@ public class BossOverheadWorldRenderer {
 
         int light = MC.getEntityRenderDispatcher().getPackedLightCoords(boss, event.getPartialTick());
 
-        // HP text (left-aligned): §c❤ 450/1000
-        String hpText = "§c❤ " + (int) hp + "/" + (int) maxHp;
+        // HP text (left-aligned): §c❤ 450/1000 §b[SUPPRESSED]
+        String suppressionTag = (com.nhatbh.basedefensev2.registry.ModEffects.SUPPRESSION.isPresent() && boss.hasEffect(com.nhatbh.basedefensev2.registry.ModEffects.SUPPRESSION.get())) ? " §b[SUPPRESSED]" : "";
+        String hpText = "§c❤ " + (int) hp + "/" + (int) maxHp + suppressionTag;
         pose.pushPose();
         pose.translate(left, textY, 0);
         pose.scale(textScale, textScale, textScale);

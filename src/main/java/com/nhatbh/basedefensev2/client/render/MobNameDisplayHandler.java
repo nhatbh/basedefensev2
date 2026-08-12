@@ -5,6 +5,7 @@ import com.nhatbh.basedefensev2.boss.core.BossManager;
 import com.nhatbh.basedefensev2.elemental.ElementType;
 import com.nhatbh.basedefensev2.elemental.MobElementService;
 import com.nhatbh.basedefensev2.level.MobLevelData;
+import com.nhatbh.basedefensev2.registry.ModEffects;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -76,7 +77,10 @@ public class MobNameDisplayHandler {
             }
         }
 
-        MutableComponent formattedName = Component.literal(levelPrefix + elementIcon + hpString + poiseString);
+        // 5. Suppression Display (§b[SUPPRESSED] cyan tag)
+        String suppressionTag = (ModEffects.SUPPRESSION.isPresent() && living.hasEffect(ModEffects.SUPPRESSION.get())) ? " §b[SUPPRESSED]" : "";
+
+        MutableComponent formattedName = Component.literal(levelPrefix + elementIcon + hpString + poiseString + suppressionTag);
 
         event.setContent(formattedName);
         event.setResult(Event.Result.ALLOW);

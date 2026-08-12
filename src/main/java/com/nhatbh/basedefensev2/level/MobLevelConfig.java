@@ -1,9 +1,6 @@
 package com.nhatbh.basedefensev2.level;
 
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.ai.attributes.Attribute;
-import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.*;
 
@@ -20,7 +17,6 @@ public class MobLevelConfig {
 
     // World Level Overworld Scaling Arrays (Index = World Level 0..10)
     public static final int[] OVERWORLD_BASE_LEVELS = new int[]{1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50};
-    public static final int[] MOB_LEVEL_CAPS = new int[]{15, 30, 50, 70, 95, 125, 160, 200, 245, 295, 350};
 
     public static int getOverworldBaseLevel(int worldLevel) {
         if (worldLevel < 0) return OVERWORLD_BASE_LEVELS[0];
@@ -28,14 +24,6 @@ public class MobLevelConfig {
             return OVERWORLD_BASE_LEVELS[OVERWORLD_BASE_LEVELS.length - 1] + (worldLevel - OVERWORLD_BASE_LEVELS.length + 1) * 5;
         }
         return OVERWORLD_BASE_LEVELS[worldLevel];
-    }
-
-    public static int getMobLevelCap(int worldLevel) {
-        if (worldLevel < 0) return MOB_LEVEL_CAPS[0];
-        if (worldLevel >= MOB_LEVEL_CAPS.length) {
-            return MOB_LEVEL_CAPS[MOB_LEVEL_CAPS.length - 1] + (worldLevel - MOB_LEVEL_CAPS.length + 1) * 60;
-        }
-        return MOB_LEVEL_CAPS[worldLevel];
     }
 
     // ["Default levelling settings"]
@@ -47,6 +35,26 @@ public class MobLevelConfig {
     public static double LEVEL_BONUS_PER_DAY = 0.0;
     public static double LEVEL_POWER_PER_DISTANCE = 0.0;
     public static double LEVEL_POWER_PER_DEEPNESS = 0.0;
+
+    // Stat Scaling Curve Settings (Linear up to threshold level, curved after)
+    public static int STAT_CURVE_THRESHOLD_LEVEL = 70;
+    public static double STAT_CURVE_EXPONENT = 2.0;
+    public static double STAT_CURVE_ACCELERATION = 0.04;
+
+    /**
+     * Calculates the effective level bonus multiplier for mob attribute scaling.
+     * Up to level 70 (STAT_CURVE_THRESHOLD_LEVEL), scaling remains linear (level - 1).
+     * Above level 70, stat gains curve upward sharply based on extra levels.
+     */
+    public static double getLevelBonusMultiplier(int level) {
+        if (level <= 1) return 0.0;
+        if (level <= STAT_CURVE_THRESHOLD_LEVEL) {
+            return level - 1;
+        }
+        double extra = level - STAT_CURVE_THRESHOLD_LEVEL;
+        double baseBonus = STAT_CURVE_THRESHOLD_LEVEL - 1;
+        return baseBonus + extra + STAT_CURVE_ACCELERATION * Math.pow(extra, STAT_CURVE_EXPONENT);
+    }
 
     // Dimension level modifiers / multipliers / fixed offsets
     public static class DimensionSetting {

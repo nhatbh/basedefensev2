@@ -2,7 +2,6 @@ package com.nhatbh.basedefensev2.stage.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.nhatbh.basedefensev2.BaseDefenseMod;
-import com.nhatbh.basedefensev2.boss.client.BossInfoHUD;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraftforge.api.distmarker.Dist;
@@ -57,7 +56,7 @@ public class WaveDefenseHUD {
         updateCaches();
 
         int startX = MARGIN_LEFT;
-        int currentY = BossInfoHUD.getBottomY() + 4;
+        int currentY = 28;
 
         if (!ClientStageData.isActive()) {
             if (ClientStageData.getIdleTicks() >= 0 && !cachedIdleText.isEmpty()) {

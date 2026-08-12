@@ -9,8 +9,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Brightness;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -18,7 +16,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -202,7 +199,7 @@ public class ShockwaveEffect {
 
         // Check for Stone Spikes at this expanding ring position
         if (sourceBoss != null) {
-            com.nhatbh.basedefensev2.boss.impl.generic.TitansMantleController controller = com.nhatbh.basedefensev2.boss.impl.generic.TitansMantleEventHandler.getController(sourceBoss);
+            com.nhatbh.basedefensev2.boss.impl.generic.passive.titansmantle.TitansMantleController controller = com.nhatbh.basedefensev2.boss.impl.generic.passive.titansmantle.TitansMantleEventHandler.getController(sourceBoss);
             if (controller != null) {
                 controller.getSpikeManager().checkAndShatterInRadius(new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5), 1.0);
             }
@@ -217,8 +214,8 @@ public class ShockwaveEffect {
                 float damage = (entity.getMaxHealth() * 0.20f) + 6.0f;
                 entity.hurt(level.damageSources().mobAttack(sourceBoss != null ? sourceBoss : entity), damage);
 
-                // Apply Heavy Footing
-                com.nhatbh.basedefensev2.effects.HeavyFootingEffect.addStage(entity, 200, "Hit by Ground Shockwave Ripple");
+                // Apply Slowness II
+                entity.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.MOVEMENT_SLOWDOWN, 200, 1, false, true));
 
                 // Calculate direction pointing outward away from the center of the earthquake
                 double dx = entity.getX() - (center.getX() + 0.5);

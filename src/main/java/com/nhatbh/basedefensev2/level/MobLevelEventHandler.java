@@ -61,8 +61,8 @@ public class MobLevelEventHandler {
     }
 
     public static void applyAttributeBonuses(LivingEntity entity, int level) {
-        if (level <= 1) return;
-        int levelBonusMultiplier = level - 1;
+        if (level <= 1 || com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity)) return;
+        double levelBonusMultiplier = MobLevelConfig.getLevelBonusMultiplier(level);
 
         for (Map.Entry<String, Double> entry : MobLevelConfig.ATTRIBUTE_BONUSES.entrySet()) {
             ResourceLocation attrLoc = ResourceLocation.tryParse(entry.getKey());
@@ -101,7 +101,7 @@ public class MobLevelEventHandler {
         if (entity != null && !entity.level().isClientSide) {
             int level = MobLevelData.getLevel(entity);
             if (level > 1 && MobLevelConfig.BONUS_XP_PER_LEVEL > 0) {
-                float xpMultiplier = 1.0f + (level - 1) * MobLevelConfig.BONUS_XP_PER_LEVEL;
+                float xpMultiplier = 1.0f + (float) (MobLevelConfig.getLevelBonusMultiplier(level) * MobLevelConfig.BONUS_XP_PER_LEVEL);
                 event.setDroppedExperience(Math.round(event.getOriginalExperience() * xpMultiplier));
             }
         }

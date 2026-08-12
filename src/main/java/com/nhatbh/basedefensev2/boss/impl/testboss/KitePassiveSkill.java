@@ -19,21 +19,24 @@ public class KitePassiveSkill implements PassiveSkill {
 
     @Override
     public void tick(LivingEntity boss) {
-        if (boss.level().isClientSide) return;
+        if (boss.level().isClientSide)
+            return;
 
         LivingEntity target = null;
         if (boss instanceof Mob mob) {
             target = mob.getTarget();
         }
 
-        if (target == null) return;
+        if (target == null)
+            return;
 
         double distSq = boss.distanceToSqr(target);
         double minDistSq = minDistance * minDistance;
         double maxDistSq = maxDistance * maxDistance;
 
         Entity mover = boss.getVehicle() != null ? boss.getVehicle() : boss;
-        if (mover == null) return;
+        if (mover == null)
+            return;
         Vec3 toTarget = target.position().subtract(boss.position()).normalize();
 
         if (distSq < minDistSq) {

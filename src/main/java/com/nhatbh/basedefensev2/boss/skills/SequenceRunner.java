@@ -175,6 +175,9 @@ public class SequenceRunner {
         // 3. Original Parry Logic (Simple damage negation if step.isParry is true)
         // This is separate from the new Counter system for backward compatibility
         if (isMelee && step.isParry) {
+            if (event.getSource().getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker) {
+                com.nhatbh.basedefensev2.effects.RiposteEffect.applyTo(attacker);
+            }
             context.interrupt();
             event.setAmount(0);
             event.setAmount(0);
@@ -204,6 +207,7 @@ public class SequenceRunner {
 
         // Interruptible Dash - Staggers the boss if parried (Count as a guard counter)
         if (step.isInterruptibleDash && event.isParry()) {
+            com.nhatbh.basedefensev2.effects.RiposteEffect.applyTo(player);
             context.stopSequence();
 
             if (step.onDashParried != null) {
@@ -285,6 +289,9 @@ public class SequenceRunner {
     }
 
     private void triggerCounter(LivingDamageEvent event, ActiveSequence.Step step) {
+        if (event.getSource().getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker) {
+            com.nhatbh.basedefensev2.effects.RiposteEffect.applyTo(attacker);
+        }
         context.stopSequence();
         context.setAllSkillsCooldown(600); // 10 seconds (200 ticks) of no skills
         event.setAmount(event.getAmount() * 1.5f); // Bonus damage for counter

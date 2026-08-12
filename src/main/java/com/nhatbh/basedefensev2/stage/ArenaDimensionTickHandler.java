@@ -89,11 +89,14 @@ public class ArenaDimensionTickHandler {
             return;
         }
 
-        // Enforce barrier on all living entities (mobs, bosses, pets, npcs, etc.) in the arena level
+        // Enforce barrier on all living entities in the arena level
+        boolean checkMobs = level.getGameTime() % 10 == 0;
         for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
             if (entity instanceof net.minecraft.world.entity.LivingEntity living) {
-                if (living instanceof ServerPlayer sp && sp.isSpectator()) {
-                    continue; // Allow spectators to observe outside
+                if (living instanceof ServerPlayer sp) {
+                    if (sp.isSpectator()) continue; // Allow spectators to observe outside
+                } else if (!checkMobs) {
+                    continue; // Check non-player mobs every 10 ticks
                 }
 
                 double x = living.getX();
@@ -134,8 +137,6 @@ public class ArenaDimensionTickHandler {
             stageRemTicks = Math.max(0, ctx.getActiveConfig().warmup_ticks - ctx.getStageTicks());
         } else if (ctx.getStageState() == com.nhatbh.basedefensev2.stage.core.StageState.SCAVENGE) {
             stageRemTicks = Math.max(0, ctx.getActiveConfig().scavenge_duration_ticks - ctx.getStageTicks());
-        } else if (ctx.getStageState() == com.nhatbh.basedefensev2.stage.core.StageState.RETRY_INTERMISSION) {
-            stageRemTicks = Math.max(0, ctx.getIntermissionTicksRemaining());
         }
 
         if (ctx.getActiveConfig() != null) {

@@ -73,6 +73,10 @@ public class ArenaCommands {
                 .then(Commands.literal("vote")
                         .then(Commands.literal("yes").executes(context -> executeVoteCommand(context, true)))
                         .then(Commands.literal("no").executes(context -> executeVoteCommand(context, false))))
+                .then(Commands.literal("ff")
+                        .executes(context -> com.nhatbh.basedefensev2.sanctity.events.ForfeitManager.handleForfeitCommand(context.getSource().getPlayerOrException())))
+                .then(Commands.literal("forfeit")
+                        .executes(context -> com.nhatbh.basedefensev2.sanctity.events.ForfeitManager.handleForfeitCommand(context.getSource().getPlayerOrException())))
                 .then(Commands.literal("leave")
                         .executes(context -> {
                             ServerPlayer player = context.getSource().getPlayerOrException();
@@ -82,8 +86,8 @@ public class ArenaCommands {
 
                             StageContext ctx = StageContext.getOrCreate(arenaLevel);
 
-                            if (ctx.getStageState() != StageState.SCAVENGE && ctx.getStageState() != StageState.ENDED && ctx.getStageState() != StageState.RETRY_INTERMISSION) {
-                                context.getSource().sendFailure(Component.literal("You can only leave during the scavenging phase or intermission!"));
+                            if (ctx.isActive() && ctx.getStageState() != StageState.SCAVENGE && ctx.getStageState() != StageState.ENDED) {
+                                context.getSource().sendFailure(Component.literal("You can only leave during the scavenging phase!"));
                                 return 0;
                             }
 
@@ -190,9 +194,27 @@ public class ArenaCommands {
                 .then(Commands.literal("info")
                         .executes(context -> {
                             if (context.getSource().getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) {
+                                ServerLevel overworld = sp.getServer().overworld();
+                                ServerLevel arena = sp.getServer().getLevel(ModDimensions.ARENA);
+                                var worldData = com.nhatbh.basedefensev2.stage.generator.WorldStageSavedData.get(overworld);
+                                var stages = worldData.getAllStages();
+                                String json = new com.google.gson.Gson().toJson(stages);
+
+                                int currentStageNum = 1;
+                                if (arena != null) {
+                                    var ctx = com.nhatbh.basedefensev2.stage.core.StageContext.getOrCreate(arena);
+                                    if (ctx != null && ctx.getActiveConfig() != null) {
+                                        currentStageNum = ctx.getActiveConfig().order + 1;
+                                    }
+                                }
+
                                 com.nhatbh.basedefensev2.strength.network.NetworkManager.INSTANCE.send(
                                         net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> sp),
-                                        new com.nhatbh.basedefensev2.stage.network.OpenGuiPacket(com.nhatbh.basedefensev2.stage.network.OpenGuiPacket.GuiType.INFO)
+                                        new com.nhatbh.basedefensev2.stage.network.OpenGuiPacket(
+                                                com.nhatbh.basedefensev2.stage.network.OpenGuiPacket.GuiType.INFO,
+                                                json,
+                                                currentStageNum
+                                        )
                                 );
                             }
                             return 1;
@@ -204,6 +226,10 @@ public class ArenaCommands {
                         .requires(s -> s.hasPermission(2))
                         .then(Commands.argument("seconds", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
                                 .executes(context -> executeFastForwardCommand(context.getSource(), com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "seconds")))))
+                .then(Commands.literal("postpone")
+                        .requires(s -> s.hasPermission(2))
+                        .then(Commands.argument("seconds", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
+                                .executes(context -> executePostponeCommand(context.getSource(), com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "seconds")))))
                 .then(Commands.literal("test_wave")
                         .requires(s -> s.hasPermission(2))
                         .executes(context -> executeTestWaveCommand(context.getSource())))
@@ -361,6 +387,17 @@ public class ArenaCommands {
         return 1;
     }
 
+    private static int executePostponeCommand(CommandSourceStack source, int seconds) {
+        if (source.getServer() == null) return 0;
+        ServerLevel arenaLevel = source.getServer().getLevel(ModDimensions.ARENA);
+        if (arenaLevel == null) arenaLevel = source.getLevel();
+
+        StageContext ctx = StageContext.getOrCreate(arenaLevel);
+        ctx.postponeTimer(arenaLevel, seconds);
+        source.sendSuccess(() -> Component.literal(String.format("§6[The Rift OP] §aPostponed stage timer by %d seconds!", seconds)), true);
+        return 1;
+    }
+
     @SubscribeEvent
     public static void onRegisterStageCommand(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("stage")
@@ -382,6 +419,10 @@ public class ArenaCommands {
                         .requires(s -> s.hasPermission(2))
                         .then(Commands.argument("seconds", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
                                 .executes(context -> executeFastForwardCommand(context.getSource(), com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "seconds")))))
+                .then(Commands.literal("postpone")
+                        .requires(s -> s.hasPermission(2))
+                        .then(Commands.argument("seconds", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
+                                .executes(context -> executePostponeCommand(context.getSource(), com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "seconds")))))
         );
     }
 
@@ -391,10 +432,9 @@ public class ArenaCommands {
         com.nhatbh.basedefensev2.level.WorldLevelSavedData data = com.nhatbh.basedefensev2.level.WorldLevelSavedData.get(overworld);
         int wl = data.getWorldLevel();
         int baseLvl = com.nhatbh.basedefensev2.level.MobLevelConfig.getOverworldBaseLevel(wl);
-        int maxCap = com.nhatbh.basedefensev2.level.MobLevelConfig.getMobLevelCap(wl);
 
-        source.sendSuccess(() -> Component.literal(String.format("§6[World Level] §eCurrent World Level: §b§l%d§e | Overworld Base: §aLv. %d§e | Level Cap: §cLv. %d",
-                wl, baseLvl, maxCap)), false);
+        source.sendSuccess(() -> Component.literal(String.format("§6[World Level] §eCurrent World Level: §b§l%d§e | Overworld Base: §aLv. %d",
+                wl, baseLvl)), false);
         return 1;
     }
 
@@ -405,10 +445,9 @@ public class ArenaCommands {
         data.setWorldLevel(newLevel);
 
         int baseLvl = com.nhatbh.basedefensev2.level.MobLevelConfig.getOverworldBaseLevel(newLevel);
-        int maxCap = com.nhatbh.basedefensev2.level.MobLevelConfig.getMobLevelCap(newLevel);
 
-        source.sendSuccess(() -> Component.literal(String.format("§6[World Level OP] §aSet World Level to §b§l%d§a (Base: Lv. %d, Cap: Lv. %d)",
-                newLevel, baseLvl, maxCap)), true);
+        source.sendSuccess(() -> Component.literal(String.format("§6[World Level OP] §aSet World Level to §b§l%d§a (Base: Lv. %d)",
+                newLevel, baseLvl)), true);
         return 1;
     }
 }

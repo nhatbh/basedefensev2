@@ -17,7 +17,6 @@ import net.minecraft.server.level.ServerLevel;
 import org.slf4j.Logger;
 
 import java.io.InputStream;
-import java.io.IOException;
 
 public final class SchematicPaster {
 

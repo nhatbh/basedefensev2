@@ -1,5 +1,10 @@
 package com.nhatbh.basedefensev2.boss.impl.generic;
 
+import com.nhatbh.basedefensev2.boss.impl.generic.active.*;
+import com.nhatbh.basedefensev2.boss.impl.generic.passive.dragonsfury.DragonsFuryPassive;
+import com.nhatbh.basedefensev2.boss.impl.generic.passive.overclock.OverclockPassive;
+import com.nhatbh.basedefensev2.boss.impl.generic.passive.sunforged.SunforgedBulwarkPassive;
+import com.nhatbh.basedefensev2.boss.impl.generic.passive.titansmantle.TitansMantlePassive;
 import com.nhatbh.basedefensev2.boss.skills.ActiveSkill;
 import com.nhatbh.basedefensev2.boss.skills.PassiveSkill;
 
@@ -46,7 +51,6 @@ public class GenericSkillRegistry {
         ACTIVES.add(new SkillInfo("stone_spike", ActiveSkill.Type.TACTICAL, 500, true, StoneSpikeSkill::create));
         ACTIVES.add(new SkillInfo("storm_lance", ActiveSkill.Type.TACTICAL, 550, false, StormLanceSkill::create));
         ACTIVES.add(new SkillInfo("sword_barrage", ActiveSkill.Type.TACTICAL, 450, false, SwordBarrageSkill::create));
-        ACTIVES.add(new SkillInfo("vengeance_active", ActiveSkill.Type.TACTICAL, 800, false, VengeanceActive::create));
     }
 
     public static PassiveSkill getRandomPassive(Random random) {

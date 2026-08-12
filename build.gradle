@@ -187,8 +187,11 @@ dependencies {
     implementation fg.deobf("io.redspace:irons_spellbooks:${irons_spells_version}")
     implementation fg.deobf("com.complextalents:complextalents:1.0.0")
     implementation fg.deobf("maven.modrinth:epic-fight:${epicfight_version}")
+    // TacZ (Timeless and Classics Zero)
+    implementation fg.deobf("curse.maven:timeless-and-classics-zero-1028108:${tacz_version}")
     // Iron's Spellbooks runtime dependencies - Required for :runClient
     runtimeOnly fg.deobf("software.bernie.geckolib:geckolib-forge-${minecraft_version}:${geckolib_version}")
+    compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}:api")
     runtimeOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}")
     runtimeOnly fg.deobf("top.theillusivec4.caelus:caelus-forge:${caelus_version}")
     runtimeOnly fg.deobf("dev.kosmx.player-anim:player-animation-lib-forge:${playeranimator_version}")

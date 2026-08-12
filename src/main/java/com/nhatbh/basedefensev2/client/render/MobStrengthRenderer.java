@@ -38,7 +38,8 @@ public class MobStrengthRenderer {
                 continue;
             if (e.distanceToSqr(MC.player) > MAX_RENDER_DISTANCE_SQ)
                 continue;
-            com.nhatbh.basedefensev2.strength.EntityStrengthData data = com.nhatbh.basedefensev2.strength.EntityStrengthData.get(living);
+            com.nhatbh.basedefensev2.strength.EntityStrengthData data = com.nhatbh.basedefensev2.strength.EntityStrengthData
+                    .get(living);
             if (data != null && (data.currentStrength > 0 || data.recoveryTicks > 0)) {
                 hasAnyStrength = true;
                 break;
@@ -73,7 +74,8 @@ public class MobStrengthRenderer {
             if (e.distanceToSqr(MC.player) > MAX_RENDER_DISTANCE_SQ)
                 continue;
 
-            com.nhatbh.basedefensev2.strength.EntityStrengthData data = com.nhatbh.basedefensev2.strength.EntityStrengthData.get(living);
+            com.nhatbh.basedefensev2.strength.EntityStrengthData data = com.nhatbh.basedefensev2.strength.EntityStrengthData
+                    .get(living);
             if (data == null)
                 continue;
 

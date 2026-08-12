@@ -79,15 +79,11 @@ public class SpawnerSubsystem {
         List<UUID> uuids = new ArrayList<>();
         List<Entity> entities = new ArrayList<>();
 
-        int retriesUsed = com.nhatbh.basedefensev2.sanctity.data.AltarSavedData.get(level).getRetriesUsed();
-        double bonusBoost = Math.min(com.nhatbh.basedefensev2.config.SanctityConfig.data.maxRetryMobStatBoost, retriesUsed * com.nhatbh.basedefensev2.config.SanctityConfig.data.retryMobStatMultiplier);
-        double retryMultiplier = 1.0 + bonusBoost;
-
         for (MobSpawnEntry entry : wave.mobs) {
             if (entry.is_boss) {
-                spawnBoss(entry, level, area, uuids, entities, retryMultiplier);
+                spawnBoss(entry, level, area, uuids, entities);
             } else {
-                spawnMobs(entry, level, area, waveAngle, halfArc, uuids, entities, retryMultiplier);
+                spawnMobs(entry, level, area, waveAngle, halfArc, uuids, entities);
             }
         }
 
@@ -157,8 +153,7 @@ public class SpawnerSubsystem {
     private void spawnMobs(MobSpawnEntry entry, ServerLevel level,
             StageConfig.SpawnArea area,
             double waveAngle, double halfArc,
-            List<UUID> uuidsOut, List<Entity> entitiesOut,
-            double retryMultiplier) {
+            List<UUID> uuidsOut, List<Entity> entitiesOut) {
         EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(parseId(entry.type));
         if (type == null) {
             LOGGER.warn("[SpawnerSubsystem] Unknown entity type: {}", entry.type);
@@ -196,7 +191,7 @@ public class SpawnerSubsystem {
                 }
 
                 // Apply HP Multiplier
-                double finalHpMult = entry.hp_multiplier * retryMultiplier;
+                double finalHpMult = entry.hp_multiplier;
                 if (finalHpMult != 1.0) {
                     var maxHealthAttr = mob.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH);
                     if (maxHealthAttr != null) {
@@ -207,7 +202,7 @@ public class SpawnerSubsystem {
                 }
 
                 // Apply Damage Multiplier
-                double finalDmgMult = entry.damage_multiplier * retryMultiplier;
+                double finalDmgMult = entry.damage_multiplier;
                 if (finalDmgMult != 1.0) {
                     var attackDmgAttr = mob.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
                     if (attackDmgAttr != null) {
@@ -246,8 +241,7 @@ public class SpawnerSubsystem {
 
     private void spawnBoss(MobSpawnEntry entry, ServerLevel level,
             StageConfig.SpawnArea area,
-            List<UUID> uuidsOut, List<Entity> entitiesOut,
-            double retryMultiplier) {
+            List<UUID> uuidsOut, List<Entity> entitiesOut) {
         if (entry.boss_id == null || entry.boss_id.isEmpty()) {
             LOGGER.warn("[SpawnerSubsystem] Boss entry has no boss_id; skipping.");
             return;
@@ -273,23 +267,17 @@ public class SpawnerSubsystem {
         if (entity instanceof Mob mob) {
             mob.setPersistenceRequired();
             
+            // Set cosmetic level for bosses and minibosses
+            int bossLevel = entry.level > 0 ? entry.level : 1;
+            com.nhatbh.basedefensev2.level.MobLevelData.setLevel(mob, bossLevel);
+            com.nhatbh.basedefensev2.strength.network.NetworkManager.sendToTracking(
+                    new com.nhatbh.basedefensev2.level.network.MobLevelSyncPacket(mob.getId(), bossLevel), mob);
+
             // Register as Boss (also applies attributes)
             com.nhatbh.basedefensev2.boss.core.BossComponent comp = new com.nhatbh.basedefensev2.boss.core.BossComponent(def);
             com.nhatbh.basedefensev2.boss.core.BossManager.registerBoss(mob, comp);
 
-            if (retryMultiplier != 1.0) {
-                var maxHealthAttr = mob.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH);
-                if (maxHealthAttr != null) {
-                    double newMax = maxHealthAttr.getBaseValue() * retryMultiplier;
-                    maxHealthAttr.setBaseValue(newMax);
-                    mob.setHealth((float) newMax);
-                }
-                var attackDmgAttr = mob.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
-                if (attackDmgAttr != null) {
-                    double newDmg = attackDmgAttr.getBaseValue() * retryMultiplier;
-                    attackDmgAttr.setBaseValue(newDmg);
-                }
-            }
+
 
             mob.setCustomName(Component.literal(entry.boss_id.toUpperCase()));
             mob.setCustomNameVisible(true);

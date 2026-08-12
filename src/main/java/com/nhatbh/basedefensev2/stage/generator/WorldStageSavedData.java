@@ -25,16 +25,27 @@ public class WorldStageSavedData extends SavedData {
 
     private final Map<String, StageConfig> stages = new LinkedHashMap<>();
     private long storedSeed = 0L;
+    private boolean bossesRegistered = false;
 
     public WorldStageSavedData() {}
 
     public static WorldStageSavedData get(ServerLevel level) {
         ServerLevel overworld = level.getServer().overworld();
-        return overworld.getDataStorage().computeIfAbsent(
+        WorldStageSavedData data = overworld.getDataStorage().computeIfAbsent(
                 WorldStageSavedData::load,
                 WorldStageSavedData::new,
                 DATA_NAME
         );
+        data.ensureInitialized(overworld);
+        return data;
+    }
+
+    public synchronized void ensureInitialized(ServerLevel overworld) {
+        if (stages.isEmpty()) {
+            initializeForWorld(overworld.getSeed());
+        } else if (!bossesRegistered) {
+            reRegisterBosses();
+        }
     }
 
     public static WorldStageSavedData load(CompoundTag nbt) {
@@ -88,6 +99,7 @@ public class WorldStageSavedData extends SavedData {
             this.storedSeed = seed;
             Map<String, StageConfig> generated = RandomStageGenerator.generateWorldStages(seed);
             stages.putAll(generated);
+            bossesRegistered = true;
             setDirty();
         } else if (classificationsUpdated) {
             // mobs.json was reloaded — regenerate stages so new classifications take effect
@@ -95,6 +107,7 @@ public class WorldStageSavedData extends SavedData {
             stages.clear();
             Map<String, StageConfig> generated = RandomStageGenerator.generateWorldStages(storedSeed);
             stages.putAll(generated);
+            bossesRegistered = true;
             setDirty();
         }
     }
@@ -108,6 +121,7 @@ public class WorldStageSavedData extends SavedData {
         if (storedSeed != 0L && !stages.isEmpty()) {
             LOGGER.info("[WorldStageSavedData] Re-registering {} dynamic bosses with seed {}", stages.size(), storedSeed);
             RandomStageGenerator.registerBossesOnly(storedSeed);
+            bossesRegistered = true;
         }
     }
 
