@@ -78,13 +78,15 @@ public class BossVitalityPool {
         if (defaultMaxHp <= 0) defaultMaxHp = 20.0f;
 
         if (isDead()) {
+            boss.getPersistentData().putBoolean("bdv2_boss_truly_dead", true);
             boss.setHealth(0.0f);
             net.minecraft.world.damagesource.DamageSource killSource = (source != null) ? source : (attacker != null ? boss.damageSources().mobAttack(attacker) : boss.damageSources().fellOutOfWorld());
             boss.hurt(killSource, 999999f);
         } else {
+            boss.getPersistentData().remove("bdv2_boss_truly_dead");
             float targetHp = (float) (defaultMaxHp * getRatio());
-            // Keep at least 0.01f health while alive so vanilla entity doesn't die prematurely
-            boss.setHealth(Math.max(0.01f, targetHp));
+            // Keep at least 1.0f health while alive so vanilla entity never dies prematurely
+            boss.setHealth(Math.max(1.0f, targetHp));
         }
     }
 

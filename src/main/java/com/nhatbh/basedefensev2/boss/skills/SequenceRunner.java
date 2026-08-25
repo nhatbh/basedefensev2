@@ -294,7 +294,24 @@ public class SequenceRunner {
         }
         context.stopSequence();
         context.setAllSkillsCooldown(600); // 10 seconds (200 ticks) of no skills
-        event.setAmount(event.getAmount() * 1.5f); // Bonus damage for counter
+
+        // Apply bonus counter damage to Vitality (if exhausted) or Poise (if protected)
+        float counterBonus = event.getAmount() * 0.5f;
+        LivingEntity boss = context.boss();
+        if (boss != null && !boss.level().isClientSide()) {
+            if (com.nhatbh.basedefensev2.api.PoiseAPI.isExhausted(boss)) {
+                com.nhatbh.basedefensev2.boss.core.BossComponent comp = com.nhatbh.basedefensev2.boss.core.BossManager.get(boss);
+                if (comp != null) {
+                    comp.getVitalityPool().damage((double) counterBonus);
+                    comp.getVitalityPool().saveToNBT(boss.getPersistentData());
+                    comp.getVitalityPool().syncToVanillaHealth(boss);
+                    com.nhatbh.basedefensev2.boss.core.BossManager.syncBossVitality(boss, comp);
+                    com.nhatbh.basedefensev2.boss.core.BossManager.checkPhaseTransition(boss, comp);
+                }
+            } else {
+                com.nhatbh.basedefensev2.api.PoiseAPI.damagePoiseDirect(boss, counterBonus);
+            }
+        }
 
         // Totem effect (sound and particles)
         context.boss().level().broadcastEntityEvent(context.boss(), (byte) 35);

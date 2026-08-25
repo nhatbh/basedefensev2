@@ -63,6 +63,9 @@ public class EntityStrengthEventHandler {
         if ("SkipStrengthDamage".equals(source.getMsgId())
                 || entity.getPersistentData().getBoolean("SkipStrengthDamage")) {
             entity.getPersistentData().remove("SkipStrengthDamage");
+            if (BossManager.isBoss(entity)) {
+                event.setCanceled(true);
+            }
             return;
         }
 

@@ -375,6 +375,12 @@ public class StageContext extends SavedData {
                     // the periodic world scan below handles unloaded/missing entities.
                     return false;
                 }
+                if (entity instanceof net.minecraft.world.entity.LivingEntity living && com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(living)) {
+                    com.nhatbh.basedefensev2.boss.core.BossComponent comp = com.nhatbh.basedefensev2.boss.core.BossManager.get(living);
+                    if (comp != null && !comp.getVitalityPool().isDead()) {
+                        return false;
+                    }
+                }
                 return !entity.isAlive() || entity.isRemoved();
             });
         }
@@ -386,6 +392,12 @@ public class StageContext extends SavedData {
         if (waveTicks % 20 == 0 && !livingEnemies.isEmpty()) {
             livingEnemies.removeIf(uuid -> {
                 Entity entity = level.getEntity(uuid);
+                if (entity instanceof net.minecraft.world.entity.LivingEntity living && com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(living)) {
+                    com.nhatbh.basedefensev2.boss.core.BossComponent comp = com.nhatbh.basedefensev2.boss.core.BossManager.get(living);
+                    if (comp != null && !comp.getVitalityPool().isDead()) {
+                        return false;
+                    }
+                }
                 return entity == null || !entity.isAlive() || entity.isRemoved();
             });
 
@@ -958,6 +970,13 @@ public class StageContext extends SavedData {
     }
 
     public void onEntityDied(UUID uuid, net.minecraft.world.entity.LivingEntity entity, ServerLevel level) {
+        if (entity != null && com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity)) {
+            com.nhatbh.basedefensev2.boss.core.BossComponent comp = com.nhatbh.basedefensev2.boss.core.BossManager.get(entity);
+            if (comp != null && !comp.getVitalityPool().isDead()) {
+                return; // Boss is not truly dead; ignore premature death trigger
+            }
+        }
+
         livingEnemies.remove(uuid);
 
         if (isLastWave() && entity != null && com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity)) {

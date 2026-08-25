@@ -206,6 +206,9 @@ public class PoiseAPI {
 
         DamageSource source = event.getSource();
         if ("SkipStrengthDamage".equals(source.getMsgId()) || entity.getPersistentData().getBoolean("SkipStrengthDamage")) {
+            if (com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity)) {
+                event.setCanceled(true);
+            }
             return;
         }
 
@@ -216,6 +219,23 @@ public class PoiseAPI {
 
         if (winningRequest != null) {
             executeDirectPoiseDamage(winningRequest, event);
+        } else if (com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity)) {
+            // Fallback for unqueued, environmental, status effect, or mismatched attacks on bosses
+            float rawDamage = event.getAmount();
+            if (rawDamage > 0) {
+                com.nhatbh.basedefensev2.boss.core.BossComponent comp = com.nhatbh.basedefensev2.boss.core.BossManager.get(entity);
+                double armor = comp != null ? com.nhatbh.basedefensev2.boss.core.BossManager.calculateBossArmor(entity) : entity.getArmorValue();
+                double effectiveArmor = armor;
+                if (comp != null) effectiveArmor *= comp.getCorrosionMultiplier(armor);
+                double apotheosisMult = com.nhatbh.basedefensev2.boss.core.BossManager.calculateApotheosisMultiplier(effectiveArmor);
+                float preMitigated = (float) (rawDamage * apotheosisMult);
+
+                PoiseDamageQueue.PoiseDamageRequest fallbackReq = new PoiseDamageQueue.PoiseDamageRequest(
+                        entity, preMitigated, preMitigated, attacker, source, true, "BaseDefenseFallback", Priority.NORMAL
+                );
+                executeDirectPoiseDamage(fallbackReq, event);
+            }
+            event.setCanceled(true);
         }
 
         PoiseDamageQueue.clearOldRequests(entity.level().getGameTime());
@@ -410,10 +430,23 @@ public class PoiseAPI {
     public static void triggerPoiseBreak(LivingEntity entity) {
         if (entity == null) return;
         if (!entity.level().isClientSide) {
-            // Apply 5% max health true damage on poise break (exhaustion start)
-            entity.getPersistentData().putBoolean("SkipStrengthDamage", true);
-            entity.getPersistentData().putBoolean("BdV2TrueDamage", true);
-            entity.hurt(entity.damageSources().fellOutOfWorld(), entity.getMaxHealth() * 0.05f);
+            if (com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity)) {
+                // Apply 5% max vitality true damage on poise break directly to Boss Vitality Pool
+                com.nhatbh.basedefensev2.boss.core.BossComponent comp = com.nhatbh.basedefensev2.boss.core.BossManager.get(entity);
+                if (comp != null) {
+                    double vitDmg = comp.getVitalityPool().getMaxVitality() * 0.05;
+                    comp.getVitalityPool().damage(vitDmg);
+                    comp.getVitalityPool().saveToNBT(entity.getPersistentData());
+                    comp.getVitalityPool().syncToVanillaHealth(entity);
+                    com.nhatbh.basedefensev2.boss.core.BossManager.syncBossVitality(entity, comp);
+                    com.nhatbh.basedefensev2.boss.core.BossManager.checkPhaseTransition(entity, comp);
+                }
+            } else {
+                // Apply 5% max health true damage on poise break (exhaustion start) for non-boss mobs
+                entity.getPersistentData().putBoolean("SkipStrengthDamage", true);
+                entity.getPersistentData().putBoolean("BdV2TrueDamage", true);
+                entity.hurt(entity.damageSources().fellOutOfWorld(), entity.getMaxHealth() * 0.05f);
+            }
         }
         if (entity instanceof Mob mob) {
             mob.getNavigation().stop();

@@ -12,10 +12,12 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.living.LivingHealEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -136,6 +138,14 @@ public class BossManager {
         boss.getPersistentData().putInt("BossPhaseIndex", comp.getCurrentPhaseIndex());
         boss.getPersistentData().putInt("BossCorrosionHits", comp.getCorrosionHits());
         syncBossVitality(boss, comp);
+
+        // Guard against any desynchronized vanilla zero-health state while vitality is alive
+        if (!comp.getVitalityPool().isDead()) {
+            if (boss.getHealth() <= 0.0f || boss.isDeadOrDying()) {
+                boss.deathTime = 0;
+                comp.getVitalityPool().syncToVanillaHealth(boss);
+            }
+        }
 
         // ── 1-Minute Inactivity Teleport Check ──
         long currentTime = boss.level().getGameTime();
@@ -585,7 +595,24 @@ public class BossManager {
         }
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onLivingDeath(LivingDeathEvent event) {
+        LivingEntity living = event.getEntity();
+        if (living == null || living.level().isClientSide())
+            return;
+
+        if (isBoss(living)) {
+            BossComponent comp = get(living);
+            if (comp != null && !comp.getVitalityPool().isDead()) {
+                // Intercept and prevent premature boss death due to leaked damage events!
+                event.setCanceled(true);
+                living.deathTime = 0;
+                comp.getVitalityPool().syncToVanillaHealth(living);
+            }
+        }
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onLivingDamage(LivingDamageEvent event) {
         LivingEntity entity = event.getEntity();
 
@@ -599,26 +626,34 @@ public class BossManager {
         }
 
         // Check if the entity is a mount for a boss
-        if (entity.getFirstPassenger() instanceof LivingEntity rider && isBoss(rider)) {
+        if (entity != null && entity.getFirstPassenger() instanceof LivingEntity rider && isBoss(rider)) {
             event.setCanceled(true);
             rider.hurt(event.getSource(), event.getAmount());
             return;
         }
 
         BossComponent comp = get(entity);
-        if (comp != null && comp.getCurrentSequence() != null && comp.getCurrentSequence().isRunning()) {
-            net.minecraft.world.damagesource.DamageSource source = event.getSource();
-            // Strict melee check: source has an attacker and the direct entity that hit is
-            // the attacker himself
-            boolean isMelee = source.getDirectEntity() != null && source.getDirectEntity() == source.getEntity();
+        if (comp != null) {
+            if (comp.getCurrentSequence() != null && comp.getCurrentSequence().isRunning()) {
+                net.minecraft.world.damagesource.DamageSource source = event.getSource();
+                // Strict melee check: source has an attacker and the direct entity that hit is
+                // the attacker himself
+                boolean isMelee = source.getDirectEntity() != null && source.getDirectEntity() == source.getEntity();
 
-            float rawDamage = event.getAmount();
-            if (entity.getPersistentData().contains("MagicCounterRawDamage")) {
-                rawDamage = entity.getPersistentData().getFloat("MagicCounterRawDamage");
-                entity.getPersistentData().remove("MagicCounterRawDamage");
+                float rawDamage = event.getAmount();
+                if (entity.getPersistentData().contains("MagicCounterRawDamage")) {
+                    rawDamage = entity.getPersistentData().getFloat("MagicCounterRawDamage");
+                    entity.getPersistentData().remove("MagicCounterRawDamage");
+                }
+
+                comp.getCurrentSequence().onDamage(event, isMelee, rawDamage);
             }
 
-            comp.getCurrentSequence().onDamage(event, isMelee, rawDamage);
+            // CRITICAL: Block any rogue damage event from depleting vanilla health if vitality is alive!
+            if (!comp.getVitalityPool().isDead()) {
+                event.setCanceled(true);
+                event.setAmount(0f);
+            }
         }
     }
 
