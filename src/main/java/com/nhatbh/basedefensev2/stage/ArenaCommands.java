@@ -70,6 +70,20 @@ public class ArenaCommands {
                         }))
                 .then(Commands.literal("ready")
                         .executes(context -> executeVoteCommand(context, true)))
+                .then(Commands.literal("unstuck")
+                        .executes(context -> executeUnstuckCommand(context)))
+                .then(Commands.literal("voteskip")
+                        .executes(context -> executeVoteCommand(context, true))
+                        .then(Commands.literal("yes").executes(context -> executeVoteCommand(context, true)))
+                        .then(Commands.literal("no").executes(context -> executeVoteCommand(context, false))))
+                .then(Commands.literal("skipwave")
+                        .executes(context -> executeVoteCommand(context, true))
+                        .then(Commands.literal("yes").executes(context -> executeVoteCommand(context, true)))
+                        .then(Commands.literal("no").executes(context -> executeVoteCommand(context, false))))
+                .then(Commands.literal("skip")
+                        .executes(context -> executeVoteCommand(context, true))
+                        .then(Commands.literal("yes").executes(context -> executeVoteCommand(context, true)))
+                        .then(Commands.literal("no").executes(context -> executeVoteCommand(context, false))))
                 .then(Commands.literal("vote")
                         .then(Commands.literal("yes").executes(context -> executeVoteCommand(context, true)))
                         .then(Commands.literal("no").executes(context -> executeVoteCommand(context, false))))
@@ -281,6 +295,32 @@ public class ArenaCommands {
                     return 1;
                 })
         );
+
+        dispatcher.register(Commands.literal("voteskip")
+                .executes(context -> executeVoteCommand(context, true))
+                .then(Commands.literal("yes").executes(context -> executeVoteCommand(context, true)))
+                .then(Commands.literal("no").executes(context -> executeVoteCommand(context, false)))
+        );
+
+        dispatcher.register(Commands.literal("skipwave")
+                .executes(context -> executeVoteCommand(context, true))
+                .then(Commands.literal("yes").executes(context -> executeVoteCommand(context, true)))
+                .then(Commands.literal("no").executes(context -> executeVoteCommand(context, false)))
+        );
+
+        dispatcher.register(Commands.literal("unstuck")
+                .executes(context -> executeUnstuckCommand(context))
+        );
+    }
+
+    private static int executeUnstuckCommand(com.mojang.brigadier.context.CommandContext<CommandSourceStack> context) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        if (player.getServer() == null) return 0;
+        ServerLevel arenaLevel = player.getServer().getLevel(ModDimensions.ARENA);
+        if (arenaLevel == null) arenaLevel = player.serverLevel();
+
+        StageContext ctx = StageContext.getOrCreate(arenaLevel);
+        return ctx.executeUnstuck(arenaLevel, player);
     }
 
     private static int executeTestWaveCommand(CommandSourceStack source) {
@@ -444,6 +484,20 @@ public class ArenaCommands {
         event.getDispatcher().register(Commands.literal("stage")
                 .then(Commands.literal("ready")
                         .executes(context -> executeVoteCommand(context, true)))
+                .then(Commands.literal("unstuck")
+                        .executes(context -> executeUnstuckCommand(context)))
+                .then(Commands.literal("voteskip")
+                        .executes(context -> executeVoteCommand(context, true))
+                        .then(Commands.literal("yes").executes(context -> executeVoteCommand(context, true)))
+                        .then(Commands.literal("no").executes(context -> executeVoteCommand(context, false))))
+                .then(Commands.literal("skipwave")
+                        .executes(context -> executeVoteCommand(context, true))
+                        .then(Commands.literal("yes").executes(context -> executeVoteCommand(context, true)))
+                        .then(Commands.literal("no").executes(context -> executeVoteCommand(context, false))))
+                .then(Commands.literal("skip")
+                        .executes(context -> executeVoteCommand(context, true))
+                        .then(Commands.literal("yes").executes(context -> executeVoteCommand(context, true)))
+                        .then(Commands.literal("no").executes(context -> executeVoteCommand(context, false))))
                 .then(Commands.literal("vote")
                         .then(Commands.literal("yes").executes(context -> executeVoteCommand(context, true)))
                         .then(Commands.literal("no").executes(context -> executeVoteCommand(context, false))))

@@ -119,6 +119,9 @@ public class StageContext extends SavedData {
     /** True if the stage / next stage timer is currently frozen */
     private boolean stageTimerFrozen = false;
 
+    /** Cooldown ticks remaining for the unstuck command (60s default, resets on next wave) */
+    private int unstuckCooldownTicks = 0;
+
     // ── Arena Barrier State ──────────────────────────────────────────────────
     private net.minecraft.core.BlockPos arenaBarrierCenter = null;
     private float arenaBarrierRadiusX = 0f;
@@ -142,6 +145,10 @@ public class StageContext extends SavedData {
      * Called every server tick while the level is the arena dimension.
      */
     public void tick(ServerLevel level) {
+        if (unstuckCooldownTicks > 0) {
+            unstuckCooldownTicks--;
+        }
+
         // Resolve deferred activeConfig from NBT load (needs WorldStageSavedData)
         if (pendingActiveStageId != null) {
             StageLoader.getById(level, pendingActiveStageId).ifPresentOrElse(
@@ -430,6 +437,7 @@ public class StageContext extends SavedData {
     }
 
     private void tickWaveCleared(ServerLevel level) {
+        readyVotes.clear();
         if (currentWaveIndex + 1 < activeConfig.waves.size()) {
             // More waves remain -> WAIT
             currentWaveIndex++;
@@ -495,6 +503,8 @@ public class StageContext extends SavedData {
     }
 
     private void startNextWave(ServerLevel level) {
+        readyVotes.clear();
+        unstuckCooldownTicks = 0;
         boolean hasPlayerInArena = level.players().stream().anyMatch(p -> p.gameMode.getGameModeForPlayer() != net.minecraft.world.level.GameType.SPECTATOR);
         if (!hasPlayerInArena) {
             com.nhatbh.basedefensev2.stage.TeleportManager.forceTeleportAll(level);
@@ -590,8 +600,61 @@ public class StageContext extends SavedData {
         setDirty();
     }
 
+    public void skipCurrentWave(ServerLevel level) {
+        if (activeConfig == null || stageState != StageState.ACTIVE || isLastWave()) return;
+
+        readyVotes.clear();
+
+        if (waveState == WaveState.WAITING_NEXT_WAVE) {
+            broadcastToArena(level, "§6[The Rift] §a100% YES! Wave intermission skipped!");
+            startNextWave(level);
+        } else {
+            // SPAWNING, COMBAT, TIMEOUT
+            broadcastToArena(level, "§6[The Rift] §a100% YES! Current wave skipped!");
+            // Despawn all active living mobs from skipped wave
+            for (UUID mobUuid : new ArrayList<>(livingEnemies)) {
+                Entity mob = level.getEntity(mobUuid);
+                if (mob != null && mob.isAlive() && !(mob instanceof net.minecraft.world.entity.player.Player)) {
+                    mob.discard();
+                }
+            }
+            livingEnemies.clear();
+            currentWaveIndex++;
+            startNextWave(level);
+        }
+        setDirty();
+    }
+
+    public int executeUnstuck(ServerLevel level, ServerPlayer player) {
+        if (unstuckCooldownTicks > 0) {
+            int secondsLeft = (unstuckCooldownTicks + 19) / 20;
+            player.sendSystemMessage(Component.literal(String.format("§c[The Rift] Unstuck is on cooldown! (%ds remaining)", secondsLeft)));
+            return 0;
+        }
+
+        StageConfig.SpawnArea area = getSpawnArea();
+        net.minecraft.world.phys.AABB hugeArea = new net.minecraft.world.phys.AABB(-2000, -64, -2000, 2000, 320, 2000);
+        List<Entity> entities = level.getEntitiesOfClass(
+                Entity.class,
+                hugeArea,
+                e -> !(e instanceof net.minecraft.world.entity.player.Player)
+        );
+
+        int count = 0;
+        for (Entity entity : entities) {
+            entity.teleportTo(area.x, area.y, area.z);
+            entity.fallDistance = 0.0f;
+            count++;
+        }
+
+        unstuckCooldownTicks = 1200; // 60s cooldown
+        broadcastToArena(level, String.format("§6[The Rift] §aUnstuck executed by %s! Teleported %d entities to arena center.", player.getScoreboardName(), count));
+        setDirty();
+        return 1;
+    }
+
     public boolean processVote(ServerPlayer player, ServerLevel level, boolean voteYes) {
-        if (activeConfig != null && stageState != StageState.WARMUP) {
+        if (activeConfig != null && stageState != StageState.WARMUP && stageState != StageState.ACTIVE) {
             player.sendSystemMessage(Component.literal("§c[The Rift] No vote is currently active!"));
             return false;
         }
@@ -608,7 +671,14 @@ public class StageContext extends SavedData {
             }
         }
 
-        if (stageState == StageState.WARMUP) {
+        if (stageState == StageState.ACTIVE) {
+            if (isLastWave()) {
+                player.sendSystemMessage(Component.literal("§c[The Rift] Cannot vote skip the last wave!"));
+                return false;
+            }
+        }
+
+        if (stageState == StageState.WARMUP || stageState == StageState.ACTIVE) {
             boolean hasPlayerInArena = level.getServer().getPlayerList().getPlayers().stream()
                     .anyMatch(p -> p.level().dimension().equals(com.nhatbh.basedefensev2.stage.ModDimensions.ARENA) && 
                             p.gameMode.getGameModeForPlayer() != net.minecraft.world.level.GameType.SPECTATOR);
@@ -621,8 +691,10 @@ public class StageContext extends SavedData {
         String phaseName;
         if (activeConfig == null) {
             phaseName = "Inter-stage Countdown";
-        } else {
+        } else if (stageState == StageState.WARMUP) {
             phaseName = "Warmup";
+        } else {
+            phaseName = "Assault " + (currentWaveIndex + 1);
         }
 
         if (!voteYes) {
@@ -676,6 +748,8 @@ public class StageContext extends SavedData {
                 fastForwardToFiveMinutes(level);
             } else if (stageState == StageState.WARMUP) {
                 skipWarmup(level);
+            } else if (stageState == StageState.ACTIVE) {
+                skipCurrentWave(level);
             }
             return true;
         }
@@ -1182,6 +1256,7 @@ public class StageContext extends SavedData {
         tag.putInt("NextStageIndex", nextStageIndex);
         tag.putBoolean("ArenaEstablished", arenaEstablished);
         tag.putBoolean("StageTimerFrozen", stageTimerFrozen);
+        tag.putInt("UnstuckCooldownTicks", unstuckCooldownTicks);
         if (pendingStageId != null) {
             tag.putString("PendingStageId", pendingStageId);
         }
@@ -1229,6 +1304,7 @@ public class StageContext extends SavedData {
         ctx.nextStageIndex = tag.getInt("NextStageIndex");
         ctx.arenaEstablished = tag.getBoolean("ArenaEstablished");
         ctx.stageTimerFrozen = tag.getBoolean("StageTimerFrozen");
+        ctx.unstuckCooldownTicks = tag.getInt("UnstuckCooldownTicks");
         if (tag.contains("PendingStageId")) {
             ctx.pendingStageId = tag.getString("PendingStageId");
         }
