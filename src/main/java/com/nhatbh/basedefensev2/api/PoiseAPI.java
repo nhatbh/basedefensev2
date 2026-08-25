@@ -1,5 +1,6 @@
 package com.nhatbh.basedefensev2.api;
 
+import com.nhatbh.basedefensev2.BaseDefenseMod;
 import com.nhatbh.basedefensev2.api.event.PoiseBrokenEvent;
 import com.nhatbh.basedefensev2.api.event.PoiseDamageEvent;
 import com.nhatbh.basedefensev2.api.event.PoiseRecoveryEvent;
@@ -10,12 +11,27 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.entity.living.LivingDamageEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import javax.annotation.Nullable;
 
 /**
  * Public API for querying, damaging, modifying, and syncing the Poise (Strength) system on LivingEntities.
  */
+@Mod.EventBusSubscriber(modid = BaseDefenseMod.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class PoiseAPI {
+
+    public static boolean ENABLE_DEBUG_LOGGING = false;
+
+    public static class Priority {
+        public static final int LOW = 25;
+        public static final int NORMAL = 50;
+        public static final int HIGH = 75;
+        public static final int HIGHEST = 100;
+    }
 
     public static boolean hasPoise(LivingEntity entity) {
         if (entity == null) return false;
@@ -136,56 +152,185 @@ public class PoiseAPI {
     }
 
     public static float damagePoise(LivingEntity entity, float amount) {
-        return damagePoise(entity, amount, null, null);
+        return damagePoise(entity, amount, amount, null, null, true, "BaseDefense", Priority.NORMAL);
+    }
+
+    public static float damagePoise(LivingEntity entity, float poiseAmount, float vitalityAmount) {
+        return damagePoise(entity, poiseAmount, vitalityAmount, null, null, true, "BaseDefense", Priority.NORMAL);
     }
 
     public static float damagePoise(LivingEntity entity, float amount, @Nullable LivingEntity attacker, @Nullable DamageSource source) {
-        return damagePoise(entity, amount, attacker, source, true);
+        return damagePoise(entity, amount, amount, attacker, source, true, "BaseDefense", Priority.NORMAL);
     }
 
-    /**
-     * Damages entity poise, applying attribute multipliers if enableAttributeScaling is true.
-     * Fires {@link PoiseDamageEvent} (cancelable) and {@link PoiseBrokenEvent} if depleted.
-     * @return actual poise damage applied
-     */
+    public static float damagePoise(LivingEntity entity, float poiseAmount, float vitalityAmount, @Nullable LivingEntity attacker, @Nullable DamageSource source) {
+        return damagePoise(entity, poiseAmount, vitalityAmount, attacker, source, true, "BaseDefense", Priority.NORMAL);
+    }
+
     public static float damagePoise(LivingEntity entity, float amount, @Nullable LivingEntity attacker, @Nullable DamageSource source, boolean enableAttributeScaling) {
-        if (entity == null || entity.level().isClientSide || amount <= 0) return 0.0f;
+        return damagePoise(entity, amount, amount, attacker, source, enableAttributeScaling, "BaseDefense", Priority.NORMAL);
+    }
+
+    public static float damagePoise(LivingEntity entity, float poiseAmount, float vitalityAmount, @Nullable LivingEntity attacker, @Nullable DamageSource source, boolean enableAttributeScaling) {
+        return damagePoise(entity, poiseAmount, vitalityAmount, attacker, source, enableAttributeScaling, "BaseDefense", Priority.NORMAL);
+    }
+
+    public static float damagePoise(LivingEntity entity, float poiseAmount, float vitalityAmount, @Nullable LivingEntity attacker, @Nullable DamageSource source, boolean enableAttributeScaling, @Nullable String sourceMod) {
+        return damagePoise(entity, poiseAmount, vitalityAmount, attacker, source, enableAttributeScaling, sourceMod, Priority.NORMAL);
+    }
+
+    public static float damagePoise(LivingEntity entity, float poiseAmount, float vitalityAmount, @Nullable LivingEntity attacker, @Nullable DamageSource source, boolean enableAttributeScaling, @Nullable String sourceMod, int priority) {
+        return damagePoise(entity, poiseAmount, vitalityAmount, attacker, source, enableAttributeScaling, sourceMod, priority, null);
+    }
+
+    public static float damagePoise(LivingEntity entity, float poiseAmount, float vitalityAmount, @Nullable LivingEntity attacker, @Nullable DamageSource source, boolean enableAttributeScaling, @Nullable String sourceMod, int priority, @Nullable String ammoType) {
+        if (entity == null || entity.level().isClientSide || (poiseAmount <= 0 && vitalityAmount <= 0)) return 0.0f;
+
+        String attackId = PoiseDamageQueue.generateAttackId(entity, source, attacker);
+        PoiseDamageQueue.PoiseDamageRequest req = new PoiseDamageQueue.PoiseDamageRequest(
+                entity, poiseAmount, vitalityAmount, attacker, source, enableAttributeScaling, sourceMod != null ? sourceMod : "BaseDefense", priority, ammoType
+        );
+        PoiseDamageQueue.queueRequest(attackId, req);
+
+        float estimatedPoise = poiseAmount;
+        if (enableAttributeScaling && attacker != null && attacker.getAttributes().hasAttribute(ModAttributes.STRENGTH_DAMAGE_MULTIPLIER.get())) {
+            estimatedPoise *= (float) attacker.getAttributeValue(ModAttributes.STRENGTH_DAMAGE_MULTIPLIER.get());
+        }
+        return estimatedPoise;
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onLivingHurt(LivingHurtEvent event) {
+        LivingEntity entity = event.getEntity();
+        if (entity == null || entity.level().isClientSide) return;
+
+        DamageSource source = event.getSource();
+        if ("SkipStrengthDamage".equals(source.getMsgId()) || entity.getPersistentData().getBoolean("SkipStrengthDamage")) {
+            return;
+        }
+
+        LivingEntity attacker = source.getEntity() instanceof LivingEntity livingAttacker ? livingAttacker : null;
+
+        String attackId = PoiseDamageQueue.generateAttackId(entity, source, attacker);
+        PoiseDamageQueue.PoiseDamageRequest winningRequest = PoiseDamageQueue.resolveWinningRequest(attackId);
+
+        if (winningRequest != null) {
+            executeDirectPoiseDamage(winningRequest, event);
+        }
+
+        PoiseDamageQueue.clearOldRequests(entity.level().getGameTime());
+    }
+
+    public static float executeDirectPoiseDamage(PoiseDamageQueue.PoiseDamageRequest req) {
+        return executeDirectPoiseDamage(req, null);
+    }
+
+    public static float executeDirectPoiseDamage(PoiseDamageQueue.PoiseDamageRequest req, @Nullable LivingHurtEvent hurtEvent) {
+        LivingEntity entity = req.target;
+        if (entity == null || entity.level().isClientSide) return 0.0f;
+
+        if (com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity)) {
+            com.nhatbh.basedefensev2.boss.core.BossManager.recordBossCombatActivity(entity);
+        }
+        if (req.attacker != null && com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(req.attacker)) {
+            com.nhatbh.basedefensev2.boss.core.BossManager.recordBossCombatActivity(req.attacker);
+        }
+
         EntityStrengthData data = getPoiseData(entity);
-        if (data == null || data.currentStrength <= 0) return 0.0f;
+        if (data == null) return 0.0f;
 
-        float calculatedDamage = amount;
+        float calculatedPoiseDamage = req.poiseAmount;
+        float calculatedVitalityDamage = req.vitalityAmount;
+        LivingEntity attacker = req.attacker;
+        DamageSource source = req.source;
+        String modTag = req.sourceMod;
 
-        if (enableAttributeScaling) {
+        if (req.enableAttributeScaling) {
             if (attacker != null && attacker.getAttributes().hasAttribute(ModAttributes.STRENGTH_DAMAGE_MULTIPLIER.get())) {
-                calculatedDamage *= attacker.getAttributeValue(ModAttributes.STRENGTH_DAMAGE_MULTIPLIER.get());
+                float mult = (float) attacker.getAttributeValue(ModAttributes.STRENGTH_DAMAGE_MULTIPLIER.get());
+                calculatedPoiseDamage *= mult;
+                calculatedVitalityDamage *= mult;
             }
             if (entity.getAttributes().hasAttribute(ModAttributes.STRENGTH_DAMAGE_TAKEN_MULTIPLIER.get())) {
-                calculatedDamage *= entity.getAttributeValue(ModAttributes.STRENGTH_DAMAGE_TAKEN_MULTIPLIER.get());
+                float mult = (float) entity.getAttributeValue(ModAttributes.STRENGTH_DAMAGE_TAKEN_MULTIPLIER.get());
+                calculatedPoiseDamage *= mult;
+                calculatedVitalityDamage *= mult;
             }
         }
 
-        PoiseDamageEvent event = new PoiseDamageEvent(entity, attacker, source, calculatedDamage);
-        if (MinecraftForge.EVENT_BUS.post(event)) {
-            return 0.0f; // Canceled
-        }
+        PoiseDamageEvent event = new PoiseDamageEvent(entity, attacker, source, calculatedPoiseDamage);
+        if (MinecraftForge.EVENT_BUS.post(event)) return 0.0f;
 
         float finalPoiseDamage = event.getAmount();
-        if (finalPoiseDamage <= 0) return 0.0f;
+        boolean wasExhaustedBefore = isExhausted(entity);
 
-        data.currentStrength = Math.max(0.0f, data.currentStrength - finalPoiseDamage);
-        if (data.currentStrength <= 0) {
-            data.currentStrength = 0.0f;
-            data.recoveryTicks = 300;
-            triggerPoiseBreak(entity);
+        if (!wasExhaustedBefore && finalPoiseDamage > 0 && data.currentStrength > 0) {
+            data.currentStrength = Math.max(0.0f, data.currentStrength - finalPoiseDamage);
+            if (data.currentStrength <= 0) {
+                data.currentStrength = 0.0f;
+                data.recoveryTicks = 300;
+                triggerPoiseBreak(entity);
+            }
+            data.save(entity);
+            EntityStrengthData.sync(entity, data);
         }
 
-        data.save(entity);
-        EntityStrengthData.sync(entity, data);
+        if (calculatedVitalityDamage > 0) {
+            if (com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity)) {
+                if (isExhausted(entity)) {
+                    com.nhatbh.basedefensev2.boss.core.BossComponent comp = com.nhatbh.basedefensev2.boss.core.BossManager.get(entity);
+                    if (comp != null) {
+                        float finalVitDmg = calculatedVitalityDamage;
+                        if (req.ammoType != null && !req.ammoType.isEmpty()) {
+                            finalVitDmg = comp.getAdaptiveArmorTracker().processVitalityDamage(entity, req.ammoType, calculatedVitalityDamage, attacker);
+                        }
+                        double vitDmg = (double) finalVitDmg;
+                        comp.getVitalityPool().damage(vitDmg);
+                        comp.getVitalityPool().saveToNBT(entity.getPersistentData());
+                        comp.getVitalityPool().syncToVanillaHealth(entity, source, attacker);
+                        com.nhatbh.basedefensev2.boss.core.BossManager.syncBossVitality(entity, comp);
+                        com.nhatbh.basedefensev2.boss.core.BossManager.checkPhaseTransition(entity, comp);
+                    }
+                }
+                if (hurtEvent != null) {
+                    hurtEvent.setCanceled(true);
+                }
+            } else {
+                float finalHealthDmg = isExhausted(entity) ? calculatedVitalityDamage : calculateMitigatedDamage(entity, calculatedVitalityDamage);
+                if (hurtEvent != null) {
+                    hurtEvent.setAmount(finalHealthDmg);
+                } else if (finalHealthDmg > 0) {
+                    entity.getPersistentData().putBoolean("SkipStrengthDamage", true);
+                    DamageSource dmgSource = (source != null) ? source : (attacker != null ? entity.damageSources().mobAttack(attacker) : entity.damageSources().generic());
+                    entity.hurt(dmgSource, finalHealthDmg);
+                }
+            }
+        } else if (com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity) && hurtEvent != null) {
+            hurtEvent.setCanceled(true);
+        }
+
+        if (ENABLE_DEBUG_LOGGING && com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity)) {
+            com.nhatbh.basedefensev2.boss.core.BossComponent comp = com.nhatbh.basedefensev2.boss.core.BossManager.get(entity);
+            if (comp != null) {
+                float curPoise = getCurrentPoise(entity);
+                float maxPoise = getMaxPoise(entity);
+                boolean isExhaustedNow = isExhausted(entity);
+                double curVit = comp.getVitalityPool().getCurrentVitality();
+                double maxVit = comp.getVitalityPool().getMaxVitality();
+                if (!wasExhaustedBefore && !isExhaustedNow) {
+                    com.nhatbh.basedefensev2.boss.core.BossManager.debugChat(entity, String.format("§c[PoiseAPI] §e[%s] §b[Poise] §f-%.1f §7(%.1f/%.1f) §c[PROTECTED] §7| VitDmg: 0.0", modTag, finalPoiseDamage, curPoise, maxPoise));
+                } else if (!wasExhaustedBefore && isExhaustedNow) {
+                    com.nhatbh.basedefensev2.boss.core.BossManager.debugChat(entity, String.format("§c[PoiseAPI] §e[%s] §b[POISE BROKEN!] §e[EXHAUSTED] §8| §a[Vitality] §f-%.1f §7(%.1f/%.1f)", modTag, calculatedVitalityDamage, curVit, maxVit));
+                } else {
+                    com.nhatbh.basedefensev2.boss.core.BossManager.debugChat(entity, String.format("§c[PoiseAPI] §e[%s] §e[EXHAUSTED] §8| §a[Vitality] §f-%.1f §7(%.1f/%.1f)", modTag, calculatedVitalityDamage, curVit, maxVit));
+                }
+            }
+        }
         return finalPoiseDamage;
     }
 
     public static float damagePoiseDirect(LivingEntity entity, float amount) {
-        return damagePoise(entity, amount, null, null, false);
+        return damagePoise(entity, amount, amount, null, null, false);
     }
 
     /**
@@ -228,6 +373,16 @@ public class PoiseAPI {
         if (entity instanceof Mob mob && mob.getPersistentData().getBoolean("ExhaustionDisabledAI")) {
             mob.setNoAi(false);
             mob.getPersistentData().remove("ExhaustionDisabledAI");
+        }
+
+        if (com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity)) {
+            com.nhatbh.basedefensev2.boss.core.BossComponent comp = com.nhatbh.basedefensev2.boss.core.BossManager.get(entity);
+            if (comp != null) {
+                comp.resetCorrosionHits();
+                comp.resetAdaptiveArmor(entity);
+                com.nhatbh.basedefensev2.boss.core.BossManager.syncBossVitality(entity, comp);
+            }
+            MinecraftForge.EVENT_BUS.post(new com.nhatbh.basedefensev2.api.event.BossAdaptiveArmorEvent.Reset(entity));
         }
 
         MinecraftForge.EVENT_BUS.post(new PoiseRecoveryEvent(entity));

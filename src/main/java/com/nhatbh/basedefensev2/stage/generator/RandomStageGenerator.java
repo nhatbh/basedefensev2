@@ -202,7 +202,7 @@ public class RandomStageGenerator {
         float bossHp = getBossHpForStage(stageNum, rng);
         float minibossHp = getMinibossHpForStage(stageNum, rng);
 
-        int stageBaseLevel = (stageNum == 1) ? 5 : (10 + (stageNum - 1) * 5);
+        int stageBaseLevel = ((stageNum == 1) ? 5 : (10 + (stageNum - 1) * 5)) + 10;
 
         if (stageNum <= 2) {
             // Stage 1: 4 mob waves + 1 boss wave (5 waves total); Stage 2: 5 mob waves + 1
@@ -296,7 +296,7 @@ public class RandomStageGenerator {
 
         // Mob level scaling: Stage 1 = Lv. 5 base, Stage 2+ = Lv. 10 base, scaling +5
         // per stage and +0.5 per wave
-        int stageBaseLevel = (stageNum == 1) ? 5 : (10 + (stageNum - 1) * 5);
+        int stageBaseLevel = ((stageNum == 1) ? 5 : (10 + (stageNum - 1) * 5)) + 10;
         int mobLevel = stageBaseLevel + (waveIdx / 2);
 
         // Elite count: 15% rounded up (minimum 1 if elites available)
@@ -374,17 +374,17 @@ public class RandomStageGenerator {
 
     private static float getBossHpForStage(int stage, Random rng) {
         float baseHp = switch (stage) {
-            case 1 -> 600f;
-            case 2 -> 3000f;
-            case 3 -> 6000f;
-            case 4 -> 12000f;
-            case 5 -> 25000f;
-            case 6 -> 50000f;
-            case 7 -> 100000f;
-            case 8 -> 180000f;
-            case 9 -> 320000f;
-            case 10 -> 500000f;
-            default -> 1000f;
+            case 1 -> 1200f;
+            case 2 -> 6000f;
+            case 3 -> 12000f;
+            case 4 -> 24000f;
+            case 5 -> 50000f;
+            case 6 -> 100000f;
+            case 7 -> 200000f;
+            case 8 -> 360000f;
+            case 9 -> 640000f;
+            case 10 -> 1000000f;
+            default -> 2000f;
         };
         float multiplier = 0.90f + (rng.nextFloat() * 0.20f); // 0.90 to 1.10 (+-10%)
         return baseHp * multiplier;
@@ -392,15 +392,15 @@ public class RandomStageGenerator {
 
     private static float getMinibossHpForStage(int stage, Random rng) {
         float baseHp = switch (stage) {
-            case 3 -> 1200f;
-            case 4 -> 2500f;
-            case 5 -> 5000f;
-            case 6 -> 10000f;
-            case 7 -> 20000f;
-            case 8 -> 35000f;
-            case 9 -> 65000f;
-            case 10 -> 100000f;
-            default -> 1000f;
+            case 3 -> 2400f;
+            case 4 -> 5000f;
+            case 5 -> 10000f;
+            case 6 -> 20000f;
+            case 7 -> 40000f;
+            case 8 -> 70000f;
+            case 9 -> 130000f;
+            case 10 -> 200000f;
+            default -> 2000f;
         };
         float multiplier = 0.90f + (rng.nextFloat() * 0.20f); // 0.90 to 1.10 (+-10%)
         return baseHp * multiplier;
@@ -572,10 +572,10 @@ public class RandomStageGenerator {
     }
 
     /**
-     * Generates a test StageConfig where each wave spawns one registered
-     * Boss/Miniboss from ModBosses.
+     * Generates a gauntlet StageConfig where all Bosses are spawned first,
+     * followed by all Minibosses, with configurable Vitality (HP).
      */
-    public static StageConfig generateGauntletStage() {
+    public static StageConfig generateGauntletStage(float bossHp, float minibossHp) {
         StageConfig cfg = new StageConfig();
         cfg.id = "gauntlet_stage";
         cfg.order = 0;
@@ -585,11 +585,23 @@ public class RandomStageGenerator {
         cfg.scavenge_duration_ticks = 1200;
         cfg.waves = new ArrayList<>();
 
-        Map<String, BossDefinition> bossMap = ModBosses.getAll();
+        Random rng = new Random(42L);
+        Map<String, ClassificationManager.MobData> classifications = ClassificationManager.getClassifications();
+
+        // 1. Get all active Boss entities
+        List<String> bossMobs = filterMobsForElements(classifications, null, "Boss");
+        // 2. Get all active Miniboss entities
+        List<String> minibossMobs = filterMobsForElements(classifications, null, "Miniboss");
+
         int waveIdx = 1;
-        for (String bossId : bossMap.keySet()) {
+
+        // --- FIRST: Spawn all Bosses ---
+        for (String mobEntityId : bossMobs) {
+            String bossId = "gauntlet_boss_" + mobEntityId.replace(':', '_');
+            createAndRegisterDynamicBoss(bossId, mobEntityId, bossHp, 5, rng);
+
             WaveConfig wave = new WaveConfig();
-            wave.id = "wave_" + waveIdx + "_" + bossId;
+            wave.id = "wave_" + waveIdx + "_boss_" + bossId;
             wave.time_limit_ticks = 54000;
             wave.arc_angle = 360;
             wave.mobs = new ArrayList<>();
@@ -597,21 +609,58 @@ public class RandomStageGenerator {
             MobSpawnEntry bossEntry = new MobSpawnEntry();
             bossEntry.is_boss = true;
             bossEntry.boss_id = bossId;
+            bossEntry.level = 60;
             wave.mobs.add(bossEntry);
 
             cfg.waves.add(wave);
             waveIdx++;
         }
 
+        // --- SECOND: Spawn all Minibosses ---
+        for (String mobEntityId : minibossMobs) {
+            String mbId = "gauntlet_miniboss_" + mobEntityId.replace(':', '_');
+            createAndRegisterDynamicMiniboss(mbId, mobEntityId, minibossHp, 3, rng);
+
+            WaveConfig wave = new WaveConfig();
+            wave.id = "wave_" + waveIdx + "_miniboss_" + mbId;
+            wave.time_limit_ticks = 54000;
+            wave.arc_angle = 360;
+            wave.mobs = new ArrayList<>();
+
+            MobSpawnEntry mbEntry = new MobSpawnEntry();
+            mbEntry.is_boss = true;
+            mbEntry.boss_id = mbId;
+            mbEntry.level = 40;
+            wave.mobs.add(mbEntry);
+
+            cfg.waves.add(wave);
+            waveIdx++;
+        }
+
+        // Fallback if no classified Bosses/Minibosses found
         if (cfg.waves.isEmpty()) {
-            // Fallback if no bosses registered
-            WaveConfig dummyWave = new WaveConfig();
-            dummyWave.id = "wave_1_empty";
-            dummyWave.time_limit_ticks = 1200;
-            dummyWave.mobs = new ArrayList<>();
-            cfg.waves.add(dummyWave);
+            Map<String, BossDefinition> bossMap = ModBosses.getAll();
+            for (String bossId : bossMap.keySet()) {
+                WaveConfig wave = new WaveConfig();
+                wave.id = "wave_" + waveIdx + "_" + bossId;
+                wave.time_limit_ticks = 54000;
+                wave.arc_angle = 360;
+                wave.mobs = new ArrayList<>();
+
+                MobSpawnEntry bossEntry = new MobSpawnEntry();
+                bossEntry.is_boss = true;
+                bossEntry.boss_id = bossId;
+                wave.mobs.add(bossEntry);
+
+                cfg.waves.add(wave);
+                waveIdx++;
+            }
         }
 
         return cfg;
+    }
+
+    public static StageConfig generateGauntletStage() {
+        return generateGauntletStage(50000.0f, 15000.0f);
     }
 }

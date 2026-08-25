@@ -1,0 +1,87 @@
+{
+    "cataclysm:maledictus": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:ender_guardian": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:netherite_monstrosity": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "block_factorys_bosses:underworld_knight": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "irons_spellbooks:dead_king": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm_spellbooks:phantom_ancient_remnant": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:ancient_remnant": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "alexscaves:luxtructosaurus": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:scylla": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "traveloptics:enraged_dead_king": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "irons_spellbooks:fire_boss": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:the_harbinger": {
+        "category": "Boss",
+        "isRanged": true,
+        "excluded": false
+    },
+    "bosses_of_miracle:azrath_the_berserk": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "cataclysm:ignis": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "aquamirae:captain_cornelia": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "traveloptics:the_nightwarden": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    },
+    "block_factorys_bosses:infernal_dragon": {
+        "category": "Boss",
+        "isRanged": false,
+        "excluded": false
+    }
+}

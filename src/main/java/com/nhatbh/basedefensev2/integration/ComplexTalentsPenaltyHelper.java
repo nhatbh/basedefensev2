@@ -127,4 +127,19 @@ public class ComplexTalentsPenaltyHelper {
             player.getServer().sendSystemMessage(Component.literal("§cError applying ComplexTalents soft game over penalties: " + t.getMessage()));
         }
     }
+
+    /**
+     * Checks if the given entity is a friendly summon using the ComplexTalents API.
+     */
+    public static boolean isFriendlySummon(net.minecraft.world.entity.Entity entity) {
+        if (!net.minecraftforge.fml.ModList.get().isLoaded("complextalents")) {
+            return false;
+        }
+        try {
+            return ComplexTalentsAPI.getSummoningAPI().isFriendlySummon(entity);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
 }
+

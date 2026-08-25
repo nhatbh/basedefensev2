@@ -54,6 +54,14 @@ public class SunforgedBulwarkController {
     public void tick() {
         if (boss == null || !boss.isAlive() || boss.level().isClientSide())
             return;
+        if (com.nhatbh.basedefensev2.api.PoiseAPI.isExhausted(boss)) {
+            if (isShieldActive) {
+                isShieldActive = false;
+                radiance = 0.0f;
+                gazeExposureTicks.clear();
+            }
+            return;
+        }
         ServerLevel level = (ServerLevel) boss.level();
 
         // Check Phase 2 (<= 25% HP Desperation)
@@ -62,7 +70,7 @@ public class SunforgedBulwarkController {
             phase2Active = true;
         }
 
-        maxShieldActiveTimer = phase2Active ? 80 : 60; // 4.0s in P2, 3.0s in P1
+        maxShieldActiveTimer = phase2Active ? 40 : 30; // 2.0s in P2, 1.5s in P1 (lessened from 4s/3s)
 
         if (isShieldActive) {
             shieldActiveTimer--;
@@ -90,8 +98,8 @@ public class SunforgedBulwarkController {
                 level.playSound(null, boss.getX(), boss.getY(), boss.getZ(), SoundEvents.SHIELD_BLOCK, SoundSource.HOSTILE, 1.5f, 0.6f);
             }
         } else {
-            // Charge Radiance up to 100 (30s in P1, 20s in P2)
-            float gainPerTick = phase2Active ? (100.0f / 400.0f) : (100.0f / 600.0f);
+            // Charge Radiance up to 100 (45s in P1, 30s in P2)
+            float gainPerTick = phase2Active ? (100.0f / 600.0f) : (100.0f / 900.0f);
             radiance = Math.min(100.0f, radiance + gainPerTick);
 
             if (radiance >= 100.0f) {
@@ -154,7 +162,7 @@ public class SunforgedBulwarkController {
     }
 
     public void onBossDamaged(LivingHurtEvent event) {
-        if (boss.level().isClientSide() || !isShieldActive)
+        if (boss.level().isClientSide() || !isShieldActive || com.nhatbh.basedefensev2.api.PoiseAPI.isExhausted(boss))
             return;
         ServerLevel level = (ServerLevel) boss.level();
 
@@ -167,9 +175,9 @@ public class SunforgedBulwarkController {
             Vec3 bossFacing = new Vec3(Math.sin(radYaw), 0, Math.cos(radYaw)).normalize();
             Vec3 bossToAttacker = attacker.position().subtract(boss.position()).normalize();
 
-            // Frontal attack -> Blocked by Sunforged Bulwark!
+            // Frontal attack -> Reduced by Sunforged Bulwark (40% damage reduction instead of 100% block)
             if (bossFacing.dot(bossToAttacker) > 0.2) {
-                event.setCanceled(true);
+                event.setAmount(event.getAmount() * 0.60f);
 
                 level.playSound(null, boss.getX(), boss.getY(), boss.getZ(), SoundEvents.SHIELD_BLOCK, SoundSource.HOSTILE, 2.0f, 1.2f);
                 level.playSound(null, boss.getX(), boss.getY(), boss.getZ(), SoundEvents.ANVIL_PLACE, SoundSource.HOSTILE, 1.5f, 1.5f);
@@ -177,7 +185,7 @@ public class SunforgedBulwarkController {
                 level.sendParticles(ParticleTypes.CRIT, boss.getX(), boss.getY() + 1.2, boss.getZ(), 15, 0.3, 0.3, 0.3, 0.1);
 
                 if (attacker instanceof Player p) {
-                    p.displayClientMessage(Component.literal("§e[!] Attack Blocked by Sunforged Bulwark! Flank to the side/back!"), true);
+                    p.displayClientMessage(Component.literal("§e[!] Frontal Attack Mitigated (-40%) by Sunforged Bulwark! Flank to the side/back!"), true);
                 }
             }
         }

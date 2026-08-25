@@ -21,11 +21,30 @@ public class BossComponent {
 
     protected final Map<String, Integer> skillCooldowns = new HashMap<>();
 
+    private final BossVitalityPool vitalityPool = new BossVitalityPool();
+    private final AdaptiveArmorTracker adaptiveArmorTracker = new AdaptiveArmorTracker();
+    private int corrosionHits = 0;
+
     public BossComponent(BossDefinition definition) {
         this.definition = definition;
     }
 
     public void initialize(LivingEntity boss) {
+        if (boss != null && boss.getPersistentData() != null) {
+            adaptiveArmorTracker.loadFromNBT(boss.getPersistentData());
+        }
+
+        if (definition != null && definition.getBaseStats() != null) {
+            if (boss != null && boss.getPersistentData().contains(BossVitalityPool.NBT_MAX_VITALITY)) {
+                vitalityPool.loadFromNBT(boss.getPersistentData());
+            } else {
+                vitalityPool.initialize(definition.getBaseStats().health);
+                if (boss != null) {
+                    vitalityPool.saveToNBT(boss.getPersistentData());
+                }
+            }
+        }
+
         if (!definition.getPhases().isEmpty()) {
             this.currentPhase = definition.getPhases().get(0);
             this.currentPhase.onEnter(boss);
@@ -39,6 +58,27 @@ public class BossComponent {
                 }
             }
         }
+    }
+
+    public BossVitalityPool getVitalityPool() { return vitalityPool; }
+    public AdaptiveArmorTracker getAdaptiveArmorTracker() { return adaptiveArmorTracker; }
+    public int getCorrosionHits() { return corrosionHits; }
+    public void setCorrosionHits(int hits) { this.corrosionHits = Math.max(0, hits); }
+    public void incrementCorrosionHits() { this.corrosionHits++; }
+    public void resetCorrosionHits() { this.corrosionHits = 0; }
+    public void resetAdaptiveArmor(@javax.annotation.Nullable LivingEntity boss) {
+        this.adaptiveArmorTracker.reset(boss != null ? boss.getPersistentData() : null);
+    }
+    public double getCorrosionMultiplier(double baseArmor) {
+        if (corrosionHits <= 0) return 1.0;
+        double requiredHits = 25.0 + (Math.max(0.0, baseArmor) * 0.45);
+        double ratio = Math.min(1.0, (double) corrosionHits / requiredHits);
+        double progress = ratio * ratio; // Accelerating curve: early hits strip less, later hits strip significantly more
+        return Math.max(0.0, 1.0 - progress);
+    }
+
+    public double getCorrosionMultiplier() {
+        return getCorrosionMultiplier(100.0);
     }
 
     public BossDefinition getDefinition() { return definition; }

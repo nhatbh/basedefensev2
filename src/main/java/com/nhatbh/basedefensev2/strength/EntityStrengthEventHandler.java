@@ -33,10 +33,10 @@ public class EntityStrengthEventHandler {
 
         if (entity instanceof LivingEntity living && !(living instanceof Player) && !(living instanceof ArmorStand) && !PoiseAPI.hasPoise(living)) {
             if (BossManager.isBoss(living)) {
-                BossDefinition def = BossManager.get(living).getDefinition();
-                float maxHp = living.getMaxHealth();
-                float scaledPoise = PoiseAPI.calculateMobMaxPoise(maxHp);
-                float reduction = (def != null) ? def.getPoiseDamageReduction() : 0.95f;
+                com.nhatbh.basedefensev2.boss.core.BossComponent comp = BossManager.get(living);
+                double maxVitality = (comp != null) ? comp.getVitalityPool().getMaxVitality() : (double) living.getMaxHealth();
+                float scaledPoise = PoiseAPI.calculateMobMaxPoise((float) maxVitality);
+                float reduction = (comp != null && comp.getDefinition() != null) ? comp.getDefinition().getPoiseDamageReduction() : 0.95f;
                 PoiseAPI.initializePoise(living, scaledPoise, reduction, true);
             } else if (living instanceof Mob mob) {
                 float maxHp = mob.getMaxHealth();
@@ -56,7 +56,7 @@ public class EntityStrengthEventHandler {
         }
 
         LivingEntity entity = event.getEntity();
-        if (entity.level().isClientSide || !PoiseAPI.hasPoise(entity))
+        if (entity == null || entity.level().isClientSide)
             return;
 
         DamageSource source = event.getSource();
@@ -66,44 +66,68 @@ public class EntityStrengthEventHandler {
             return;
         }
 
-        if (!PoiseAPI.isExhausted(entity)) {
-            // Post-mitigated attack damage captured from event.getAmount()
-            float postMitigatedDamage = event.getAmount();
-            LivingEntity attacker = source.getEntity() instanceof LivingEntity livingAttacker ? livingAttacker : null;
-
-            // Direct melee attacks receive full poise damage scaled by weapon Impact.
-            // Ranged / indirect / spell attacks receive 50% poise penalty and bypass weapon Impact scaling.
-            boolean isDirectMelee = !source.isIndirect() && !(source instanceof io.redspace.ironsspellbooks.damage.SpellDamageSource);
-
-            float basePoiseDamage;
-            float impactScore = 2.5f;
-
-            if (isDirectMelee) {
-                basePoiseDamage = postMitigatedDamage;
-                impactScore = PoiseAPI.getImpactScore(source, attacker);
-                float impactMult = PoiseAPI.getImpactPoiseDamageMultiplier(impactScore);
-                basePoiseDamage *= impactMult;
-
-                if (attacker != null && BossManager.isBoss(entity)) {
-                    float riposteMult = com.nhatbh.basedefensev2.effects.RiposteEffect.getPoiseDamageMultiplier(attacker);
-                    basePoiseDamage *= riposteMult;
-                }
-            } else {
-                basePoiseDamage = postMitigatedDamage * 0.5f;
+        if (!PoiseAPI.hasPoise(entity)) {
+            if (BossManager.isBoss(entity)) {
+                float preMitigated = getPreMitigatedDamage(event, entity, null);
+                PoiseAPI.damagePoise(entity, 0.0f, preMitigated, source.getEntity() instanceof LivingEntity livingAttacker ? livingAttacker : null, source, true);
+                entity.level().broadcastEntityEvent(entity, (byte) 2);
+                event.setCanceled(true);
             }
-
-            float actualPoiseDmg = PoiseAPI.damagePoise(entity, basePoiseDamage, attacker, source, true);
-            float mitigatedDmg = PoiseAPI.calculateMitigatedDamage(entity, postMitigatedDamage);
-
-            // Check if this exact hit broke poise (target is now exhausted)
-            if (PoiseAPI.isExhausted(entity)) {
-                float breakMult = isDirectMelee ? PoiseAPI.getPoiseBreakDamageMultiplier(impactScore) : 1.0f;
-                float finalDamage = postMitigatedDamage * breakMult;
-                event.setAmount(finalDamage);
-            } else {
-                event.setAmount(mitigatedDmg);
-            }
+            return;
         }
+
+        float[] rawOut = new float[1];
+        float preMitigatedDamage = getPreMitigatedDamage(event, entity, rawOut);
+        float rawDamage = rawOut[0];
+        LivingEntity attacker = source.getEntity() instanceof LivingEntity livingAttacker ? livingAttacker : null;
+        boolean isDirectMelee = !source.isIndirect() && !(source instanceof io.redspace.ironsspellbooks.damage.SpellDamageSource);
+
+        float basePoiseDamage;
+        float impactScore = 2.5f;
+
+        if (isDirectMelee) {
+            basePoiseDamage = preMitigatedDamage;
+            impactScore = PoiseAPI.getImpactScore(source, attacker);
+            float impactMult = PoiseAPI.getImpactPoiseDamageMultiplier(impactScore);
+            basePoiseDamage *= impactMult;
+
+            if (attacker != null && BossManager.isBoss(entity)) {
+                float riposteMult = com.nhatbh.basedefensev2.effects.RiposteEffect.getPoiseDamageMultiplier(attacker);
+                basePoiseDamage *= riposteMult;
+            }
+        } else {
+            basePoiseDamage = preMitigatedDamage * 0.5f;
+        }
+
+        // Vitality damage is calculated from damage before mitigation (reduced by Apotheosis resistance) WITHOUT weapon impact mechanic
+        float vitalityDamage = preMitigatedDamage;
+
+        float actualPoiseDmg = PoiseAPI.damagePoise(entity, basePoiseDamage, vitalityDamage, attacker, source, true, "BaseDefense", PoiseAPI.Priority.NORMAL);
+
+        if (BossManager.isBoss(entity)) {
+            entity.level().broadcastEntityEvent(entity, (byte) 2);
+        }
+    }
+
+    private static float getPreMitigatedDamage(LivingHurtEvent event, LivingEntity entity, float[] rawOut) {
+        if (entity.getPersistentData().contains("bdv2_cached_pre_mitigated_dmg")) {
+            double preMit = entity.getPersistentData().getDouble("bdv2_cached_pre_mitigated_dmg");
+            double raw = entity.getPersistentData().getDouble("bdv2_cached_raw_dmg");
+            entity.getPersistentData().remove("bdv2_cached_pre_mitigated_dmg");
+            entity.getPersistentData().remove("bdv2_cached_raw_dmg");
+            if (rawOut != null && rawOut.length > 0) rawOut[0] = (float) raw;
+            return (float) preMit;
+        }
+        double armor = BossManager.isBoss(entity) ? BossManager.calculateBossArmor(entity) : entity.getArmorValue();
+        double effectiveArmor = armor;
+        if (BossManager.isBoss(entity)) {
+            com.nhatbh.basedefensev2.boss.core.BossComponent comp = BossManager.get(entity);
+            if (comp != null) effectiveArmor *= comp.getCorrosionMultiplier(armor);
+        }
+        double apotheosisMult = BossManager.calculateApotheosisMultiplier(effectiveArmor);
+        float raw = event.getAmount();
+        if (rawOut != null && rawOut.length > 0) rawOut[0] = raw;
+        return (float) (raw * apotheosisMult);
     }
 
     private static final UUID EXHAUSTION_SPEED_MOD_UUID = UUIDHelper.generateAttributeModifierUUID("poise_exhaustion", "movement_speed");
@@ -186,13 +210,6 @@ public class EntityStrengthEventHandler {
             if (!entity.level().isClientSide && data.recoveryTicks <= 0) {
                 PoiseAPI.resetPoise(entity);
             }
-        }
-    }
-
-    @SubscribeEvent
-    public static void onLivingDamage(LivingDamageEvent event) {
-        if (BossManager.isBoss(event.getEntity())) {
-            // Damage handling relocated to BossManager
         }
     }
 

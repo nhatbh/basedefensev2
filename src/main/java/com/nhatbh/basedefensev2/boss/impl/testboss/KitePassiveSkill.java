@@ -19,7 +19,7 @@ public class KitePassiveSkill implements PassiveSkill {
 
     @Override
     public void tick(LivingEntity boss) {
-        if (boss.level().isClientSide)
+        if (boss.level().isClientSide || com.nhatbh.basedefensev2.api.PoiseAPI.isExhausted(boss))
             return;
 
         LivingEntity target = null;

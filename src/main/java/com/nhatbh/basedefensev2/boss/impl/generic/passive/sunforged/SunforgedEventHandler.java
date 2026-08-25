@@ -28,6 +28,7 @@ public class SunforgedEventHandler {
     @SubscribeEvent
     public static void onLivingHurt(LivingHurtEvent event) {
         LivingEntity victim = event.getEntity();
+        if (victim == null || com.nhatbh.basedefensev2.api.PoiseAPI.isExhausted(victim)) return;
         SunforgedBulwarkController controller = activeControllers.get(victim);
         if (controller != null) {
             controller.onBossDamaged(event);

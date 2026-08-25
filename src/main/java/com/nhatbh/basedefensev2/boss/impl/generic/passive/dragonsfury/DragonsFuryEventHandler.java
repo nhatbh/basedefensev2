@@ -35,7 +35,7 @@ public class DragonsFuryEventHandler {
     @SubscribeEvent
     public static void onPoiseDamage(PoiseDamageEvent event) {
         LivingEntity entity = event.getEntity();
-        if (entity == null || entity.level().isClientSide())
+        if (entity == null || entity.level().isClientSide() || PoiseAPI.isExhausted(entity))
             return;
 
         if (!BossManager.isBoss(entity))
@@ -47,7 +47,7 @@ public class DragonsFuryEventHandler {
 
         LivingEntity attacker = event.getAttacker();
         float insideMult = fury.isDesperationActive() ? 2.0f : 1.5f;
-        float mult = PoiseAPI.getRangeBasedPoiseMultiplier(entity, attacker, 6.0f, insideMult, 0.0f);
+        float mult = PoiseAPI.getRangeBasedPoiseMultiplier(entity, attacker, 6.0f, insideMult, 0.5f);
 
         if (mult <= 0.0f) {
             event.setCanceled(true);
@@ -59,7 +59,7 @@ public class DragonsFuryEventHandler {
     @SubscribeEvent
     public static void onLivingHurt(LivingHurtEvent event) {
         LivingEntity entity = event.getEntity();
-        if (entity == null || entity.level().isClientSide())
+        if (entity == null || entity.level().isClientSide() || PoiseAPI.isExhausted(entity))
             return;
 
         if (!BossManager.isBoss(entity))
@@ -77,15 +77,13 @@ public class DragonsFuryEventHandler {
         }
 
         // 2. Enraged Range Damage Rule:
-        // When enraged: 0 strength damage outside 6m range; +50% (P1) or +100% (P2) damage inside 6m range.
+        // When enraged: 50% damage outside 6m range (lessened from 0%); +50% (P1) or +100% (P2) damage inside 6m range.
         if (fury.isEnraged()) {
             net.minecraft.world.entity.Entity attacker = event.getSource().getEntity();
             if (attacker != null) {
                 double distance = entity.distanceTo(attacker);
                 if (distance > 6.0) {
-                    event.setAmount(0.0f);
-                    event.setCanceled(true);
-                    return;
+                    event.setAmount(event.getAmount() * 0.50f);
                 } else {
                     float multiplier = fury.isDesperationActive() ? 2.0f : 1.5f;
                     event.setAmount(event.getAmount() * multiplier);
@@ -97,7 +95,7 @@ public class DragonsFuryEventHandler {
     @SubscribeEvent
     public static void onLivingDamage(LivingDamageEvent event) {
         LivingEntity entity = event.getEntity();
-        if (entity == null || entity.level().isClientSide())
+        if (entity == null || entity.level().isClientSide() || PoiseAPI.isExhausted(entity))
             return;
 
         if (!BossManager.isBoss(entity))

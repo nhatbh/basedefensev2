@@ -120,9 +120,9 @@
         "excluded": true
     },
     "wrd:yeti": {
-        "category": "Miniboss",
+        "category": "Excluded",
         "isRanged": false,
-        "excluded": false
+        "excluded": true
     },
     "cataclysm:deepling_warlock": {
         "category": "Monster",
@@ -785,9 +785,9 @@
         "excluded": false
     },
     "cataclysm_spellbooks:phantom_ancient_remnant": {
-        "category": "Boss",
+        "category": "Excluded",
         "isRanged": false,
-        "excluded": false
+        "excluded": true
     },
     "wrd:rotating_blue_pentagram": {
         "category": "Excluded",
@@ -815,9 +815,9 @@
         "excluded": true
     },
     "wrd:super_ender_enforcer": {
-        "category": "Miniboss",
+        "category": "Excluded",
         "isRanged": false,
-        "excluded": false
+        "excluded": true
     },
     "wrd:buff_zombie": {
         "category": "Monster",
@@ -1135,9 +1135,9 @@
         "excluded": false
     },
     "alexscaves:luxtructosaurus": {
-        "category": "Boss",
+        "category": "Excluded",
         "isRanged": false,
-        "excluded": false
+        "excluded": true
     },
     "wrd:undead_spider": {
         "category": "Monster",
@@ -1290,9 +1290,9 @@
         "excluded": false
     },
     "wrd:corrupted_zombie": {
-        "category": "Elites",
+        "category": "Excluded",
         "isRanged": false,
-        "excluded": false
+        "excluded": true
     },
     "wrd:enemy_bloody_spike": {
         "category": "Excluded",
@@ -1475,9 +1475,9 @@
         "excluded": true
     },
     "wrd:ender_enforcer": {
-        "category": "Elites",
+        "category": "Excluded",
         "isRanged": false,
-        "excluded": false
+        "excluded": true
     },
     "cataclysm_spellbooks:summoned_coralssus": {
         "category": "Excluded",
@@ -1575,9 +1575,9 @@
         "excluded": true
     },
     "traveloptics:enraged_dead_king": {
-        "category": "Boss",
+        "category": "Excluded",
         "isRanged": false,
-        "excluded": false
+        "excluded": true
     },
     "wrd:ancient_guardling_2": {
         "category": "Excluded",
@@ -1618,6 +1618,11 @@
         "category": "Miniboss",
         "isRanged": false,
         "excluded": false
+    },
+    "betternether:skull": {
+        "category": "Excluded",
+        "isRanged": false,
+        "excluded": true
     },
     "wrd:heart_of_ice": {
         "category": "Excluded",
@@ -1804,6 +1809,11 @@
         "isRanged": false,
         "excluded": true
     },
+    "betternether:naga": {
+        "category": "Monster",
+        "isRanged": true,
+        "excluded": false
+    },
     "wom:lycanth": {
         "category": "Elites",
         "isRanged": false,
@@ -1890,9 +1900,9 @@
         "excluded": false
     },
     "wrd:corrupted_iron_golem": {
-        "category": "Elites",
+        "category": "Excluded",
         "isRanged": false,
-        "excluded": false
+        "excluded": true
     },
     "wrd:ender_stinger": {
         "category": "Excluded",
@@ -2015,9 +2025,9 @@
         "excluded": false
     },
     "wrd:corrupted_skeleton": {
-        "category": "Elites",
+        "category": "Excluded",
         "isRanged": false,
-        "excluded": false
+        "excluded": true
     },
     "wrd:ancient_guard_ling": {
         "category": "Excluded",

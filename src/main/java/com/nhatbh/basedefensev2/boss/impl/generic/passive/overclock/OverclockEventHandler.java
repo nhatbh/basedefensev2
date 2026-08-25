@@ -14,7 +14,7 @@ public class OverclockEventHandler {
     @SubscribeEvent
     public static void onLivingHurt(LivingHurtEvent event) {
         LivingEntity entity = event.getEntity();
-        if (entity == null || entity.level().isClientSide())
+        if (entity == null || entity.level().isClientSide() || com.nhatbh.basedefensev2.api.PoiseAPI.isExhausted(entity))
             return;
 
         if (!BossManager.isBoss(entity))
@@ -35,7 +35,7 @@ public class OverclockEventHandler {
     @SubscribeEvent
     public static void onPoiseDamage(PoiseDamageEvent event) {
         LivingEntity entity = event.getEntity();
-        if (entity == null || entity.level().isClientSide())
+        if (entity == null || entity.level().isClientSide() || com.nhatbh.basedefensev2.api.PoiseAPI.isExhausted(entity))
             return;
 
         if (!BossManager.isBoss(entity))

@@ -29,7 +29,7 @@ public class TitansMantleEventHandler {
     @SubscribeEvent
     public static void onLivingHurt(LivingHurtEvent event) {
         LivingEntity victim = event.getEntity();
-        if (victim == null || victim.level().isClientSide()) return;
+        if (victim == null || victim.level().isClientSide() || com.nhatbh.basedefensev2.api.PoiseAPI.isExhausted(victim)) return;
 
         TitansMantleController controller = activeControllers.get(victim);
         if (controller != null) {

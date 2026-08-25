@@ -10,9 +10,13 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.living.LivingDropsEvent;
 import net.minecraftforge.event.entity.living.LivingExperienceDropEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -26,7 +30,13 @@ public class MobLevelEventHandler {
     private static final UUID LEVEL_MODIFIER_UUID = UUID.fromString("b21495c6-993d-4c31-a083-d9d10e53a23a");
 
     public static boolean isEligibleEntity(LivingEntity living) {
-        return living != null && !(living instanceof Player) && !(living instanceof ArmorStand);
+        if (living == null || living instanceof Player || living instanceof ArmorStand) {
+            return false;
+        }
+        if (com.nhatbh.basedefensev2.integration.ComplexTalentsPenaltyHelper.isFriendlySummon(living)) {
+            return false;
+        }
+        return true;
     }
 
     @SubscribeEvent
@@ -98,11 +108,74 @@ public class MobLevelEventHandler {
     @SubscribeEvent
     public static void onExperienceDrop(LivingExperienceDropEvent event) {
         LivingEntity entity = event.getEntity();
-        if (entity != null && !entity.level().isClientSide) {
+        if (entity != null && !entity.level().isClientSide && isEligibleEntity(entity)) {
             int level = MobLevelData.getLevel(entity);
             if (level > 1 && MobLevelConfig.BONUS_XP_PER_LEVEL > 0) {
                 float xpMultiplier = 1.0f + (float) (MobLevelConfig.getLevelBonusMultiplier(level) * MobLevelConfig.BONUS_XP_PER_LEVEL);
                 event.setDroppedExperience(Math.round(event.getOriginalExperience() * xpMultiplier));
+            }
+        }
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOW)
+    public static void onLivingDrops(LivingDropsEvent event) {
+        LivingEntity entity = event.getEntity();
+        if (entity != null && !entity.level().isClientSide && isEligibleEntity(entity)) {
+            int level = MobLevelData.getLevel(entity);
+            if (level > 1 && MobLevelConfig.BONUS_LOOT_COEFFICIENT > 0) {
+                double bonusMultiplier = MobLevelConfig.BONUS_LOOT_COEFFICIENT * Math.pow(level - 1, MobLevelConfig.BONUS_LOOT_EXPONENT);
+                if (bonusMultiplier <= 0) return;
+
+                java.util.List<ItemEntity> extraDrops = new java.util.ArrayList<>();
+
+                for (ItemEntity itemEntity : event.getDrops()) {
+                    ItemStack stack = itemEntity.getItem();
+                    if (!stack.isEmpty() && stack.isStackable()) {
+                        int count = stack.getCount();
+                        int extraCount = 0;
+                        for (int j = 0; j < count; j++) {
+                            double rollValue = bonusMultiplier;
+                            while (rollValue >= 1.0) {
+                                extraCount++;
+                                rollValue -= 1.0;
+                            }
+                            if (entity.getRandom().nextDouble() < rollValue) {
+                                extraCount++;
+                            }
+                        }
+
+                        if (extraCount > 0) {
+                            int maxStack = stack.getMaxStackSize();
+                            int spaceInOriginal = maxStack - count;
+                            int toAddToOriginal = Math.min(extraCount, spaceInOriginal);
+                            if (toAddToOriginal > 0) {
+                                stack.setCount(count + toAddToOriginal);
+                                itemEntity.setItem(stack);
+                                extraCount -= toAddToOriginal;
+                            }
+
+                            while (extraCount > 0) {
+                                int currentBatch = Math.min(extraCount, maxStack);
+                                ItemStack newStack = stack.copy();
+                                newStack.setCount(currentBatch);
+                                ItemEntity newEntity = new ItemEntity(
+                                    entity.level(),
+                                    itemEntity.getX(),
+                                    itemEntity.getY(),
+                                    itemEntity.getZ(),
+                                    newStack
+                                );
+                                newEntity.setDeltaMovement(itemEntity.getDeltaMovement());
+                                extraDrops.add(newEntity);
+                                extraCount -= currentBatch;
+                            }
+                        }
+                    }
+                }
+
+                if (!extraDrops.isEmpty()) {
+                    event.getDrops().addAll(extraDrops);
+                }
             }
         }
     }

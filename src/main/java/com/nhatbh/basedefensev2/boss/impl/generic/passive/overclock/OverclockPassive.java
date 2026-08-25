@@ -83,7 +83,10 @@ public class OverclockPassive implements PassiveSkill {
 
     @Override
     public void tick(LivingEntity boss) {
-        if (boss.level().isClientSide() || !boss.isAlive()) return;
+        if (boss.level().isClientSide() || !boss.isAlive() || com.nhatbh.basedefensev2.api.PoiseAPI.isExhausted(boss)) {
+            removeModifiers(boss);
+            return;
+        }
 
         ServerLevel level = (ServerLevel) boss.level();
 

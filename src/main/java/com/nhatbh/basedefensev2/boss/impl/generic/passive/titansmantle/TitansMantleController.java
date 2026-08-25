@@ -47,7 +47,7 @@ public class TitansMantleController {
     }
 
     public void tick() {
-        if (boss == null || !boss.isAlive() || boss.level().isClientSide())
+        if (boss == null || !boss.isAlive() || boss.level().isClientSide() || com.nhatbh.basedefensev2.api.PoiseAPI.isExhausted(boss))
             return;
         ServerLevel level = (ServerLevel) boss.level();
 
@@ -93,13 +93,13 @@ public class TitansMantleController {
     }
 
     public void onBossDamaged(LivingHurtEvent event) {
-        if (boss.level().isClientSide())
+        if (boss.level().isClientSide() || com.nhatbh.basedefensev2.api.PoiseAPI.isExhausted(boss))
             return;
         ServerLevel level = (ServerLevel) boss.level();
 
-        // A. If Shattered Mantle is active -> Take +50% Bonus Damage
+        // A. If Shattered Mantle is active -> Take +75% Bonus Damage
         if (shatteredTimer > 0) {
-            event.setAmount(event.getAmount() * 1.50f);
+            event.setAmount(event.getAmount() * 1.75f);
             return;
         }
 
@@ -109,36 +109,29 @@ public class TitansMantleController {
 
             // Check if Hardened Crust Window is Active
             if (hardenedTimer > 0) {
-                // Apply 75% Damage Reduction ONLY while Hardened!
-                event.setAmount(event.getAmount() * 0.25f);
+                // Apply 40% Damage Reduction while Hardened (lessened from 75%)
+                event.setAmount(event.getAmount() * 0.60f);
 
                 if (directAttacker instanceof Projectile proj) {
                     reflectProjectile(level, proj);
-                    event.setCanceled(true);
-                    return;
                 } else {
                     level.playSound(null, boss.getX(), boss.getY(), boss.getZ(), SoundEvents.ARMOR_EQUIP_IRON,
                             SoundSource.HOSTILE, 1.5f, 0.6f);
                     level.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, Blocks.TUFF.defaultBlockState()),
                             boss.getX(), boss.getY() + 1.0, boss.getZ(), 8, 0.3, 0.4, 0.3, 0.05);
                 }
-                // During Hardened state, passive shield points are IMMUNE to shield damage.
-                // Boss Poise (via PoiseAPI) remains unaffected and continues taking poise
-                // damage as normal.
             } else {
-                // First Hit outside Hardened Window -> Takes 100% Full HP Damage, Drains Shield
-                // Points based on HP % dealt & Triggers Hardened Window!
+                // First Hit outside Hardened Window -> Takes Full Damage, Drains Shield Points
                 float rawDamage = event.getAmount();
                 float maxHp = boss.getMaxHealth();
                 float hpPercentDealt = maxHp > 0 ? (rawDamage / maxHp) * 100.0f : 1.0f;
 
-                // Dynamic shield damage: 5x multiplier on HP % dealt (clamped between 3.0 min
-                // and 35.0 max shield points)
-                float shieldDamage = Math.min(35.0f, Math.max(3.0f, hpPercentDealt * 5.0f));
+                // Dynamic shield damage: 10x multiplier on HP % dealt
+                float shieldDamage = Math.min(50.0f, Math.max(5.0f, hpPercentDealt * 10.0f));
                 shieldPoints = Math.max(0.0f, shieldPoints - shieldDamage);
 
-                // Trigger Hardened Crust Window (1.5s in Phase 1 / 1.0s in Phase 2)
-                hardenedTimer = desperationActive ? 20 : 30;
+                // Trigger Hardened Crust Window (0.75s in Phase 1 / 0.5s in Phase 2)
+                hardenedTimer = desperationActive ? 10 : 15;
 
                 level.playSound(null, boss.getX(), boss.getY(), boss.getZ(), SoundEvents.ANVIL_PLACE,
                         SoundSource.HOSTILE, 1.8f, 0.7f);

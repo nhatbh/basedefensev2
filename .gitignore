@@ -22,6 +22,9 @@ eclipse
 run
 libs
 mods
+external_mods
+decompiled_mods
+tools
 
 # Files from Forge MDK
 forge*changelog.txt

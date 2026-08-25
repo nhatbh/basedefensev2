@@ -277,7 +277,16 @@ public class SpawnerSubsystem {
             com.nhatbh.basedefensev2.boss.core.BossComponent comp = new com.nhatbh.basedefensev2.boss.core.BossComponent(def);
             com.nhatbh.basedefensev2.boss.core.BossManager.registerBoss(mob, comp);
 
-
+            if (entry.hp_multiplier != 1.0) {
+                double newVitality = comp.getVitalityPool().getMaxVitality() * entry.hp_multiplier;
+                comp.getVitalityPool().setMaxVitality(newVitality);
+                comp.getVitalityPool().setCurrentVitality(newVitality);
+                comp.getVitalityPool().saveToNBT(mob.getPersistentData());
+                float newPoise = com.nhatbh.basedefensev2.api.PoiseAPI.calculateMobMaxPoise((float) newVitality);
+                float reduction = (def != null) ? def.getPoiseDamageReduction() : 0.95f;
+                com.nhatbh.basedefensev2.api.PoiseAPI.initializePoise(mob, newPoise, reduction, true);
+                com.nhatbh.basedefensev2.boss.core.BossManager.syncBossVitality(mob, comp);
+            }
 
             mob.setCustomName(Component.literal(entry.boss_id.toUpperCase()));
             mob.setCustomNameVisible(true);

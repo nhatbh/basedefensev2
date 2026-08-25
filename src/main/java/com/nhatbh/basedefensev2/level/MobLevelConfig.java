@@ -14,6 +14,8 @@ public class MobLevelConfig {
     public static boolean ALWAYS_SHOW_LEVELS = false;
     public static boolean ONLY_SHOW_LEVELS_ON_LOOK = true;
     public static float BONUS_XP_PER_LEVEL = 0.1f;
+    public static float BONUS_LOOT_COEFFICIENT = 0.1100f;
+    public static float BONUS_LOOT_EXPONENT = 0.75f;
 
     // World Level Overworld Scaling Arrays (Index = World Level 0..10)
     public static final int[] OVERWORLD_BASE_LEVELS = new int[]{1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50};
@@ -82,8 +84,6 @@ public class MobLevelConfig {
     public static final Map<String, Double> ATTRIBUTE_BONUSES = new LinkedHashMap<>();
 
     static {
-        ATTRIBUTE_BONUSES.put("minecraft:generic.movement_speed", 0.001);
-        ATTRIBUTE_BONUSES.put("minecraft:generic.flying_speed", 0.001);
         ATTRIBUTE_BONUSES.put("minecraft:generic.attack_damage", 0.1);
         ATTRIBUTE_BONUSES.put("minecraft:generic.armor", 0.1);
         ATTRIBUTE_BONUSES.put("minecraft:generic.max_health", 0.1);

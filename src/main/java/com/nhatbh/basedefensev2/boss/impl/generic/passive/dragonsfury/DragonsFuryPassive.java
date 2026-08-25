@@ -79,8 +79,13 @@ public class DragonsFuryPassive implements PassiveSkill {
 
     @Override
     public void tick(LivingEntity boss) {
-        if (boss.level().isClientSide() || !boss.isAlive())
+        if (boss.level().isClientSide() || !boss.isAlive() || com.nhatbh.basedefensev2.api.PoiseAPI.isExhausted(boss)) {
+            if (isCounterattackChanneling) {
+                isCounterattackChanneling = false;
+                channelTicks = 0;
+            }
             return;
+        }
 
         ServerLevel level = (ServerLevel) boss.level();
 

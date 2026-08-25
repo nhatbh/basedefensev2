@@ -109,15 +109,17 @@ public class ArenaCommands {
                                 int currentWave = ctx.getCurrentWaveIndex() + 1;
                                 int totalWaves = config != null && config.waves != null ? config.waves.size() : 0;
                                 String stateName = ctx.getStageState() != null ? ctx.getStageState().name() : "NONE";
+                                String frozenStr = ctx.isStageTimerFrozen() ? " §b[FROZEN]" : "";
 
                                 String nextStageId = ctx.getNextStageId(arenaLevel);
                                 String nextStageStr = nextStageId != null ? nextStageId : "None";
                                 context.getSource().sendSuccess(() -> Component.literal("§6[The Rift Status] §eCurrent Stage: §c" + stageId 
-                                        + " §7(Assault " + currentWave + "/" + totalWaves + " - " + stateName + ") | §eNext Stage: §c" + nextStageStr), false);
+                                        + " §7(Assault " + currentWave + "/" + totalWaves + " - " + stateName + frozenStr + ") | §eNext Stage: §c" + nextStageStr), false);
                             } else {
                                 int ticksRemaining = ctx.getTicksUntilNextStage(arenaLevel);
                                 String nextStageId = ctx.getNextStageId(arenaLevel);
                                 String nextStageStr = nextStageId != null ? nextStageId : "None";
+                                String frozenStr = ctx.isStageTimerFrozen() ? " §b[FROZEN]" : "";
                                 if (ticksRemaining < 0) {
                                     context.getSource().sendSuccess(() -> Component.literal("§6[The Rift Status] §eNo active stage. All trials have been completed!"), false);
                                 } else {
@@ -126,7 +128,7 @@ public class ArenaCommands {
                                     int seconds = secondsRemaining % 60;
                                     String timeStr = minutes > 0 ? minutes + "m " + seconds + "s" : seconds + "s";
 
-                                    context.getSource().sendSuccess(() -> Component.literal("§6[The Rift Status] §eNo active stage. Next Stage: §c" + nextStageStr + " §7(Arrives in: " + timeStr + ")"), false);
+                                    context.getSource().sendSuccess(() -> Component.literal("§6[The Rift Status] §eNo active stage. Next Stage: §c" + nextStageStr + " §7(Arrives in: " + timeStr + frozenStr + ")"), false);
                                 }
                             }
                             return 1;
@@ -181,6 +183,13 @@ public class ArenaCommands {
                         .executes(context -> {
                             return dumpHostileMobs(context.getSource());
                         }))
+                .then(Commands.literal("dump_spells")
+                        .requires(s -> s.hasPermission(2))
+                        .executes(context -> {
+                            String res = com.nhatbh.basedefensev2.boss.impl.spells.SpellDumper.dumpSpells();
+                            context.getSource().sendSuccess(() -> Component.literal("§6[Iron's Spells Dump] §a" + res), true);
+                            return 1;
+                        }))
                 .then(Commands.literal("classify")
                         .executes(context -> {
                             if (context.getSource().getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) {
@@ -230,6 +239,21 @@ public class ArenaCommands {
                         .requires(s -> s.hasPermission(2))
                         .then(Commands.argument("seconds", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
                                 .executes(context -> executePostponeCommand(context.getSource(), com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "seconds")))))
+                .then(Commands.literal("freezetimer")
+                        .requires(s -> s.hasPermission(2))
+                        .executes(context -> executeFreezeTimerCommand(context.getSource(), null))
+                        .then(Commands.argument("freeze", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                .executes(context -> executeFreezeTimerCommand(context.getSource(), com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "freeze")))))
+                .then(Commands.literal("freeze_timer")
+                        .requires(s -> s.hasPermission(2))
+                        .executes(context -> executeFreezeTimerCommand(context.getSource(), null))
+                        .then(Commands.argument("freeze", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                .executes(context -> executeFreezeTimerCommand(context.getSource(), com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "freeze")))))
+                .then(Commands.literal("freeze")
+                        .requires(s -> s.hasPermission(2))
+                        .executes(context -> executeFreezeTimerCommand(context.getSource(), null))
+                        .then(Commands.argument("freeze", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                .executes(context -> executeFreezeTimerCommand(context.getSource(), com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "freeze")))))
                 .then(Commands.literal("test_wave")
                         .requires(s -> s.hasPermission(2))
                         .executes(context -> executeTestWaveCommand(context.getSource())))
@@ -238,7 +262,24 @@ public class ArenaCommands {
                         .executes(context -> executeSpawnTestBossCommand(context.getSource())))
                 .then(Commands.literal("gauntlet")
                         .requires(s -> s.hasPermission(2))
-                        .executes(context -> executeGauntletCommand(context.getSource())))
+                        .executes(context -> executeGauntletCommand(context.getSource(), 50000.0f, 15000.0f))
+                        .then(Commands.argument("bossHp", com.mojang.brigadier.arguments.FloatArgumentType.floatArg(1.0f))
+                                .executes(context -> executeGauntletCommand(context.getSource(),
+                                        com.mojang.brigadier.arguments.FloatArgumentType.getFloat(context, "bossHp"),
+                                        15000.0f))
+                                .then(Commands.argument("minibossHp", com.mojang.brigadier.arguments.FloatArgumentType.floatArg(1.0f))
+                                        .executes(context -> executeGauntletCommand(context.getSource(),
+                                                com.mojang.brigadier.arguments.FloatArgumentType.getFloat(context, "bossHp"),
+                                                com.mojang.brigadier.arguments.FloatArgumentType.getFloat(context, "minibossHp"))))))
+        );
+
+        dispatcher.register(Commands.literal("dump_spells")
+                .requires(s -> s.hasPermission(2))
+                .executes(context -> {
+                    String res = com.nhatbh.basedefensev2.boss.impl.spells.SpellDumper.dumpSpells();
+                    context.getSource().sendSuccess(() -> Component.literal("§6[Iron's Spells Dump] §a" + res), true);
+                    return 1;
+                })
         );
     }
 
@@ -299,17 +340,17 @@ public class ArenaCommands {
         }
     }
 
-    private static int executeGauntletCommand(CommandSourceStack source) {
+    private static int executeGauntletCommand(CommandSourceStack source, float bossHp, float minibossHp) {
         if (source.getServer() == null) return 0;
         ServerLevel level = source.getServer().getLevel(ModDimensions.ARENA);
         if (level == null) level = source.getLevel();
 
-        StageConfig customConfig = com.nhatbh.basedefensev2.stage.generator.RandomStageGenerator.generateGauntletStage();
+        StageConfig customConfig = com.nhatbh.basedefensev2.stage.generator.RandomStageGenerator.generateGauntletStage(bossHp, minibossHp);
         StageContext ctx = StageContext.getOrCreate(level);
         ctx.forceStartStage(level, customConfig);
 
-        int totalBosses = customConfig.waves != null ? customConfig.waves.size() : 0;
-        source.sendSuccess(() -> Component.literal(String.format("§6[The Rift OP] §aBoss & Miniboss Gauntlet Stage initiated! Total waves: %d", totalBosses)), true);
+        int totalWaves = customConfig.waves != null ? customConfig.waves.size() : 0;
+        source.sendSuccess(() -> Component.literal(String.format("§6[The Rift OP] §aBoss & Miniboss Gauntlet Stage initiated! Total waves: %d | Boss Vitality: %.0f | Miniboss Vitality: %.0f", totalWaves, bossHp, minibossHp)), true);
         return 1;
     }
 
@@ -423,7 +464,44 @@ public class ArenaCommands {
                         .requires(s -> s.hasPermission(2))
                         .then(Commands.argument("seconds", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
                                 .executes(context -> executePostponeCommand(context.getSource(), com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "seconds")))))
+                .then(Commands.literal("freezetimer")
+                        .requires(s -> s.hasPermission(2))
+                        .executes(context -> executeFreezeTimerCommand(context.getSource(), null))
+                        .then(Commands.argument("freeze", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                .executes(context -> executeFreezeTimerCommand(context.getSource(), com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "freeze")))))
+                .then(Commands.literal("freeze_timer")
+                        .requires(s -> s.hasPermission(2))
+                        .executes(context -> executeFreezeTimerCommand(context.getSource(), null))
+                        .then(Commands.argument("freeze", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                .executes(context -> executeFreezeTimerCommand(context.getSource(), com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "freeze")))))
+                .then(Commands.literal("freeze")
+                        .requires(s -> s.hasPermission(2))
+                        .executes(context -> executeFreezeTimerCommand(context.getSource(), null))
+                        .then(Commands.argument("freeze", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                .executes(context -> executeFreezeTimerCommand(context.getSource(), com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "freeze")))))
         );
+    }
+
+    private static int executeFreezeTimerCommand(CommandSourceStack source, Boolean freeze) {
+        if (source.getServer() == null) return 0;
+        ServerLevel arenaLevel = source.getServer().getLevel(ModDimensions.ARENA);
+        if (arenaLevel == null) arenaLevel = source.getLevel();
+
+        StageContext ctx = StageContext.getOrCreate(arenaLevel);
+        boolean newState;
+        if (freeze == null) {
+            newState = ctx.toggleStageTimerFreeze();
+        } else {
+            ctx.setStageTimerFrozen(freeze);
+            newState = freeze;
+        }
+
+        if (newState) {
+            source.sendSuccess(() -> Component.literal("§6[The Rift OP] §aStage timer is now §bFROZEN§a! Next stage countdown paused."), true);
+        } else {
+            source.sendSuccess(() -> Component.literal("§6[The Rift OP] §aStage timer is now §eUNFROZEN§a! Next stage countdown resumed."), true);
+        }
+        return 1;
     }
 
     private static int executeWorldLevelCommand(CommandSourceStack source) {

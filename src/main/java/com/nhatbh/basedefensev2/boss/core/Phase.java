@@ -72,6 +72,9 @@ public class Phase {
     }
 
     public void tickPassives(LivingEntity boss) {
+        if (com.nhatbh.basedefensev2.api.PoiseAPI.isExhausted(boss)) {
+            return;
+        }
         for (PassiveSkill passive : passives) {
             passive.tick(boss);
         }

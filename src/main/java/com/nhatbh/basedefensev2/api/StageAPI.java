@@ -271,4 +271,32 @@ public class StageAPI {
         ctx.forceStartStage(arena, optConfig.get());
         return true;
     }
+
+    /**
+     * Checks if the stage / next stage timer is currently frozen.
+     */
+    public static boolean isStageTimerFrozen(Level level) {
+        StageContext ctx = getContext(level);
+        return ctx != null && ctx.isStageTimerFrozen();
+    }
+
+    /**
+     * Sets whether the stage / next stage timer is frozen.
+     */
+    public static boolean setStageTimerFrozen(Level level, boolean frozen) {
+        StageContext ctx = getContext(level);
+        if (ctx == null) return false;
+        ctx.setStageTimerFrozen(frozen);
+        return true;
+    }
+
+    /**
+     * Toggles the frozen state of the stage / next stage timer.
+     * @return new frozen state, or false if context is unavailable.
+     */
+    public static boolean toggleStageTimerFreeze(Level level) {
+        StageContext ctx = getContext(level);
+        if (ctx == null) return false;
+        return ctx.toggleStageTimerFreeze();
+    }
 }

@@ -116,6 +116,9 @@ public class StageContext extends SavedData {
     /** Map of player UUIDs to their vote (true = YES, false = NO) */
     private final Map<UUID, Boolean> readyVotes = new HashMap<>();
 
+    /** True if the stage / next stage timer is currently frozen */
+    private boolean stageTimerFrozen = false;
+
     // ── Arena Barrier State ──────────────────────────────────────────────────
     private net.minecraft.core.BlockPos arenaBarrierCenter = null;
     private float arenaBarrierRadiusX = 0f;
@@ -161,6 +164,9 @@ public class StageContext extends SavedData {
         }
 
         if (activeConfig == null) {
+            if (stageTimerFrozen) {
+                lastStageEndGameTime++;
+            }
             tryTriggerNextStage(level);
             return;
         }
@@ -268,7 +274,9 @@ public class StageContext extends SavedData {
     // ── WARMUP ───────────────────────────────────────────────────────────────
 
     private void tickWarmup(ServerLevel level) {
-        stageTicks++;
+        if (!stageTimerFrozen) {
+            stageTicks++;
+        }
         int remaining = activeConfig.warmup_ticks - stageTicks;
 
         // PERIODIC CLEANUP: Every 10 ticks for the first 100 ticks of warmup.
@@ -338,7 +346,9 @@ public class StageContext extends SavedData {
     }
 
     private void tickWaitingNextWave(ServerLevel level) {
-        waveTicks++;
+        if (!stageTimerFrozen) {
+            waveTicks++;
+        }
         int remaining = 100 - waveTicks; // 5 seconds = 100 ticks
 
         if (remaining >= 0 && remaining % 20 == 0) {
@@ -351,7 +361,9 @@ public class StageContext extends SavedData {
     }
 
     private void tickCombat(ServerLevel level) {
-        waveTicks++;
+        if (!stageTimerFrozen) {
+            waveTicks++;
+        }
 
         // Fast prune every 10 ticks: remove entities that are loaded but dead/removed
         WaveConfig wave = currentWave();
@@ -527,7 +539,9 @@ public class StageContext extends SavedData {
                     newWorldLevel, newBaseLevel));
         }
 
-        stageTicks++;
+        if (!stageTimerFrozen) {
+            stageTicks++;
+        }
 
         // Countdown in the last 5 seconds
         int remaining = activeConfig.scavenge_duration_ticks - stageTicks;
@@ -1148,6 +1162,7 @@ public class StageContext extends SavedData {
         tag.putLong("LastStageEndGameTime", lastStageEndGameTime);
         tag.putInt("NextStageIndex", nextStageIndex);
         tag.putBoolean("ArenaEstablished", arenaEstablished);
+        tag.putBoolean("StageTimerFrozen", stageTimerFrozen);
         if (pendingStageId != null) {
             tag.putString("PendingStageId", pendingStageId);
         }
@@ -1194,6 +1209,7 @@ public class StageContext extends SavedData {
         ctx.lastStageEndGameTime = tag.getLong("LastStageEndGameTime");
         ctx.nextStageIndex = tag.getInt("NextStageIndex");
         ctx.arenaEstablished = tag.getBoolean("ArenaEstablished");
+        ctx.stageTimerFrozen = tag.getBoolean("StageTimerFrozen");
         if (tag.contains("PendingStageId")) {
             ctx.pendingStageId = tag.getString("PendingStageId");
         }
@@ -1298,5 +1314,20 @@ public class StageContext extends SavedData {
                 });
             } catch (Throwable ignored) {}
         }
+    }
+
+    public boolean isStageTimerFrozen() {
+        return stageTimerFrozen;
+    }
+
+    public boolean toggleStageTimerFreeze() {
+        this.stageTimerFrozen = !this.stageTimerFrozen;
+        setDirty();
+        return this.stageTimerFrozen;
+    }
+
+    public void setStageTimerFrozen(boolean frozen) {
+        this.stageTimerFrozen = frozen;
+        setDirty();
     }
 }

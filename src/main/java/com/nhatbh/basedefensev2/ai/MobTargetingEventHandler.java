@@ -13,7 +13,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.monster.EnderMan;
 import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
@@ -27,6 +29,7 @@ import net.minecraftforge.fml.common.Mod;
  * 1. Target change timer: Starts a 5-second (100 ticks) timer on EVERY target change, but only restricts Threat Switch & Gunfire Alerts.
  * 2. Threat switch: 3-second window (60 ticks) tracking combined (health + poise) damage requiring >= 40% max health.
  * 3. Gunfire alert switch: Unsilenced TacZ gunfire taunts hostile mobs (Enemy) with NO current target (subject to the 5s target change timer).
+ * 4. Enderman restriction: Players holding or shooting guns will no longer draw target from Endermen.
  */
 @Mod.EventBusSubscriber(modid = BaseDefenseMod.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class MobTargetingEventHandler {
@@ -40,6 +43,13 @@ public class MobTargetingEventHandler {
     private static final String KEY_THREAT_ATTACKER = "bdv2_threat_attacker";
     private static final String KEY_THREAT_DAMAGE = "bdv2_threat_damage";
     private static final String KEY_THREAT_LAST_HIT = "bdv2_threat_last_hit_time";
+
+    public static boolean isHoldingOrShootingGun(LivingEntity entity) {
+        if (!(entity instanceof Player player)) return false;
+        ItemStack main = player.getMainHandItem();
+        ItemStack off = player.getOffhandItem();
+        return IGun.getIGunOrNull(main) != null || IGun.getIGunOrNull(off) != null;
+    }
 
     /**
      * Rule 1: Starts a 5-second timer on EVERY target change.
@@ -132,7 +142,7 @@ public class MobTargetingEventHandler {
     /**
      * System 2: TacZ Gunfire Alert Switch
      * Firing an unsilenced TacZ gun taunts nearby HOSTILE mobs (Enemy) with NO current target (32 block radius),
-     * subject to the 5-second target change timer.
+     * subject to the 5-second target change timer. Endermen are excluded from gunfire sound alerts.
      */
     @SubscribeEvent
     public static void onGunShoot(GunShootEvent event) {
@@ -159,8 +169,8 @@ public class MobTargetingEventHandler {
                 continue;
             }
 
-            // Only taunt hostile mobs (Enemy interface)
-            if (!(mob instanceof Enemy)) {
+            // Only taunt hostile mobs (Enemy interface), ignore Endermen for gunfire sound alerts
+            if (!(mob instanceof Enemy) || mob instanceof EnderMan) {
                 continue;
             }
 

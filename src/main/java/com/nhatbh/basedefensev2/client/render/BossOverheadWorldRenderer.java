@@ -29,12 +29,12 @@ import org.joml.Matrix4f;
  * Boss overhead HUD rendered in world space without raycast requirement up to 40 blocks range.
  * Dynamically scales with the boss's bounding box size.
  *
- * Layout:
- *   §c❤ 450/1000                                            §f🛡 200/200   ← Text row
- *  ┌══════════════════════════════════════════════════════════════════┐ ← Strength bar (outer border)
- *  │ ██████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │ ← Red HP bar
- *  └══════════════════════════════════════════════════════════════════┘
- *   [══════════════════════════════════════════]  [ ▮ ▮ ▮ ▮ ]            ← Shorter Passive Bar + Phase Bars (flush)
+ * Single-line Compact Text Row Layout:
+ *   §c❤ 750K/1M                                   §6🔰 60 (-50%)   §f🛡 200/200   ← Text row
+ *  ┌═════════════════════════════════════════════════════════════════════════┐ ← Strength bar (outer border)
+ *  │ ██████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │ ← Red HP bar
+ *  └═════════════════════════════════════════════════════════════════════════┘
+ *   [══════════════════════════════════════════]  [ ▮ ▮ ▮ ▮ ]                    ← Shorter Passive Bar + Phase Bars (flush)
  */
 @Mod.EventBusSubscriber(modid = "basedefensev2", value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class BossOverheadWorldRenderer {
@@ -47,7 +47,6 @@ public class BossOverheadWorldRenderer {
     private static final float HALF_W       = 1.0f;     // total bar width = 2.0
     private static final float STR_HEIGHT   = 0.075f;   // strength/shield component height
     private static final float INSET        = 0.010f;   // border gap on each side
-    private static final float HP_HEIGHT    = STR_HEIGHT - (2 * INSET); // 0.055f (HP bar height)
     private static final float PASSIVE_H    = 0.016f;   // bottom row bar height
     private static final float PASSIVE_GAP  = 0.015f;   // gap below strength bar
 
@@ -74,10 +73,18 @@ public class BossOverheadWorldRenderer {
             return;
         }
 
-        // ── Data ──
-        float hp    = boss.getHealth();
-        float maxHp = boss.getMaxHealth();
-        float hpRatio = maxHp > 0 ? Mth.clamp(hp / maxHp, 0f, 1f) : 0f;
+        // ── Vitality & Corrosion Data ──
+        double curVitality = boss.getPersistentData().contains("bdv2_client_cur_vitality")
+                ? boss.getPersistentData().getDouble("bdv2_client_cur_vitality")
+                : (double) boss.getHealth();
+        double maxVitality = boss.getPersistentData().contains("bdv2_client_max_vitality")
+                ? boss.getPersistentData().getDouble("bdv2_client_max_vitality")
+                : (double) boss.getMaxHealth();
+        int corrosionHits = boss.getPersistentData().contains("bdv2_client_corrosion_hits")
+                ? boss.getPersistentData().getInt("bdv2_client_corrosion_hits")
+                : 0;
+
+        float hpRatio = maxVitality > 0 ? Mth.clamp((float) (curVitality / maxVitality), 0f, 1f) : 0f;
 
         EntityStrengthData strData = EntityStrengthData.get(boss);
         float strRatio = 1.0f;
@@ -170,7 +177,6 @@ public class BossOverheadWorldRenderer {
 
         // ════════════════════════════════════════════════════════
         // Bottom Row: Passive Resource Bar (left) + Phase Bars (right)
-        // Spans [left .. right] - perfectly flush with main HP/strength bar above.
         // ════════════════════════════════════════════════════════
         float pTop = strBot - PASSIVE_GAP;
         float pBot = pTop - PASSIVE_H;
@@ -246,18 +252,17 @@ public class BossOverheadWorldRenderer {
         tess.end();
 
         // ════════════════════════════════════════════════════════
-        // Pass 2: Text labels (HP left, Shield right)
+        // Pass 2: Compact Text labels (HP left, Armor middle-right, Shield right)
         // ════════════════════════════════════════════════════════
         Font font = MC.font;
         MultiBufferSource.BufferSource textBuf = MultiBufferSource.immediate(Tesselator.getInstance().getBuilder());
 
         float textScale = 0.012f;
-
         int light = MC.getEntityRenderDispatcher().getPackedLightCoords(boss, event.getPartialTick());
 
-        // HP text (left-aligned): §c❤ 450/1000 §b[SUPPRESSED]
+        // HP text (left-aligned): §c❤ 750K/1M §b[SUPPRESSED]
         String suppressionTag = (com.nhatbh.basedefensev2.registry.ModEffects.SUPPRESSION.isPresent() && boss.hasEffect(com.nhatbh.basedefensev2.registry.ModEffects.SUPPRESSION.get())) ? " §b[SUPPRESSED]" : "";
-        String hpText = "§c❤ " + (int) hp + "/" + (int) maxHp + suppressionTag;
+        String hpText = "§c❤ " + formatCompact(curVitality) + "/" + formatCompact(maxVitality) + suppressionTag;
         pose.pushPose();
         pose.translate(left, textY, 0);
         pose.scale(textScale, textScale, textScale);
@@ -266,7 +271,7 @@ public class BossOverheadWorldRenderer {
                 Font.DisplayMode.NORMAL, 0, light);
         pose.popPose();
 
-        // Shield text (right-aligned): §f🛡 200/200 or §e🛡 12.5s
+        // Shield / Poise text (right-aligned): §f🛡 200/200 or §e🛡 12.5s
         String shieldText;
         if (strData != null && strData.maxStrength > 0) {
             if (strExhausted) {
@@ -279,8 +284,9 @@ public class BossOverheadWorldRenderer {
             shieldText = "";
         }
 
+        float shieldWidth = 0.0f;
         if (!shieldText.isEmpty()) {
-            float shieldWidth = font.width(shieldText) * textScale;
+            shieldWidth = font.width(shieldText) * textScale;
             pose.pushPose();
             pose.translate(right - shieldWidth, textY, 0);
             pose.scale(textScale, textScale, textScale);
@@ -290,6 +296,29 @@ public class BossOverheadWorldRenderer {
             pose.popPose();
         }
 
+        // Armor & Corrosion text (middle-right, distinct 🔰 icon): §6🔰 60 (-50%)
+        double baseArmor = BossManager.calculateBossArmor(boss);
+        double corrosionMult = Math.max(0.0, 1.0 - (Math.min(50, corrosionHits) / 50.0));
+        double effectiveArmor = baseArmor * corrosionMult;
+        int corrosionPercent = (int) Math.round((1.0 - corrosionMult) * 100.0);
+
+        String armorText;
+        if (corrosionPercent > 0) {
+            armorText = "§6🔰 " + (int) Math.round(effectiveArmor) + " (-" + corrosionPercent + "%)";
+        } else {
+            armorText = "§6🔰 " + (int) Math.round(effectiveArmor);
+        }
+
+        float armorWidth = font.width(armorText) * textScale;
+        float armorRightPos = right - (shieldWidth > 0 ? shieldWidth + 0.05f : 0.0f);
+        pose.pushPose();
+        pose.translate(armorRightPos - armorWidth, textY, 0);
+        pose.scale(textScale, textScale, textScale);
+        Matrix4f armorMat = pose.last().pose();
+        font.drawInBatch(armorText, 0, 0, 0xFFFFFFFF, false, armorMat, textBuf,
+                Font.DisplayMode.NORMAL, 0, light);
+        pose.popPose();
+
         textBuf.endBatch();
 
         // ── Restore ──
@@ -298,6 +327,18 @@ public class BossOverheadWorldRenderer {
         RenderSystem.disableBlend();
 
         pose.popPose();
+    }
+
+    private static String formatCompact(double number) {
+        if (number < 10000) {
+            return String.format("%.0f", number);
+        } else if (number < 1000000) {
+            return String.format("%.1fK", number / 1000.0).replace(".0K", "K");
+        } else if (number < 1000000000) {
+            return String.format("%.1fM", number / 1000000.0).replace(".0M", "M");
+        } else {
+            return String.format("%.1fB", number / 1000000000.0).replace(".0B", "B");
+        }
     }
 
     // ═══════════════════════════════════════════════════════════
