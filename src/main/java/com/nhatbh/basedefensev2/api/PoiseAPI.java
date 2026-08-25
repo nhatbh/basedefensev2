@@ -93,6 +93,99 @@ public class PoiseAPI {
         return data != null && data.isPercentageBased;
     }
 
+    public static double calculateCorrosionMultiplier(int corrosionHits, double baseArmor) {
+        if (corrosionHits <= 0) return 1.0;
+        double requiredHits = 25.0 + (Math.max(0.0, baseArmor) * 0.45);
+        double ratio = Math.min(1.0, (double) corrosionHits / requiredHits);
+        double progress = ratio * ratio;
+        return Math.max(0.0, 1.0 - progress);
+    }
+
+    public static int getCorrosionHits(@Nullable LivingEntity entity) {
+        if (entity == null) return 0;
+        if (com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity)) {
+            com.nhatbh.basedefensev2.boss.core.BossComponent comp = com.nhatbh.basedefensev2.boss.core.BossManager.get(entity);
+            return comp != null ? comp.getCorrosionHits() : 0;
+        }
+        return entity.getPersistentData().getInt("bdv2_corrosion_hits");
+    }
+
+    public static final java.util.UUID CORROSION_ARMOR_MOD_UUID = com.nhatbh.basedefensev2.utils.UUIDHelper.generateAttributeModifierUUID("poise_corrosion", "armor");
+
+    public static double getBaseArmorValue(@Nullable LivingEntity entity) {
+        if (entity == null) return 0.0;
+        var armorAttr = entity.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR);
+        if (armorAttr == null) return 0.0;
+        var mod = armorAttr.getModifier(CORROSION_ARMOR_MOD_UUID);
+        if (mod != null) {
+            double val = armorAttr.getValue();
+            double factor = 1.0 + mod.getAmount();
+            return factor > 0 ? val / factor : val;
+        }
+        return armorAttr.getValue();
+    }
+
+    public static double getCorrosionMultiplier(@Nullable LivingEntity entity) {
+        if (entity == null) return 1.0;
+        double baseArmor = com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity)
+                ? com.nhatbh.basedefensev2.boss.core.BossManager.calculateBossArmor(entity)
+                : getBaseArmorValue(entity);
+        int hits = getCorrosionHits(entity);
+        return calculateCorrosionMultiplier(hits, baseArmor);
+    }
+
+    public static void applyCorrosionAttributeModifier(@Nullable LivingEntity entity) {
+        if (entity == null || entity.level().isClientSide) return;
+        var armorAttr = entity.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR);
+        if (armorAttr == null) return;
+
+        double mult = getCorrosionMultiplier(entity);
+        double reductionRatio = mult - 1.0;
+
+        if (armorAttr.getModifier(CORROSION_ARMOR_MOD_UUID) != null) {
+            armorAttr.removeModifier(CORROSION_ARMOR_MOD_UUID);
+        }
+
+        if (reductionRatio < 0.0) {
+            armorAttr.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+                    CORROSION_ARMOR_MOD_UUID,
+                    "CorrosionArmorModifier",
+                    reductionRatio,
+                    net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.MULTIPLY_TOTAL
+            ));
+        }
+    }
+
+    public static void removeCorrosionAttributeModifier(@Nullable LivingEntity entity) {
+        if (entity == null || entity.level().isClientSide) return;
+        var armorAttr = entity.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR);
+        if (armorAttr != null && armorAttr.getModifier(CORROSION_ARMOR_MOD_UUID) != null) {
+            armorAttr.removeModifier(CORROSION_ARMOR_MOD_UUID);
+        }
+    }
+
+    public static boolean isFullyCorroded(@Nullable LivingEntity entity) {
+        if (entity == null) return false;
+        double baseArmor = com.nhatbh.basedefensev2.boss.core.BossManager.isBoss(entity)
+                ? com.nhatbh.basedefensev2.boss.core.BossManager.calculateBossArmor(entity)
+                : getBaseArmorValue(entity);
+        if (baseArmor <= 0) return false;
+        return getCorrosionMultiplier(entity) <= 0.0;
+    }
+
+    public static void clearBeneficialEffects(@Nullable LivingEntity entity) {
+        if (entity == null || entity.level().isClientSide) return;
+        java.util.List<net.minecraft.world.effect.MobEffect> beneficial = new java.util.ArrayList<>();
+        for (net.minecraft.world.effect.MobEffectInstance instance : entity.getActiveEffects()) {
+            if (instance.getEffect().getCategory() == net.minecraft.world.effect.MobEffectCategory.BENEFICIAL) {
+                beneficial.add(instance.getEffect());
+            }
+        }
+        for (net.minecraft.world.effect.MobEffect effect : beneficial) {
+            entity.removeEffect(effect);
+        }
+    }
+
     /**
      * Calculates maximum poise for a mob based on its max HP.
      * Starts at 100% of max health for baseline mobs (20 HP) and smoothly curves down to 50% at 10,000 HP.
@@ -403,7 +496,12 @@ public class PoiseAPI {
                 com.nhatbh.basedefensev2.boss.core.BossManager.syncBossVitality(entity, comp);
             }
             MinecraftForge.EVENT_BUS.post(new com.nhatbh.basedefensev2.api.event.BossAdaptiveArmorEvent.Reset(entity));
+        } else {
+            entity.getPersistentData().remove("bdv2_corrosion_hits");
+            entity.getPersistentData().remove("bdv2_corrosion_window_tick");
+            entity.getPersistentData().remove("bdv2_corrosion_window_hits");
         }
+        removeCorrosionAttributeModifier(entity);
 
         MinecraftForge.EVENT_BUS.post(new PoiseRecoveryEvent(entity));
     }

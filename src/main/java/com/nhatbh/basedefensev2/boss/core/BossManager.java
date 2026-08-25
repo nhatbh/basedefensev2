@@ -532,6 +532,10 @@ public class BossManager {
                 boolean isMelee = source.getDirectEntity() != null && source.getDirectEntity() == source.getEntity();
                 if (isMelee) {
                     comp.incrementCorrosionHits();
+                    com.nhatbh.basedefensev2.api.PoiseAPI.applyCorrosionAttributeModifier(entity);
+                    if (com.nhatbh.basedefensev2.api.PoiseAPI.isFullyCorroded(entity)) {
+                        com.nhatbh.basedefensev2.api.PoiseAPI.clearBeneficialEffects(entity);
+                    }
                 }
 
                 double armor = calculateBossArmor(entity);

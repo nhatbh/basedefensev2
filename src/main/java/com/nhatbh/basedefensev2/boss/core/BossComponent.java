@@ -70,11 +70,7 @@ public class BossComponent {
         this.adaptiveArmorTracker.reset(boss != null ? boss.getPersistentData() : null);
     }
     public double getCorrosionMultiplier(double baseArmor) {
-        if (corrosionHits <= 0) return 1.0;
-        double requiredHits = 25.0 + (Math.max(0.0, baseArmor) * 0.45);
-        double ratio = Math.min(1.0, (double) corrosionHits / requiredHits);
-        double progress = ratio * ratio; // Accelerating curve: early hits strip less, later hits strip significantly more
-        return Math.max(0.0, 1.0 - progress);
+        return com.nhatbh.basedefensev2.api.PoiseAPI.calculateCorrosionMultiplier(corrosionHits, baseArmor);
     }
 
     public double getCorrosionMultiplier() {

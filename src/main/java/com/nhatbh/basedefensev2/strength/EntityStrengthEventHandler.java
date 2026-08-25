@@ -85,6 +85,29 @@ public class EntityStrengthEventHandler {
         LivingEntity attacker = source.getEntity() instanceof LivingEntity livingAttacker ? livingAttacker : null;
         boolean isDirectMelee = !source.isIndirect() && !(source instanceof io.redspace.ironsspellbooks.damage.SpellDamageSource);
 
+        if (!BossManager.isBoss(entity) && event.getAmount() > 0) {
+            long currentTick = entity.level().getGameTime();
+            long windowStartTick = entity.getPersistentData().getLong("bdv2_corrosion_window_tick");
+            int hitsInWindow = entity.getPersistentData().getInt("bdv2_corrosion_window_hits");
+
+            if (windowStartTick == 0 || (currentTick - windowStartTick) >= 20) {
+                windowStartTick = currentTick;
+                hitsInWindow = 0;
+            }
+
+            if (hitsInWindow < 2) {
+                entity.getPersistentData().putLong("bdv2_corrosion_window_tick", windowStartTick);
+                entity.getPersistentData().putInt("bdv2_corrosion_window_hits", hitsInWindow + 1);
+
+                int hits = entity.getPersistentData().getInt("bdv2_corrosion_hits");
+                entity.getPersistentData().putInt("bdv2_corrosion_hits", hits + 1);
+                PoiseAPI.applyCorrosionAttributeModifier(entity);
+                if (PoiseAPI.isFullyCorroded(entity)) {
+                    PoiseAPI.clearBeneficialEffects(entity);
+                }
+            }
+        }
+
         float basePoiseDamage;
         float impactScore = 2.5f;
 
@@ -122,11 +145,7 @@ public class EntityStrengthEventHandler {
             return (float) preMit;
         }
         double armor = BossManager.isBoss(entity) ? BossManager.calculateBossArmor(entity) : entity.getArmorValue();
-        double effectiveArmor = armor;
-        if (BossManager.isBoss(entity)) {
-            com.nhatbh.basedefensev2.boss.core.BossComponent comp = BossManager.get(entity);
-            if (comp != null) effectiveArmor *= comp.getCorrosionMultiplier(armor);
-        }
+        double effectiveArmor = armor * PoiseAPI.getCorrosionMultiplier(entity);
         double apotheosisMult = BossManager.calculateApotheosisMultiplier(effectiveArmor);
         float raw = event.getAmount();
         if (rawOut != null && rawOut.length > 0) rawOut[0] = raw;

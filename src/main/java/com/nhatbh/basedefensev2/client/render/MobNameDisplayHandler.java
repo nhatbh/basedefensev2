@@ -77,10 +77,22 @@ public class MobNameDisplayHandler {
             }
         }
 
-        // 5. Suppression Display (§b[SUPPRESSED] cyan tag)
+        // 5. Corrosion Display (§6🔰 -X% tag when armor is corroded)
+        String corrosionTag = "";
+        int corrosionHits = living.getPersistentData().getInt("bdv2_corrosion_hits");
+        if (corrosionHits > 0) {
+            double baseArmor = living.getArmorValue();
+            double mult = PoiseAPI.calculateCorrosionMultiplier(corrosionHits, baseArmor);
+            int reductionPercent = (int) Math.round((1.0 - mult) * 100.0);
+            if (reductionPercent > 0) {
+                corrosionTag = " §6🔰 -" + reductionPercent + "%";
+            }
+        }
+
+        // 6. Suppression Display (§b[SUPPRESSED] cyan tag)
         String suppressionTag = (ModEffects.SUPPRESSION.isPresent() && living.hasEffect(ModEffects.SUPPRESSION.get())) ? " §b[SUPPRESSED]" : "";
 
-        MutableComponent formattedName = Component.literal(levelPrefix + elementIcon + hpString + poiseString + suppressionTag);
+        MutableComponent formattedName = Component.literal(levelPrefix + elementIcon + hpString + poiseString + corrosionTag + suppressionTag);
 
         event.setContent(formattedName);
         event.setResult(Event.Result.ALLOW);
